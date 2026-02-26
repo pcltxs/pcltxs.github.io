@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>MiniLab</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="当网卡“消失”且怀疑被 DPDK 程序占用时（如 eth0 在 ip link 中不可见，但 lspci 仍能识别硬件），核心原因是：DPDK 通过 UIO&#x2F;VFIO 驱动将网卡从内核解绑，移交至用户态程序控制。以下是精准排查与定位方法：  🔍 三步定位：是否被 DPDK 占用 + 谁在占用✅ 第一步：确认网卡是否被绑定到 DPDK 驱动123456# 1. 找到网卡 PCI 地址（示">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MiniLab">
+<meta property="og:url" content="https://tuzkibug.github.io/2026/02/26/dpdk%E5%8D%A0%E7%94%A8%E6%8E%92%E6%9F%A5/index.html">
+<meta property="og:site_name" content="MiniLab">
+<meta property="og:description" content="当网卡“消失”且怀疑被 DPDK 程序占用时（如 eth0 在 ip link 中不可见，但 lspci 仍能识别硬件），核心原因是：DPDK 通过 UIO&#x2F;VFIO 驱动将网卡从内核解绑，移交至用户态程序控制。以下是精准排查与定位方法：  🔍 三步定位：是否被 DPDK 占用 + 谁在占用✅ 第一步：确认网卡是否被绑定到 DPDK 驱动123456# 1. 找到网卡 PCI 地址（示">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-02-26T07:25:24.052Z">
+<meta property="article:modified_time" content="2026-02-26T02:55:05.144Z">
+<meta property="article:author" content="Tuwj">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="MiniLab" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css">
+
+<meta name="generator" content="Hexo 8.1.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">MiniLab</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">PCLTXSYWZ-blogs</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS 订阅"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="搜索"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="搜索"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://tuzkibug.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-dpdk占用排查" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2026/02/26/dpdk%E5%8D%A0%E7%94%A8%E6%8E%92%E6%9F%A5/" class="article-date">
+  <time class="dt-published" datetime="2026-02-26T07:25:24.052Z" itemprop="datePublished">2026-02-26</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>当网卡“消失”且怀疑被 DPDK 程序占用时（如 <code>eth0</code> 在 <code>ip link</code> 中不可见，但 <code>lspci</code> 仍能识别硬件），核心原因是：<strong>DPDK 通过 UIO&#x2F;VFIO 驱动将网卡从内核解绑，移交至用户态程序控制</strong>。以下是精准排查与定位方法：</p>
+<hr>
+<h3 id="🔍-三步定位：是否被-DPDK-占用-谁在占用"><a href="#🔍-三步定位：是否被-DPDK-占用-谁在占用" class="headerlink" title="🔍 三步定位：是否被 DPDK 占用 + 谁在占用"></a>🔍 三步定位：是否被 DPDK 占用 + 谁在占用</h3><h4 id="✅-第一步：确认网卡是否被绑定到-DPDK-驱动"><a href="#✅-第一步：确认网卡是否被绑定到-DPDK-驱动" class="headerlink" title="✅ 第一步：确认网卡是否被绑定到 DPDK 驱动"></a>✅ 第一步：确认网卡是否被绑定到 DPDK 驱动</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 找到网卡 PCI 地址（示例）</span></span><br><span class="line">lspci -nn | grep -i ethernet</span><br><span class="line"><span class="comment"># 输出示例：01:00.0 Ethernet controller [0200]: Intel Corporation ...</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 检查当前绑定的驱动</span></span><br><span class="line">lspci -k -s 0000:01:00.0  <span class="comment"># 替换为实际 PCI 地址</span></span><br></pre></td></tr></table></figure>
+<ul>
+<li><strong>关键判断</strong>：<br><code>Kernel driver in use: igb_uio</code> &#x2F; <code>vfio-pci</code> &#x2F; <code>uio_pci_generic</code> → <strong>已被 DPDK 占用</strong><br><code>Kernel driver in use: ixgbe</code> &#x2F; <code>e1000e</code> 等 → 未被 DPDK 占用（排查其他原因）</li>
+</ul>
+<h4 id="✅-第二步：定位占用进程（核心！）"><a href="#✅-第二步：定位占用进程（核心！）" class="headerlink" title="✅ 第二步：定位占用进程（核心！）"></a>✅ 第二步：定位占用进程（核心！）</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 方法1：检查打开的 UIO/VFIO 设备（最直接）</span></span><br><span class="line"><span class="built_in">sudo</span> lsof /dev/uio* /dev/vfio/* 2&gt;/dev/null | grep -v <span class="string">&quot;COMMAND&quot;</span></span><br><span class="line"><span class="comment"># 或</span></span><br><span class="line"><span class="built_in">sudo</span> fuser -v /dev/uio* /dev/vfio/* 2&gt;/dev/null</span><br><span class="line"></span><br><span class="line"><span class="comment"># 方法2：扫描所有进程的 fd（需 root）</span></span><br><span class="line"><span class="built_in">sudo</span> find /proc/[0-9]*/fd -lname <span class="string">&quot;*uio*&quot;</span> -o -lname <span class="string">&quot;*vfio*&quot;</span> 2&gt;/dev/null | \</span><br><span class="line">  <span class="keyword">while</span> <span class="built_in">read</span> fd; <span class="keyword">do</span> </span><br><span class="line">    pid=$(<span class="built_in">echo</span> <span class="variable">$fd</span> | <span class="built_in">cut</span> -d/ -f3)</span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;PID: <span class="variable">$pid</span> | <span class="subst">$(ps -p $pid -o comm= 2&gt;/dev/null || echo &#x27;terminated&#x27;)</span>&quot;</span></span><br><span class="line">  <span class="keyword">done</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 方法3：检查 DPDK 进程特征</span></span><br><span class="line">ps aux | grep -E <span class="string">&quot;testpmd|l2fwd|l3fwd|dpdk|ovs|vpp|fd.io&quot;</span> | grep -v grep</span><br><span class="line">pgrep -a -f <span class="string">&quot;dpdk|testpmd&quot;</span> 2&gt;/dev/null</span><br></pre></td></tr></table></figure>
+<ul>
+<li><strong>输出示例</strong>：<br><code>testpmd 12345 root 5u CHR 241,0 ... /dev/uio0</code> → PID 12345 的 testpmd 占用</li>
+</ul>
+<h4 id="✅-第三步：辅助验证（增强可信度）"><a href="#✅-第三步：辅助验证（增强可信度）" class="headerlink" title="✅ 第三步：辅助验证（增强可信度）"></a>✅ 第三步：辅助验证（增强可信度）</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 检查 DPDK 绑定工具状态（若已安装）</span></span><br><span class="line">dpdk-devbind.py --status 2&gt;/dev/null | grep -A 5 <span class="string">&quot;0000:01:00.0&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查内核日志（绑定时间点）</span></span><br><span class="line">dmesg | grep -i <span class="string">&quot;uio\|vfio\|bound to driver&quot;</span> | <span class="built_in">tail</span> -20</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查 UIO 设备关联</span></span><br><span class="line"><span class="built_in">ls</span> -l /sys/class/uio/ 2&gt;/dev/null &amp;&amp; <span class="built_in">cat</span> /sys/class/uio/uio*/name</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="📌-关键特征总结（快速判断）"><a href="#📌-关键特征总结（快速判断）" class="headerlink" title="📌 关键特征总结（快速判断）"></a>📌 关键特征总结（快速判断）</h3><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>lspci</code> 能看到网卡，但 <code>ip link</code> 无对应接口</td>
+<td><strong>高度疑似 DPDK 占用</strong></td>
+</tr>
+<tr>
+<td><code>lspci -k</code> 显示驱动为 <code>igb_uio</code>&#x2F;<code>vfio-pci</code></td>
+<td><strong>确认被 DPDK 驱动接管</strong></td>
+</tr>
+<tr>
+<td><code>/dev/uio*</code> 或 <code>/dev/vfio/*</code> 被进程打开</td>
+<td><strong>直接定位占用程序</strong></td>
+</tr>
+<tr>
+<td><code>dpdk-devbind.py --status</code> 标注 “drv&#x3D;igb_uio”</td>
+<td><strong>DPDK 绑定状态明确</strong></td>
+</tr>
+</tbody></table>
+<hr>
+<h3 id="⚠️-注意事项"><a href="#⚠️-注意事项" class="headerlink" title="⚠️ 注意事项"></a>⚠️ 注意事项</h3><ol>
+<li><strong>权限要求</strong>：<code>lsof</code>&#x2F;<code>fuser</code>&#x2F;<code>/proc</code> 扫描需 <code>root</code> 权限，否则可能漏检。</li>
+<li><strong>进程已退出但驱动未解绑</strong>：  <ul>
+<li>若 <code>lsof</code> 无输出但驱动仍为 <code>igb_uio</code>，说明进程已退出但未释放设备。  </li>
+<li><strong>恢复方法</strong>：  <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> <span class="string">&quot;0000:01:00.0&quot;</span> | <span class="built_in">sudo</span> <span class="built_in">tee</span> /sys/bus/pci/drivers/igb_uio/unbind</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;0000:01:00.0&quot;</span> | <span class="built_in">sudo</span> <span class="built_in">tee</span> /sys/bus/pci/drivers/ixgbe/bind  <span class="comment"># 替换为原驱动名</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><strong>云环境&#x2F;容器</strong>：  <ul>
+<li>容器内运行的 DPDK 程序需在宿主机排查（检查宿主机 <code>/dev</code> 和进程）。</li>
+<li>云平台（如阿里云）需确认是否启用 SR-IOV + VF 被 DPDK 占用。</li>
+</ul>
+</li>
+<li><strong>安全操作</strong>：  <ul>
+<li><strong>切勿直接 kill 进程</strong>！先确认业务影响（如 OVS-DPDK、VPP、自研转发程序）。  </li>
+<li>恢复网卡前，确保 DPDK 程序已安全停止。</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h3 id="💡-一句话总结"><a href="#💡-一句话总结" class="headerlink" title="💡 一句话总结"></a>💡 一句话总结</h3><blockquote>
+<p><strong>“网卡硬件存在但内核看不见” + “驱动显示 igb_uio&#x2F;vfio-pci” &#x3D; DPDK 占用；用 <code>lsof /dev/uio*</code> 或扫描 <code>/proc/*/fd</code> 精准定位占用进程。</strong></p>
+</blockquote>
+<p>通过以上方法，可快速区分“命名规则变更”与“DPDK 占用”，避免误判。如需进一步分析，提供 <code>lspci -k -s &lt;PCI&gt;</code> 和 <code>lsof /dev/uio*</code> 输出即可精准定位。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://tuzkibug.github.io/2026/02/26/dpdk%E5%8D%A0%E7%94%A8%E6%8E%92%E6%9F%A5/" data-id="cuidNmLr5DvbZoe9JAg76CFwf" data-title="" class="article-share-link"><span class="fa fa-share">分享</span></a>
+      
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2026/02/26/hello-world/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">后一篇</strong>
+      <div class="article-nav-title">Hello World</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2026/02/">二月 2026</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2026/02/26/dpdk%E5%8D%A0%E7%94%A8%E6%8E%92%E6%9F%A5/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2026/02/26/hello-world/">Hello World</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2026 Tuwj<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>
