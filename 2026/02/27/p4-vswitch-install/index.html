@@ -1,0 +1,482 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>P4-vSwitch实验环境部署和实验操作简要手册 | 体系所运维知识库</title><meta name="author" content="PCLTXSYWZ"><meta name="copyright" content="PCLTXSYWZ"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="目录 {#目录 .TOC-Heading}1 概述 5 1.1 项目背景 5 1.2 环境信息 5 2 环境部署 6 2.1 系统安装 6 2.2 Switch节点 6 2.3 Generator节点&#x2F;Receiver节点11 3 l2_switch实验 14 3.1 实验准备 14 3.2 实验操作 16 3.2.1 Switch节点 16 3.2.2 Generator节点 &amp;amp">
+<meta property="og:type" content="article">
+<meta property="og:title" content="P4-vSwitch实验环境部署和实验操作简要手册">
+<meta property="og:url" content="https://pcltxs.github.io/2026/02/27/p4-vswitch-install/index.html">
+<meta property="og:site_name" content="体系所运维知识库">
+<meta property="og:description" content="目录 {#目录 .TOC-Heading}1 概述 5 1.1 项目背景 5 1.2 环境信息 5 2 环境部署 6 2.1 系统安装 6 2.2 Switch节点 6 2.3 Generator节点&#x2F;Receiver节点11 3 l2_switch实验 14 3.1 实验准备 14 3.2 实验操作 16 3.2.1 Switch节点 16 3.2.2 Generator节点 &amp;amp">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://pcltxs.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-02-27T03:01:03.000Z">
+<meta property="article:modified_time" content="2026-02-27T03:35:29.432Z">
+<meta property="article:author" content="PCLTXSYWZ">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pcltxs.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "P4-vSwitch实验环境部署和实验操作简要手册",
+  "url": "https://pcltxs.github.io/2026/02/27/p4-vswitch-install/",
+  "image": "https://pcltxs.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-02-27T03:01:03.000Z",
+  "dateModified": "2026-02-27T03:35:29.432Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "PCLTXSYWZ",
+      "url": "https://pcltxs.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://pcltxs.github.io/2026/02/27/p4-vswitch-install/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'P4-vSwitch实验环境部署和实验操作简要手册',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.1"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">体系所运维知识库</span></a><a class="nav-page-title" href="/"><span class="site-name">P4-vSwitch实验环境部署和实验操作简要手册</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">P4-vSwitch实验环境部署和实验操作简要手册</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-02-27T03:01:03.000Z" title="发表于 2026-02-27 11:01:03">2026-02-27</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-02-27T03:35:29.432Z" title="更新于 2026-02-27 11:35:29">2026-02-27</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%B3%BB%E7%BB%9F%E5%AE%89%E8%A3%85%E4%B8%8E%E8%BD%AF%E4%BB%B6%E9%83%A8%E7%BD%B2/">系统安装与软件部署</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="目录-目录-TOC-Heading"><a href="#目录-目录-TOC-Heading" class="headerlink" title="目录 {#目录 .TOC-Heading}"></a>目录 {#目录 .TOC-Heading}</h1><p><a href="#%E6%A6%82%E8%BF%B0">1 概述 <a href="#%E6%A6%82%E8%BF%B0">5</a></a></p>
+<p><a href="#%E9%A1%B9%E7%9B%AE%E8%83%8C%E6%99%AF">1.1 项目背景 <a href="#%E9%A1%B9%E7%9B%AE%E8%83%8C%E6%99%AF">5</a></a></p>
+<p><a href="#%E7%8E%AF%E5%A2%83%E4%BF%A1%E6%81%AF">1.2 环境信息 <a href="#%E7%8E%AF%E5%A2%83%E4%BF%A1%E6%81%AF">5</a></a></p>
+<p><a href="#%E7%8E%AF%E5%A2%83%E9%83%A8%E7%BD%B2">2 环境部署 <a href="#%E7%8E%AF%E5%A2%83%E9%83%A8%E7%BD%B2">6</a></a></p>
+<p><a href="#%E7%B3%BB%E7%BB%9F%E5%AE%89%E8%A3%85">2.1 系统安装 <a href="#%E7%B3%BB%E7%BB%9F%E5%AE%89%E8%A3%85">6</a></a></p>
+<p><a href="#switch%E8%8A%82%E7%82%B9">2.2 Switch节点 <a href="#switch%E8%8A%82%E7%82%B9">6</a></a></p>
+<p><a href="#generator%E8%8A%82%E7%82%B9receiver%E8%8A%82%E7%82%B9">2.3 Generator节点&#x2F;Receiver节点<br><a href="#generator%E8%8A%82%E7%82%B9receiver%E8%8A%82%E7%82%B9">11</a></a></p>
+<p><a href="#l2_switch%E5%AE%9E%E9%AA%8C">3 l2_switch实验 <a href="#l2_switch%E5%AE%9E%E9%AA%8C">14</a></a></p>
+<p><a href="#%E5%AE%9E%E9%AA%8C%E5%87%86%E5%A4%87">3.1 实验准备 <a href="#%E5%AE%9E%E9%AA%8C%E5%87%86%E5%A4%87">14</a></a></p>
+<p><a href="#%E5%AE%9E%E9%AA%8C%E6%93%8D%E4%BD%9C">3.2 实验操作 <a href="#%E5%AE%9E%E9%AA%8C%E6%93%8D%E4%BD%9C">16</a></a></p>
+<p><a href="#switch%E8%8A%82%E7%82%B9-1">3.2.1 Switch节点 <a href="#switch%E8%8A%82%E7%82%B9-1">16</a></a></p>
+<p><a href="#generator%E8%8A%82%E7%82%B9-receiver%E8%8A%82%E7%82%B9">3.2.2 Generator节点 &amp; Receiver节点<br><a href="#generator%E8%8A%82%E7%82%B9-receiver%E8%8A%82%E7%82%B9">19</a></a></p>
+<p><a href="#simple_router%E5%AE%9E%E9%AA%8C">4 Simple_router实验 <a href="#simple_router%E5%AE%9E%E9%AA%8C">23</a></a></p>
+<p><a href="#%E5%AE%9E%E9%AA%8C%E5%87%86%E5%A4%87-1">4.1 实验准备 <a href="#%E5%AE%9E%E9%AA%8C%E5%87%86%E5%A4%87-1">23</a></a></p>
+<p><a href="#%E5%AE%9E%E9%AA%8C%E6%93%8D%E4%BD%9C-1">4.2 实验操作 <a href="#%E5%AE%9E%E9%AA%8C%E6%93%8D%E4%BD%9C-1">27</a></a></p>
+<p><a href="#switch%E8%8A%82%E7%82%B9-2">4.2.1 Switch节点 <a href="#switch%E8%8A%82%E7%82%B9-2">27</a></a></p>
+<p><a href="#generator%E8%8A%82%E7%82%B9-receiver%E8%8A%82%E7%82%B9-1">4.2.2 Generator节点 &amp; Receiver节点<br><a href="#generator%E8%8A%82%E7%82%B9-receiver%E8%8A%82%E7%82%B9-1">29</a></a></p>
+<p><a href="#_Toc485390003">表1. 文档修改记录 <a href="#_Toc485390003">1</a></a></p>
+<p><a href="#_Toc17707">表2. 服务器信息表 <a href="#_Toc17707">5</a></a></p>
+<p><a href="#%E7%BD%91%E7%BB%9C%E6%8B%93%E6%89%91%E8%BF%9E%E6%8E%A5%E5%9B%BE">图1. 网络拓扑连接图 <a href="#%E7%BD%91%E7%BB%9C%E6%8B%93%E6%89%91%E8%BF%9E%E6%8E%A5%E5%9B%BE">6</a></a></p>
+<p><a href="#dpdk%E7%AB%AF%E5%8F%A3%E7%BB%91%E5%AE%9A%E6%83%85%E5%86%B5">图2. dpdk端口绑定情况 <a href="#dpdk%E7%AB%AF%E5%8F%A3%E7%BB%91%E5%AE%9A%E6%83%85%E5%86%B5">9</a></a></p>
+<p><a href="#%E5%A4%A7%E9%A1%B5%E5%86%85%E5%AD%98%E6%83%85%E5%86%B5">图3. 大页内存情况 <a href="#%E5%A4%A7%E9%A1%B5%E5%86%85%E5%AD%98%E6%83%85%E5%86%B5">10</a></a></p>
+<p><a href="#dpdk%E7%AB%AF%E5%8F%A3%E7%BB%91%E5%AE%9A%E6%83%85%E5%86%B5-1">图4. dpdk端口绑定情况 <a href="#dpdk%E7%AB%AF%E5%8F%A3%E7%BB%91%E5%AE%9A%E6%83%85%E5%86%B5-1">13</a></a></p>
+<p><a href="#%E5%A4%A7%E9%A1%B5%E5%86%85%E5%AD%98%E6%83%85%E5%86%B5-1">图5. 大页内存情况 <a href="#%E5%A4%A7%E9%A1%B5%E5%86%85%E5%AD%98%E6%83%85%E5%86%B5-1">13</a></a></p>
+<p><a href="#l2_switch%E5%AE%9E%E9%AA%8C%E6%96%87%E4%BB%B6">图6. l2_switch实验文件 <a href="#l2_switch%E5%AE%9E%E9%AA%8C%E6%96%87%E4%BB%B6">14</a></a></p>
+<p><a href="#ovs%E7%BD%91%E6%A1%A5%E6%83%85%E5%86%B5">图7. ovs网桥情况 <a href="#ovs%E7%BD%91%E6%A1%A5%E6%83%85%E5%86%B5">18</a></a></p>
+<p><a href="#l2_switch%E5%AE%9E%E9%AA%8C%E6%B5%81%E8%A1%A8">图8. l2_switch实验流表 <a href="#l2_switch%E5%AE%9E%E9%AA%8C%E6%B5%81%E8%A1%A8">19</a></a></p>
+<p><a href="#%E5%8F%91%E5%8C%85%E8%BD%AF%E4%BB%B6%E5%90%AF%E5%8A%A8">图9. 发包软件启动 <a href="#%E5%8F%91%E5%8C%85%E8%BD%AF%E4%BB%B6%E5%90%AF%E5%8A%A8">22</a></a></p>
+<p><a href="#%E6%B5%81%E8%A1%A8%E5%8F%98%E5%8C%96">图10. 流表变化 <a href="#%E6%B5%81%E8%A1%A8%E5%8F%98%E5%8C%96">23</a></a></p>
+<p><a href="#simple_router%E5%AE%9E%E9%AA%8C%E6%96%87%E4%BB%B6">图11. simple_router实验文件<br><a href="#simple_router%E5%AE%9E%E9%AA%8C%E6%96%87%E4%BB%B6">24</a></a></p>
+<p><a href="#ovs%E7%BD%91%E6%A1%A5%E6%83%85%E5%86%B5-1">图12. ovs网桥情况 <a href="#ovs%E7%BD%91%E6%A1%A5%E6%83%85%E5%86%B5-1">28</a></a></p>
+<p><a href="#simple_router%E5%AE%9E%E9%AA%8C%E6%B5%81%E8%A1%A8">图13. simple_router实验流表<br><a href="#simple_router%E5%AE%9E%E9%AA%8C%E6%B5%81%E8%A1%A8">29</a></a></p>
+<p><a href="#%E6%B5%81%E8%A1%A8%E5%8F%98%E5%8C%96-1">图14. 流表变化 <a href="#%E6%B5%81%E8%A1%A8%E5%8F%98%E5%8C%96-1">30</a></a></p>
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><h2 id="项目背景"><a href="#项目背景" class="headerlink" title="项目背景"></a>项目背景</h2><p>参考Github项目。</p>
+<p><a target="_blank" rel="noopener" href="https://github.com/P4-vSwitch">https://github.com/P4-vSwitch</a></p>
+<h1 id="section-图名"><a href="#section-图名" class="headerlink" title="{#section .图名}"></a>{#section .图名}</h1><h2 id="环境信息"><a href="#环境信息" class="headerlink" title="环境信息"></a>环境信息</h2><p>项目部署环境为虚拟机，需将其中的脚本和代码迁移至物理机运行。</p>
+<p>实验环境共3台服务器，基本信息如下，实验室网络可登录。</p>
+<ol start="2">
+<li>[]{#_Toc17707 .anchor}服务器信息表</li>
+</ol>
+<p>+:———-:+:————–:+:———–:+:———–:+:—————-:+<br>| 服务器名称 | IP地址         | 用户名      | 密码        | 备注             |<br>+————+—————-+————-+————-+——————+<br>| p4switch   | 192.168.61.133 | root&#x2F;ubuntu | abcd@1234   | system           |<br>|            |                |             |             |                  |<br>|            |                |             |             | Ubuntu 14.04.4   |<br>|            |                |             |             |                  |<br>|            |                |             |             | kernel           |<br>|            |                |             |             |                  |<br>|            |                |             |             | 4.2.0-27-generic |<br>+————+—————-+             |             |                  |<br>| p4recv     | 192.168.61.135 |             |             |                  |<br>+————+—————-+             |             |                  |<br>| p4gen      | 192.168.61.134 |             |             |                  |<br>+————+—————-+————-+————-+——————+</p>
+<p>拓扑连接图如下。</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image1.png">{width&#x3D;”5.758333333333334in”<br>height&#x3D;”3.122916666666667in”}</p>
+<h1 id="网络拓扑连接图-网络拓扑连接图-图名"><a href="#网络拓扑连接图-网络拓扑连接图-图名" class="headerlink" title="网络拓扑连接图 {#网络拓扑连接图 .图名}"></a>网络拓扑连接图 {#网络拓扑连接图 .图名}</h1><h1 id="环境部署"><a href="#环境部署" class="headerlink" title="环境部署"></a>环境部署</h1><h2 id="系统安装"><a href="#系统安装" class="headerlink" title="系统安装"></a>系统安装</h2><p>Ubuntu 14.04.4，内核版本4.2.0-27-generic。</p>
+<h2 id="Switch节点"><a href="#Switch节点" class="headerlink" title="Switch节点"></a>Switch节点</h2><p>使用root用户登录Switch节点，更新apt源，下载必要的软件依赖,建议将自带源替换为国内源。</p>
+<p>apt-get update</p>
+<p>#apt-get upgrade</p>
+<p>apt-get -y install git python-pip fuse libfuse-dev dh-autoreconf openssl<br>libssl-dev cmake libpcap-dev python-yaml</p>
+<p>安装ply，且要求版本&lt;3.10，建议使用国内pip源。</p>
+<p>pip install -i <a target="_blank" rel="noopener" href="https://pypi.tuna.tsinghua.edu.cn/simple">https://pypi.tuna.tsinghua.edu.cn/simple</a> ply&#x3D;&#x3D;3.9</p>
+<p>创建工作目录，并下载项目代码。</p>
+<p>cd &#x2F;home</p>
+<p>git clone <a target="_blank" rel="noopener" href="https://github.com/P4-vSwitch/vagrant.git">https://github.com/P4-vSwitch/vagrant.git</a></p>
+<p>下载安装p4-hlir模块</p>
+<p>cd &#x2F;home&#x2F;vagrant</p>
+<p>git clone <a target="_blank" rel="noopener" href="https://github.com/p4lang/p4-hlir.git">https://github.com/p4lang/p4-hlir.git</a></p>
+<p>cd p4-hlir&#x2F;</p>
+<p>python setup.py install</p>
+<p>下载安装p4c-behavioral模块</p>
+<p>cd &#x2F;home&#x2F;vagrant</p>
+<p>git clone <a target="_blank" rel="noopener" href="https://github.com/P4-vSwitch/p4c-behavioral.git">https://github.com/P4-vSwitch/p4c-behavioral.git</a></p>
+<p>cd p4c-behavioral&#x2F;</p>
+<p>git checkout ovs</p>
+<p>python setup.py install</p>
+<p>下载OVS模块</p>
+<p>cd &#x2F;home&#x2F;vagrant</p>
+<p>git clone <a target="_blank" rel="noopener" href="https://github.com/P4-vSwitch/ovs.git">https://github.com/P4-vSwitch/ovs.git</a></p>
+<p>cd ovs&#x2F;</p>
+<p>git checkout p4</p>
+<p>git submodule update --init</p>
+<p>Build DPDK模块</p>
+<p>cd &#x2F;home&#x2F;vagrant&#x2F;ovs&#x2F;deps&#x2F;dpdk</p>
+<p>patch -p1 -N &lt; ..&#x2F;..&#x2F;setup-scripts&#x2F;patches&#x2F;dpdk.patch</p>
+<p>make -j 2 install T&#x3D;x86_64-native-linuxapp-gcc</p>
+<p>导入环境变量，建议填入~&#x2F;.bashrc，避免每次新开窗口都需要手动导入。</p>
+<p>export RTE_SDK&#x3D;&#x2F;home&#x2F;vagrant&#x2F;ovs&#x2F;deps&#x2F;dpdk</p>
+<p>export RTE_TARGET&#x3D;x86_64-native-linuxapp-gcc</p>
+<p>export DPDK_DIR&#x3D;$RTE_SDK</p>
+<p>export DPDK_BUILD&#x3D;$DPDK_DIR&#x2F;$RTE_TARGET&#x2F;</p>
+<p>配置DPDK内核模块</p>
+<p>cd &#x2F;home&#x2F;vagrant</p>
+<p>modprobe uio</p>
+<p>insmod $RTE_SDK&#x2F;$RTE_TARGET&#x2F;kmod&#x2F;igb_uio.ko</p>
+<p>insmod $RTE_SDK&#x2F;$RTE_TARGET&#x2F;kmod&#x2F;rte_kni.ko &quot;lo_mode&#x3D;lo_mode_ring&quot;</p>
+<p>将服务器端口绑定至DPDK</p>
+<p>ifconfig eth0 down</p>
+<p>$RTE_SDK&#x2F;tools&#x2F;dpdk_nic_bind.py -b igb_uio eth0</p>
+<p>ifconfig eth1 down</p>
+<p>$RTE_SDK&#x2F;tools&#x2F;dpdk_nic_bind.py -b igb_uio eth1</p>
+<p>查看绑定情况</p>
+<p>$RTE_SDK&#x2F;tools&#x2F;dpdk_nic_bind.py --status</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image2.png">{width&#x3D;”5.758333333333334in”<br>height&#x3D;”1.7638888888888888in”}</p>
+<h1 id="dpdk端口绑定情况-dpdk端口绑定情况-图名"><a href="#dpdk端口绑定情况-dpdk端口绑定情况-图名" class="headerlink" title="dpdk端口绑定情况 {#dpdk端口绑定情况 .图名}"></a>dpdk端口绑定情况 {#dpdk端口绑定情况 .图名}</h1><p>配置大页内存</p>
+<p>cd &#x2F;home&#x2F;vagrant</p>
+<p>mkdir -p &#x2F;mnt&#x2F;huge</p>
+<p>(mount | grep hugetlbfs) &gt; &#x2F;dev&#x2F;null || sudo mount -t hugetlbfs<br>nodev &#x2F;mnt&#x2F;huge</p>
+<p>echo 1024 &gt;<br>&#x2F;sys&#x2F;devices&#x2F;system&#x2F;node&#x2F;node0&#x2F;hugepages&#x2F;hugepages-2048kB&#x2F;nr_hugepages</p>
+<p>查看大页内存</p>
+<p>grep -i huge &#x2F;proc&#x2F;meminfo</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image3.png">{width&#x3D;”5.763888888888889in”<br>height&#x3D;”1.1131944444444444in”}</p>
+<h1 id="大页内存情况-大页内存情况-图名"><a href="#大页内存情况-大页内存情况-图名" class="headerlink" title="大页内存情况 {#大页内存情况 .图名}"></a>大页内存情况 {#大页内存情况 .图名}</h1><p>Build OVS</p>
+<p>cd &#x2F;home&#x2F;vagrant&#x2F;ovs&#x2F;</p>
+<p>.&#x2F;boot.sh</p>
+<p>.&#x2F;configure --with-dpdk&#x3D;$DPDK_BUILD CFLAGS&#x3D;&quot;-g -O2 -Wno-cast-align&quot;<br>\</p>
+<p>p4inputfile&#x3D;.&#x2F;include&#x2F;p4&#x2F;examples&#x2F;l2_switch&#x2F;l2_switch.p4 \</p>
+<p>p4outputdir&#x3D;.&#x2F;include&#x2F;p4&#x2F;src</p>
+<p>make -j 2</p>
+<p>创建OVS数据库文件和文件路径</p>
+<p>mkdir -p &#x2F;usr&#x2F;local&#x2F;etc&#x2F;openvswitch</p>
+<p>mkdir -p &#x2F;usr&#x2F;local&#x2F;var&#x2F;run&#x2F;openvswitch</p>
+<p>cd &#x2F;home&#x2F;vagrant&#x2F;ovs&#x2F;ovsdb&#x2F;</p>
+<p>.&#x2F;ovsdb-tool create &#x2F;usr&#x2F;local&#x2F;etc&#x2F;openvswitch&#x2F;conf.db<br>..&#x2F;vswitchd&#x2F;vswitch.ovsschema</p>
+<h2 id="Generator节点-Receiver节点"><a href="#Generator节点-Receiver节点" class="headerlink" title="Generator节点&#x2F;Receiver节点"></a>Generator节点&#x2F;Receiver节点</h2><p>两节点安装步骤一致，合并描述。</p>
+<p>使用root用户登录Generator或Receiver节点，更新apt源，下载必要的软件依赖,建议将自带源替换为国内源。</p>
+<p>apt-get update</p>
+<p>apt-get upgrade</p>
+<p>apt-get -y install git python-pip fuse libfuse-dev dh-autoreconf openssl<br>libssl-dev cmake libpcap-dev python-yaml</p>
+<p>创建工作目录，并下载项目代码。</p>
+<p>cd &#x2F;home</p>
+<p>git clone <a target="_blank" rel="noopener" href="https://github.com/P4-vSwitch/vagrant.git">https://github.com/P4-vSwitch/vagrant.git</a></p>
+<p>下载Pktgen项目代码</p>
+<p>cd &#x2F;home&#x2F;vagrant</p>
+<p>git clone <a target="_blank" rel="noopener" href="https://github.com/P4-vSwitch/pktgen.git">https://github.com/P4-vSwitch/pktgen.git</a></p>
+<p>cd pktgen&#x2F;</p>
+<p>git submodule update --init</p>
+<p>Build DPDK模块</p>
+<p>cd &#x2F;home&#x2F;vagrant&#x2F;pktgen&#x2F;deps&#x2F;dpdk</p>
+<p>make -j 2 install T&#x3D;x86_64-native-linuxapp-gcc</p>
+<p>导入环境变量，建议填入~&#x2F;.bashrc，避免每次新开窗口都需要手动导入。</p>
+<p>export RTE_SDK&#x3D;&#x2F;home&#x2F;vagrant&#x2F;pktgen&#x2F;deps&#x2F;dpdk</p>
+<p>export RTE_TARGET&#x3D;x86_64-native-linuxapp-gcc</p>
+<p>export DPDK_DIR&#x3D;$RTE_SDK</p>
+<p>export DPDK_BUILD&#x3D;$DPDK_DIR&#x2F;$RTE_TARGET&#x2F;</p>
+<p>配置DPDK内核模块</p>
+<p>cd &#x2F;home&#x2F;vagrant</p>
+<p>modprobe uio</p>
+<p>insmod $RTE_SDK&#x2F;$RTE_TARGET&#x2F;kmod&#x2F;igb_uio.ko</p>
+<p>insmod $RTE_SDK&#x2F;$RTE_TARGET&#x2F;kmod&#x2F;rte_kni.ko &quot;lo_mode&#x3D;lo_mode_ring&quot;</p>
+<p>将服务器端口绑定至DPDK</p>
+<p>ifconfig eth0 down</p>
+<p>$RTE_SDK&#x2F;tools&#x2F;dpdk_nic_bind.py -b igb_uio eth0</p>
+<p>ifconfig eth1 down</p>
+<p>$RTE_SDK&#x2F;tools&#x2F;dpdk_nic_bind.py -b igb_uio eth1</p>
+<p>查看绑定情况</p>
+<p>$RTE_SDK&#x2F;tools&#x2F;dpdk_nic_bind.py --status</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image4.png">{width&#x3D;”5.763888888888889in”<br>height&#x3D;”1.7833333333333334in”}</p>
+<h1 id="dpdk端口绑定情况-dpdk端口绑定情况-1-图名"><a href="#dpdk端口绑定情况-dpdk端口绑定情况-1-图名" class="headerlink" title="dpdk端口绑定情况 {#dpdk端口绑定情况-1 .图名}"></a>dpdk端口绑定情况 {#dpdk端口绑定情况-1 .图名}</h1><p>配置大页内存</p>
+<p>cd &#x2F;home&#x2F;vagrant</p>
+<p>mkdir -p &#x2F;mnt&#x2F;huge</p>
+<p>(mount | grep hugetlbfs) &gt; &#x2F;dev&#x2F;null || sudo mount -t hugetlbfs<br>nodev &#x2F;mnt&#x2F;huge</p>
+<p>echo 512 &gt;<br>&#x2F;sys&#x2F;devices&#x2F;system&#x2F;node&#x2F;node0&#x2F;hugepages&#x2F;hugepages-2048kB&#x2F;nr_hugepages</p>
+<p>查看大页内存</p>
+<p>grep -i huge &#x2F;proc&#x2F;meminfo</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image5.png">{width&#x3D;”5.764583333333333in”<br>height&#x3D;”1.332638888888889in”}</p>
+<h1 id="大页内存情况-大页内存情况-1-图名"><a href="#大页内存情况-大页内存情况-1-图名" class="headerlink" title="大页内存情况 {#大页内存情况-1 .图名}"></a>大页内存情况 {#大页内存情况-1 .图名}</h1><p>Build Pktgen模块</p>
+<p>cd &#x2F;home&#x2F;vagrant&#x2F;pktgen</p>
+<p>make</p>
+<h1 id="l2-switch实验"><a href="#l2-switch实验" class="headerlink" title="l2_switch实验"></a>l2_switch实验</h1><h2 id="实验准备"><a href="#实验准备" class="headerlink" title="实验准备"></a>实验准备</h2><p>实验脚本文件和配置文件中的参数需根据服务器网口实际情况进行修改，实验路径如下图所示。不同节点需要修改的位置不同，以下分别描述。</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image6.png">{width&#x3D;”5.761805555555555in”<br>height&#x3D;”1.2694444444444444in”}</p>
+<h1 id="l2-switch实验文件-l2-switch实验文件-图名"><a href="#l2-switch实验文件-l2-switch实验文件-图名" class="headerlink" title="l2_switch实验文件 {#l2_switch实验文件 .图名}"></a>l2_switch实验文件 {#l2_switch实验文件 .图名}</h1><p><strong>Switch节点：</strong></p>
+<p>l2_switch.p4&#x2F;generator.pkt&#x2F;receiver.pkt：保持不变</p>
+<p>l2_switch.sh：将流表中的mac地址，更换为Generator和Receiver服务器分别连接Switch的网口的mac地址，如下标红位置所示。</p>
+<p>#! &#x2F;bin&#x2F;sh -ve</p>
+<p># Please make sure that you update the path to the current OVS<br>directory.</p>
+<p>DIR&#x3D;&#x2F;home&#x2F;vagrant&#x2F;ovs&#x2F;utilities</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 del-flows br0</p>
+<p># SMAC Table 0</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;0,priority&#x3D;32768,ethernet__srcAddr&#x3D;0x74a4b500eee4<br>actions&#x3D;resubmit(,1)&quot;</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;0,priority&#x3D;32768,ethernet__srcAddr&#x3D;0x74a4b500ef02<br>actions&#x3D;resubmit(,1)&quot;</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;0,priority&#x3D;0 actions&#x3D;controller&quot;</p>
+<p># DMAC Table 1</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;1,priority&#x3D;32768,ethernet__dstAddr&#x3D;0x74a4b500eee4<br>actions&#x3D;set_field:1-&gt;reg0,resubmit(,2)&quot;</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;1,priority&#x3D;32768,ethernet__dstAddr&#x3D;0x74a4b500ef02<br>actions&#x3D;set_field:2-&gt;reg0,resubmit(,2)&quot;</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;1,priority&#x3D;0 actions&#x3D;flood&quot;</p>
+<p># SRC Pruning Table 2</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;2,priority&#x3D;32768,in_port&#x3D;1,reg0&#x3D;1 actions&#x3D;&quot;</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;2,priority&#x3D;32768,in_port&#x3D;2,reg0&#x3D;2 actions&#x3D;&quot;</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;2,priority&#x3D;32768,in_port&#x3D;3,reg0&#x3D;3 actions&#x3D;&quot;</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;2,priority&#x3D;32768,in_port&#x3D;4,reg0&#x3D;4 actions&#x3D;&quot;</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;2,priority&#x3D;32768,in_port&#x3D;5,reg0&#x3D;5 actions&#x3D;&quot;</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;2,priority&#x3D;32768,in_port&#x3D;6,reg0&#x3D;6 actions&#x3D;&quot;</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;2,priority&#x3D;0 actions&#x3D;deparse,output:NXM_NX_REG0[]&quot;</p>
+<p><strong>generator节点：</strong></p>
+<p>只修改generator.pkt文件，将generator与switch连接的网口mac地址填入，如下所示。</p>
+<p>set mac 0 74:a4:b5:00:ee:e4</p>
+<p><strong>receiver节点：</strong></p>
+<p>只修改receiver.pkt文件，将receiver与switch连接的网口mac地址填入，如下所示。</p>
+<p>set mac 0 74:a4:b5:00:ef:02</p>
+<h2 id="实验操作"><a href="#实验操作" class="headerlink" title="实验操作"></a>实验操作</h2><h3 id="Switch节点-1"><a href="#Switch节点-1" class="headerlink" title="Switch节点"></a>Switch节点</h3><p>使用root用户，登录switch节点。</p>
+<h4 id="编译l2-switch-p4"><a href="#编译l2-switch-p4" class="headerlink" title="编译l2_switch.p4"></a>编译l2_switch.p4</h4><p>cd &#x2F;home&#x2F;vagrant&#x2F;ovs</p>
+<p>.&#x2F;configure --with-dpdk&#x3D;$DPDK_BUILD CFLAGS&#x3D;&quot;-g -O2 -Wno-cast-align&quot;<br>p4inputfile&#x3D;&#x2F;home&#x2F;vagrant&#x2F;examples&#x2F;l2_switch&#x2F;l2_switch.p4<br>p4outputdir&#x3D;.&#x2F;include&#x2F;p4&#x2F;src</p>
+<p>make clean</p>
+<p>make -j 2</p>
+<h4 id="启动ovsdb-server-保持后台运行"><a href="#启动ovsdb-server-保持后台运行" class="headerlink" title="启动ovsdb-server(保持后台运行)"></a>启动ovsdb-server(保持后台运行)</h4><p>cd &#x2F;home&#x2F;vagrant&#x2F;ovs&#x2F;ovsdb</p>
+<p>nohup .&#x2F;ovsdb-server<br>--remote&#x3D;punix:&#x2F;usr&#x2F;local&#x2F;var&#x2F;run&#x2F;openvswitch&#x2F;db.sock \</p>
+<p>--remote&#x3D;db:Open_vSwitch,Open_vSwitch,manager_options --pidfile &amp;</p>
+<h4 id="启动ovs-vswitchd-保持后台运行"><a href="#启动ovs-vswitchd-保持后台运行" class="headerlink" title="启动ovs-vswitchd(保持后台运行)"></a>启动ovs-vswitchd(保持后台运行)</h4><p>cd &#x2F;home&#x2F;vagrant&#x2F;ovs&#x2F;vswitchd</p>
+<p>nohup .&#x2F;ovs-vswitchd --dpdk -c 0x1 -n 4 --<br>unix:&#x2F;usr&#x2F;local&#x2F;var&#x2F;run&#x2F;openvswitch&#x2F;db.sock --pidfile &amp;</p>
+<h4 id="创建OVS网桥"><a href="#创建OVS网桥" class="headerlink" title="创建OVS网桥"></a>创建OVS网桥</h4><p>cd &#x2F;home&#x2F;vagrant&#x2F;ovs&#x2F;utilities</p>
+<p>.&#x2F;ovs-vsctl --no-wait init</p>
+<p>.&#x2F;ovs-vsctl add-br br0 -- set bridge br0 datapath_type&#x3D;netdev</p>
+<p>.&#x2F;ovs-vsctl set bridge br0 protocols&#x3D;OpenFlow15</p>
+<p>.&#x2F;ovs-vsctl add-port br0 dpdk0 -- set Interface dpdk0 type&#x3D;dpdk</p>
+<p>.&#x2F;ovs-vsctl add-port br0 dpdk1 -- set Interface dpdk1 type&#x3D;dpdk</p>
+<p><em>如果需要删除，则执行.&#x2F;ovs-vsctl del-br br0</em></p>
+<p><em>查看网桥执行.&#x2F;ovs-vsctl show</em></p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image7.png">{width&#x3D;”5.7659722222222225in”<br>height&#x3D;”2.2305555555555556in”}</p>
+<h1 id="ovs网桥情况-ovs网桥情况-图名"><a href="#ovs网桥情况-ovs网桥情况-图名" class="headerlink" title="ovs网桥情况 {#ovs网桥情况 .图名}"></a>ovs网桥情况 {#ovs网桥情况 .图名}</h1><h4 id="加载流表"><a href="#加载流表" class="headerlink" title="加载流表"></a>加载流表</h4><p>cd &#x2F;home&#x2F;vagrant&#x2F;examples&#x2F;l2_switch&#x2F;</p>
+<p>.&#x2F;l2_switch.sh</p>
+<p>加载完成后，可执行如下命令查看。</p>
+<p>cd &#x2F;home&#x2F;vagrant&#x2F;ovs&#x2F;utilities</p>
+<p>.&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 dump-flows br0</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image8.png">{width&#x3D;”5.752777777777778in”<br>height&#x3D;”1.0763888888888888in”}</p>
+<h1 id="l2-switch实验流表-l2-switch实验流表-图名"><a href="#l2-switch实验流表-l2-switch实验流表-图名" class="headerlink" title="l2_switch实验流表 {#l2_switch实验流表 .图名}"></a>l2_switch实验流表 {#l2_switch实验流表 .图名}</h1><h3 id="Generator节点-Receiver节点-1"><a href="#Generator节点-Receiver节点-1" class="headerlink" title="Generator节点 &amp; Receiver节点"></a>Generator节点 &amp; Receiver节点</h3><p>使用root用户，分别从不同终端窗口登录generator节点和receiver节点。</p>
+<h4 id="启动发包程序"><a href="#启动发包程序" class="headerlink" title="启动发包程序"></a>启动发包程序</h4><p><strong>Generator节点：</strong></p>
+<p>cd &#x2F;home&#x2F;vagrant&#x2F;pktgen</p>
+<p>.&#x2F;app&#x2F;app&#x2F;x86_64-native-linuxapp-gcc&#x2F;app&#x2F;pktgen -c 0x3 -n 4 -- -P -m<br>&quot;1.0&quot; -f &#x2F;home&#x2F;vagrant&#x2F;examples&#x2F;l2_switch&#x2F;generator.pkt</p>
+<p><strong>Receiver节点：</strong></p>
+<p>cd &#x2F;home&#x2F;vagrant&#x2F;pktgen</p>
+<p>.&#x2F;app&#x2F;app&#x2F;x86_64-native-linuxapp-gcc&#x2F;app&#x2F;pktgen -c 0x3 -n 4 -- -P -m<br>&quot;1.0&quot; -f &#x2F;home&#x2F;vagrant&#x2F;examples&#x2F;l2_switch&#x2F;receiver.pkt</p>
+<p>启动后出现如下图所示回显。</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image9.png">{width&#x3D;”5.759722222222222in”<br>height&#x3D;”5.345833333333333in”}</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image10.png">{width&#x3D;”5.7625in”<br>height&#x3D;”4.083333333333333in”}</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image11.png">{width&#x3D;”5.759722222222222in”<br>height&#x3D;”3.6256944444444446in”}</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image12.png">{width&#x3D;”5.7659722222222225in”<br>height&#x3D;”3.7909722222222224in”}</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image13.png">{width&#x3D;”5.7625in”<br>height&#x3D;”3.9631944444444445in”}</p>
+<h1 id="发包软件启动-发包软件启动-图名"><a href="#发包软件启动-发包软件启动-图名" class="headerlink" title="发包软件启动 {#发包软件启动 .图名}"></a>发包软件启动 {#发包软件启动 .图名}</h1><h4 id="开始发包"><a href="#开始发包" class="headerlink" title="开始发包"></a>开始发包</h4><p>回到generator节点的界面，输入并执行start 0，开始发包。</p>
+<p>此时，在switch节点可查看流表，若数据包数量随时间出现增长，则说明发报成功，如下图所示。</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image14.png">{width&#x3D;”5.763888888888889in”<br>height&#x3D;”1.1402777777777777in”}</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image15.png">{width&#x3D;”5.764583333333333in”<br>height&#x3D;”1.1694444444444445in”}</p>
+<h1 id="流表变化-流表变化-图名"><a href="#流表变化-流表变化-图名" class="headerlink" title="流表变化 {#流表变化 .图名}"></a>流表变化 {#流表变化 .图名}</h1><p>实验结束后，回到genarator节点，输入并执行stop 0，停止发包。</p>
+<h1 id="Simple-router实验"><a href="#Simple-router实验" class="headerlink" title="Simple_router实验"></a>Simple_router实验</h1><h2 id="实验准备-1"><a href="#实验准备-1" class="headerlink" title="实验准备"></a>实验准备</h2><p>若接着上述l2_switch实验继续，则需要先将环境清理。</p>
+<p>停止generator节点和receiver节点的发包程序，并退出。</p>
+<p>stop 0</p>
+<p>quit</p>
+<p>删除switch节点的ovsdb和ovs主进程。</p>
+<p>ps -ef | grep ovs</p>
+<p>kill -9 xxxxx</p>
+<p>kill -9 xxxxx</p>
+<p>实验脚本文件和配置文件中的参数需根据服务器网口实际情况进行修改，实验路径如下图所示。不同节点需要修改的位置不同，以下分别描述。</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image16.png">{width&#x3D;”5.759722222222222in”<br>height&#x3D;”0.8493055555555555in”}</p>
+<h1 id="simple-router实验文件-simple-router实验文件-图名"><a href="#simple-router实验文件-simple-router实验文件-图名" class="headerlink" title="simple_router实验文件 {#simple_router实验文件 .图名}"></a>simple_router实验文件 {#simple_router实验文件 .图名}</h1><p><strong>Switch节点：</strong></p>
+<p>simple_router.p4&#x2F;generator.pkt&#x2F;receiver.pkt：保持不变</p>
+<p>simple_router.sh：将流表中的mac地址，更换为Generator和Receiver服务器分别连接Switch的网口的mac地址，如下标红位置所示。</p>
+<p>#! &#x2F;bin&#x2F;sh -ve</p>
+<p># Please make sure that you update the path to the current OVS<br>directory.</p>
+<p>DIR&#x3D;&#x2F;home&#x2F;vagrant&#x2F;ovs&#x2F;utilities</p>
+<p># For this test we will pre-populate ARP caches at the end-hosts</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 del-flows br0</p>
+<p># Verify Checksum (Table 0)</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;0,priority&#x3D;32768,ethernet__etherType&#x3D;0x800 \</p>
+<p>actions&#x3D;calc_fields_verify(ipv4__hdrChecksum,csum16,fields:ipv4__version_ihl,ipv4__diffserv,ipv4__totalLen,ipv4__identification,ipv4__flags_fragOffset,ipv4__ttl,ipv4__protocol,ipv4__srcAddr,ipv4__dstAddr),<br>\</p>
+<p>resubmit(,1)&quot;</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;0,priority&#x3D;0 actions&#x3D;&quot;</p>
+<p># IPv4 LPM (Table 1)</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;1,priority&#x3D;32768,ipv4__dstAddr&#x3D;0x0A00000F&#x2F;0xFFFFFF00 \</p>
+<p>actions&#x3D;set_field:0x0B00000F-&gt;routing_metadata_nhop_ipv4, \</p>
+<p>set_field:2-&gt;reg0, \</p>
+<p>set_field:63-&gt;ipv4__ttl, \</p>
+<p>resubmit(,2)&quot;</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;1,priority&#x3D;0 actions&#x3D;&quot;</p>
+<p># Forward (Table 2)</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;2,priority&#x3D;32768,routing_metadata_nhop_ipv4&#x3D;0x0B00000F \</p>
+<p>actions&#x3D;set_field:0x74a4b500eee4-&gt;ethernet__dstAddr, \</p>
+<p>resubmit(,3)&quot;</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;2,priority&#x3D;0 actions&#x3D;&quot;</p>
+<p># Send Frame (Table 3)</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;3,priority&#x3D;32768,reg0&#x3D;2 \</p>
+<p>actions&#x3D;set_field:0x74a4b500ef02-&gt;ethernet__srcAddr, \</p>
+<p>calc_fields_update(ipv4__hdrChecksum,csum16,fields:ipv4__version_ihl,ipv4__diffserv,ipv4__totalLen,ipv4__identification,ipv4__flags_fragOffset,ipv4__ttl,ipv4__protocol,ipv4__srcAddr,ipv4__dstAddr),<br>\</p>
+<p>deparse, \</p>
+<p>output:NXM_NX_REG0[]&quot;</p>
+<p>$DIR&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 add-flow br0<br>&quot;table&#x3D;3,priority&#x3D;0 actions&#x3D;&quot;</p>
+<p><strong>generator节点：</strong></p>
+<p>只修改generator.pkt文件，将generator与switch连接的网口mac地址填入，如下所示。</p>
+<p>set mac 0 74:a4:b5:00:ee:e4</p>
+<p>set ip src 0 10.0.0.14&#x2F;24</p>
+<p>set ip dst 0 10.0.0.15</p>
+<p><strong>receiver节点：</strong></p>
+<p>只修改receiver.pkt文件，将receiver与switch连接的网口mac地址填入，如下所示。</p>
+<p>set mac 0 74:a4:b5:00:ef:02</p>
+<p>set ip src 0 10.0.0.15&#x2F;24</p>
+<p>set ip dst 0 10.0.0.14</p>
+<h2 id="实验操作-1"><a href="#实验操作-1" class="headerlink" title="实验操作"></a>实验操作</h2><h3 id="Switch节点-2"><a href="#Switch节点-2" class="headerlink" title="Switch节点"></a>Switch节点</h3><p>使用root用户，登录switch节点。</p>
+<h4 id="编译simple-router-p4"><a href="#编译simple-router-p4" class="headerlink" title="编译simple_router.p4"></a>编译simple_router.p4</h4><p>cd &#x2F;home&#x2F;vagrant&#x2F;ovs</p>
+<p>.&#x2F;configure --with-dpdk&#x3D;$DPDK_BUILD CFLAGS&#x3D;&quot;-g -O2 -Wno-cast-align&quot;<br>p4inputfile&#x3D;&#x2F;home&#x2F;vagrant&#x2F;examples&#x2F;simple_router&#x2F;simple_router.p4<br>p4outputdir&#x3D;.&#x2F;include&#x2F;p4&#x2F;src</p>
+<p>make clean</p>
+<p>make -j 2</p>
+<h4 id="启动ovsdb-server-保持后台运行-1"><a href="#启动ovsdb-server-保持后台运行-1" class="headerlink" title="启动ovsdb-server(保持后台运行)"></a>启动ovsdb-server(保持后台运行)</h4><p>cd &#x2F;home&#x2F;vagrant&#x2F;ovs&#x2F;ovsdb</p>
+<p>nohup .&#x2F;ovsdb-server<br>--remote&#x3D;punix:&#x2F;usr&#x2F;local&#x2F;var&#x2F;run&#x2F;openvswitch&#x2F;db.sock \</p>
+<p>--remote&#x3D;db:Open_vSwitch,Open_vSwitch,manager_options --pidfile &amp;</p>
+<h4 id="启动ovs-vswitchd-保持后台运行-1"><a href="#启动ovs-vswitchd-保持后台运行-1" class="headerlink" title="启动ovs-vswitchd(保持后台运行)"></a>启动ovs-vswitchd(保持后台运行)</h4><p>cd &#x2F;home&#x2F;vagrant&#x2F;ovs&#x2F;vswitchd</p>
+<p>nohup .&#x2F;ovs-vswitchd --dpdk -c 0x1 -n 4 --<br>unix:&#x2F;usr&#x2F;local&#x2F;var&#x2F;run&#x2F;openvswitch&#x2F;db.sock --pidfile &amp;</p>
+<h4 id="创建OVS网桥-1"><a href="#创建OVS网桥-1" class="headerlink" title="创建OVS网桥"></a>创建OVS网桥</h4><p>cd &#x2F;home&#x2F;vagrant&#x2F;ovs&#x2F;utilities</p>
+<p>.&#x2F;ovs-vsctl --no-wait init</p>
+<p>.&#x2F;ovs-vsctl add-br br0 -- set bridge br0 datapath_type&#x3D;netdev</p>
+<p>.&#x2F;ovs-vsctl set bridge br0 protocols&#x3D;OpenFlow15</p>
+<p>.&#x2F;ovs-vsctl add-port br0 dpdk0 -- set Interface dpdk0 type&#x3D;dpdk</p>
+<p>.&#x2F;ovs-vsctl add-port br0 dpdk1 -- set Interface dpdk1 type&#x3D;dpdk</p>
+<p><em>如果需要删除，则执行.&#x2F;ovs-vsctl del-br br0</em></p>
+<p><em>查看网桥执行.&#x2F;ovs-vsctl show</em></p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image7.png">{width&#x3D;”5.7659722222222225in”<br>height&#x3D;”2.2305555555555556in”}</p>
+<h1 id="ovs网桥情况-ovs网桥情况-1-图名"><a href="#ovs网桥情况-ovs网桥情况-1-图名" class="headerlink" title="ovs网桥情况 {#ovs网桥情况-1 .图名}"></a>ovs网桥情况 {#ovs网桥情况-1 .图名}</h1><h4 id="加载流表-1"><a href="#加载流表-1" class="headerlink" title="加载流表"></a>加载流表</h4><p>cd &#x2F;home&#x2F;vagrant&#x2F;examples&#x2F;simple_router&#x2F;</p>
+<p>.&#x2F;simple_router.sh</p>
+<p>加载完成后，可执行如下命令查看。</p>
+<p>cd &#x2F;home&#x2F;vagrant&#x2F;ovs&#x2F;utilities</p>
+<p>.&#x2F;ovs-ofctl --protocols&#x3D;OpenFlow15 dump-flows br0</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image17.png">{width&#x3D;”5.767361111111111in”<br>height&#x3D;”1.229861111111111in”}</p>
+<h1 id="simple-router实验流表-simple-router实验流表-图名"><a href="#simple-router实验流表-simple-router实验流表-图名" class="headerlink" title="simple_router实验流表 {#simple_router实验流表 .图名}"></a>simple_router实验流表 {#simple_router实验流表 .图名}</h1><h3 id="Generator节点-Receiver节点-2"><a href="#Generator节点-Receiver节点-2" class="headerlink" title="Generator节点 &amp; Receiver节点"></a>Generator节点 &amp; Receiver节点</h3><p>使用root用户，分别从不同终端窗口登录generator节点和receiver节点。</p>
+<h4 id="启动发包程序-1"><a href="#启动发包程序-1" class="headerlink" title="启动发包程序"></a>启动发包程序</h4><p><strong>Generator节点：</strong></p>
+<p>cd &#x2F;home&#x2F;vagrant&#x2F;pktgen</p>
+<p>.&#x2F;app&#x2F;app&#x2F;x86_64-native-linuxapp-gcc&#x2F;app&#x2F;pktgen -c 0x3 -n 4 -- -P -m<br>&quot;1.0&quot; -f &#x2F;home&#x2F;vagrant&#x2F;examples&#x2F;simple_router&#x2F;generator.pkt</p>
+<p><strong>Receiver节点：</strong></p>
+<p>cd &#x2F;home&#x2F;vagrant&#x2F;pktgen</p>
+<p>.&#x2F;app&#x2F;app&#x2F;x86_64-native-linuxapp-gcc&#x2F;app&#x2F;pktgen -c 0x3 -n 4 -- -P -m<br>&quot;1.0&quot; -f &#x2F;home&#x2F;vagrant&#x2F;examples&#x2F;simple_router&#x2F;receiver.pkt</p>
+<p>启动后出现回显与l2_switch实验一致。</p>
+<h4 id="开始发包-1"><a href="#开始发包-1" class="headerlink" title="开始发包"></a>开始发包</h4><p>回到generator节点的界面，输入并执行start 0，开始发包。</p>
+<p>此时，在switch节点可查看流表，若数据包数量随时间出现增长，则说明发报成功，如下图所示。</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image18.png">{width&#x3D;”5.763888888888889in”<br>height&#x3D;”1.1472222222222221in”}</p>
+<p><img src="/./2026/02/27/p4-vswitch-install/media/image19.png">{width&#x3D;”5.759722222222222in”<br>height&#x3D;”1.1659722222222222in”}</p>
+<h1 id="流表变化-流表变化-1-图名"><a href="#流表变化-流表变化-1-图名" class="headerlink" title="流表变化 {#流表变化-1 .图名}"></a>流表变化 {#流表变化-1 .图名}</h1><p>实验结束后，回到genarator节点，输入并执行stop 0，停止发包。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io">PCLTXSYWZ</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io/2026/02/27/p4-vswitch-install/">https://pcltxs.github.io/2026/02/27/p4-vswitch-install/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://pcltxs.github.io" target="_blank">体系所运维知识库</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/02/26/hexo_github%E9%83%A8%E7%BD%B2%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2/" title="Hexo + GitHub Pages 搭建个人博客全流程指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Hexo + GitHub Pages 搭建个人博客全流程指南</div></div><div class="info-2"><div class="info-item-1">🌐 Hexo + GitHub Pages 搭建个人博客全流程指南（2024 最新版） 💡 本指南适用于 Windows&#x2F;macOS&#x2F;Linux，全程约 30 分钟，附关键避坑提示   🔑 一、前置准备   项目 要求 验证命令    GitHub 账号 注册地址 -   Node.js (LTS) ≥ 18.x node -v npm -v   Git ≥ 2.30 git --version   编辑器 VS Code &#x2F; Typora 等 -   ✅ 加速建议（国内用户）： 1234# 设置 npm 淘宝镜像npm config set registry https://registry.npmmirror.com# 可选：安装 cnpmnpm install -g cnpm --registry=https://registry.npmmirror.com   📦 二、安装与初始化 Hexo123456789101112# 1. 全局安装 Hexo CLInpm install -g hexo-cli# 2. 创建博客目录（my-bl...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">PCLTXSYWZ</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">3</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/pcltxs"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%9B%AE%E5%BD%95-%E7%9B%AE%E5%BD%95-TOC-Heading"><span class="toc-number">1.</span> <span class="toc-text">目录 {#目录 .TOC-Heading}</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-number">2.</span> <span class="toc-text">概述</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%A1%B9%E7%9B%AE%E8%83%8C%E6%99%AF"><span class="toc-number">2.1.</span> <span class="toc-text">项目背景</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#section-%E5%9B%BE%E5%90%8D"><span class="toc-number">3.</span> <span class="toc-text">{#section .图名}</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%8E%AF%E5%A2%83%E4%BF%A1%E6%81%AF"><span class="toc-number">3.1.</span> <span class="toc-text">环境信息</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C%E6%8B%93%E6%89%91%E8%BF%9E%E6%8E%A5%E5%9B%BE-%E7%BD%91%E7%BB%9C%E6%8B%93%E6%89%91%E8%BF%9E%E6%8E%A5%E5%9B%BE-%E5%9B%BE%E5%90%8D"><span class="toc-number">4.</span> <span class="toc-text">网络拓扑连接图 {#网络拓扑连接图 .图名}</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%8E%AF%E5%A2%83%E9%83%A8%E7%BD%B2"><span class="toc-number">5.</span> <span class="toc-text">环境部署</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B3%BB%E7%BB%9F%E5%AE%89%E8%A3%85"><span class="toc-number">5.1.</span> <span class="toc-text">系统安装</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Switch%E8%8A%82%E7%82%B9"><span class="toc-number">5.2.</span> <span class="toc-text">Switch节点</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#dpdk%E7%AB%AF%E5%8F%A3%E7%BB%91%E5%AE%9A%E6%83%85%E5%86%B5-dpdk%E7%AB%AF%E5%8F%A3%E7%BB%91%E5%AE%9A%E6%83%85%E5%86%B5-%E5%9B%BE%E5%90%8D"><span class="toc-number">6.</span> <span class="toc-text">dpdk端口绑定情况 {#dpdk端口绑定情况 .图名}</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%A4%A7%E9%A1%B5%E5%86%85%E5%AD%98%E6%83%85%E5%86%B5-%E5%A4%A7%E9%A1%B5%E5%86%85%E5%AD%98%E6%83%85%E5%86%B5-%E5%9B%BE%E5%90%8D"><span class="toc-number">7.</span> <span class="toc-text">大页内存情况 {#大页内存情况 .图名}</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Generator%E8%8A%82%E7%82%B9-Receiver%E8%8A%82%E7%82%B9"><span class="toc-number">7.1.</span> <span class="toc-text">Generator节点&#x2F;Receiver节点</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#dpdk%E7%AB%AF%E5%8F%A3%E7%BB%91%E5%AE%9A%E6%83%85%E5%86%B5-dpdk%E7%AB%AF%E5%8F%A3%E7%BB%91%E5%AE%9A%E6%83%85%E5%86%B5-1-%E5%9B%BE%E5%90%8D"><span class="toc-number">8.</span> <span class="toc-text">dpdk端口绑定情况 {#dpdk端口绑定情况-1 .图名}</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%A4%A7%E9%A1%B5%E5%86%85%E5%AD%98%E6%83%85%E5%86%B5-%E5%A4%A7%E9%A1%B5%E5%86%85%E5%AD%98%E6%83%85%E5%86%B5-1-%E5%9B%BE%E5%90%8D"><span class="toc-number">9.</span> <span class="toc-text">大页内存情况 {#大页内存情况-1 .图名}</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#l2-switch%E5%AE%9E%E9%AA%8C"><span class="toc-number">10.</span> <span class="toc-text">l2_switch实验</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E9%AA%8C%E5%87%86%E5%A4%87"><span class="toc-number">10.1.</span> <span class="toc-text">实验准备</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#l2-switch%E5%AE%9E%E9%AA%8C%E6%96%87%E4%BB%B6-l2-switch%E5%AE%9E%E9%AA%8C%E6%96%87%E4%BB%B6-%E5%9B%BE%E5%90%8D"><span class="toc-number">11.</span> <span class="toc-text">l2_switch实验文件 {#l2_switch实验文件 .图名}</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E9%AA%8C%E6%93%8D%E4%BD%9C"><span class="toc-number">11.1.</span> <span class="toc-text">实验操作</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Switch%E8%8A%82%E7%82%B9-1"><span class="toc-number">11.1.1.</span> <span class="toc-text">Switch节点</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BC%96%E8%AF%91l2-switch-p4"><span class="toc-number">11.1.1.1.</span> <span class="toc-text">编译l2_switch.p4</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%90%AF%E5%8A%A8ovsdb-server-%E4%BF%9D%E6%8C%81%E5%90%8E%E5%8F%B0%E8%BF%90%E8%A1%8C"><span class="toc-number">11.1.1.2.</span> <span class="toc-text">启动ovsdb-server(保持后台运行)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%90%AF%E5%8A%A8ovs-vswitchd-%E4%BF%9D%E6%8C%81%E5%90%8E%E5%8F%B0%E8%BF%90%E8%A1%8C"><span class="toc-number">11.1.1.3.</span> <span class="toc-text">启动ovs-vswitchd(保持后台运行)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9B%E5%BB%BAOVS%E7%BD%91%E6%A1%A5"><span class="toc-number">11.1.1.4.</span> <span class="toc-text">创建OVS网桥</span></a></li></ol></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#ovs%E7%BD%91%E6%A1%A5%E6%83%85%E5%86%B5-ovs%E7%BD%91%E6%A1%A5%E6%83%85%E5%86%B5-%E5%9B%BE%E5%90%8D"><span class="toc-number">12.</span> <span class="toc-text">ovs网桥情况 {#ovs网桥情况 .图名}</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8A%A0%E8%BD%BD%E6%B5%81%E8%A1%A8"><span class="toc-number">12.1.</span> <span class="toc-text">加载流表</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#l2-switch%E5%AE%9E%E9%AA%8C%E6%B5%81%E8%A1%A8-l2-switch%E5%AE%9E%E9%AA%8C%E6%B5%81%E8%A1%A8-%E5%9B%BE%E5%90%8D"><span class="toc-number">13.</span> <span class="toc-text">l2_switch实验流表 {#l2_switch实验流表 .图名}</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Generator%E8%8A%82%E7%82%B9-Receiver%E8%8A%82%E7%82%B9-1"><span class="toc-number">13.1.</span> <span class="toc-text">Generator节点 &amp; Receiver节点</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%90%AF%E5%8A%A8%E5%8F%91%E5%8C%85%E7%A8%8B%E5%BA%8F"><span class="toc-number">13.1.1.</span> <span class="toc-text">启动发包程序</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8F%91%E5%8C%85%E8%BD%AF%E4%BB%B6%E5%90%AF%E5%8A%A8-%E5%8F%91%E5%8C%85%E8%BD%AF%E4%BB%B6%E5%90%AF%E5%8A%A8-%E5%9B%BE%E5%90%8D"><span class="toc-number">14.</span> <span class="toc-text">发包软件启动 {#发包软件启动 .图名}</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BC%80%E5%A7%8B%E5%8F%91%E5%8C%85"><span class="toc-number">14.1.</span> <span class="toc-text">开始发包</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B5%81%E8%A1%A8%E5%8F%98%E5%8C%96-%E6%B5%81%E8%A1%A8%E5%8F%98%E5%8C%96-%E5%9B%BE%E5%90%8D"><span class="toc-number">15.</span> <span class="toc-text">流表变化 {#流表变化 .图名}</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Simple-router%E5%AE%9E%E9%AA%8C"><span class="toc-number">16.</span> <span class="toc-text">Simple_router实验</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E9%AA%8C%E5%87%86%E5%A4%87-1"><span class="toc-number">16.1.</span> <span class="toc-text">实验准备</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#simple-router%E5%AE%9E%E9%AA%8C%E6%96%87%E4%BB%B6-simple-router%E5%AE%9E%E9%AA%8C%E6%96%87%E4%BB%B6-%E5%9B%BE%E5%90%8D"><span class="toc-number">17.</span> <span class="toc-text">simple_router实验文件 {#simple_router实验文件 .图名}</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E9%AA%8C%E6%93%8D%E4%BD%9C-1"><span class="toc-number">17.1.</span> <span class="toc-text">实验操作</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Switch%E8%8A%82%E7%82%B9-2"><span class="toc-number">17.1.1.</span> <span class="toc-text">Switch节点</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BC%96%E8%AF%91simple-router-p4"><span class="toc-number">17.1.1.1.</span> <span class="toc-text">编译simple_router.p4</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%90%AF%E5%8A%A8ovsdb-server-%E4%BF%9D%E6%8C%81%E5%90%8E%E5%8F%B0%E8%BF%90%E8%A1%8C-1"><span class="toc-number">17.1.1.2.</span> <span class="toc-text">启动ovsdb-server(保持后台运行)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%90%AF%E5%8A%A8ovs-vswitchd-%E4%BF%9D%E6%8C%81%E5%90%8E%E5%8F%B0%E8%BF%90%E8%A1%8C-1"><span class="toc-number">17.1.1.3.</span> <span class="toc-text">启动ovs-vswitchd(保持后台运行)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9B%E5%BB%BAOVS%E7%BD%91%E6%A1%A5-1"><span class="toc-number">17.1.1.4.</span> <span class="toc-text">创建OVS网桥</span></a></li></ol></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#ovs%E7%BD%91%E6%A1%A5%E6%83%85%E5%86%B5-ovs%E7%BD%91%E6%A1%A5%E6%83%85%E5%86%B5-1-%E5%9B%BE%E5%90%8D"><span class="toc-number">18.</span> <span class="toc-text">ovs网桥情况 {#ovs网桥情况-1 .图名}</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8A%A0%E8%BD%BD%E6%B5%81%E8%A1%A8-1"><span class="toc-number">18.1.</span> <span class="toc-text">加载流表</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#simple-router%E5%AE%9E%E9%AA%8C%E6%B5%81%E8%A1%A8-simple-router%E5%AE%9E%E9%AA%8C%E6%B5%81%E8%A1%A8-%E5%9B%BE%E5%90%8D"><span class="toc-number">19.</span> <span class="toc-text">simple_router实验流表 {#simple_router实验流表 .图名}</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Generator%E8%8A%82%E7%82%B9-Receiver%E8%8A%82%E7%82%B9-2"><span class="toc-number">19.1.</span> <span class="toc-text">Generator节点 &amp; Receiver节点</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%90%AF%E5%8A%A8%E5%8F%91%E5%8C%85%E7%A8%8B%E5%BA%8F-1"><span class="toc-number">19.1.1.</span> <span class="toc-text">启动发包程序</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BC%80%E5%A7%8B%E5%8F%91%E5%8C%85-1"><span class="toc-number">19.1.2.</span> <span class="toc-text">开始发包</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B5%81%E8%A1%A8%E5%8F%98%E5%8C%96-%E6%B5%81%E8%A1%A8%E5%8F%98%E5%8C%96-1-%E5%9B%BE%E5%90%8D"><span class="toc-number">20.</span> <span class="toc-text">流表变化 {#流表变化-1 .图名}</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/02/27/p4-vswitch-install/" title="P4-vSwitch实验环境部署和实验操作简要手册">P4-vSwitch实验环境部署和实验操作简要手册</a><time datetime="2026-02-27T03:01:03.000Z" title="发表于 2026-02-27 11:01:03">2026-02-27</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/02/26/dpdk%E5%8D%A0%E7%94%A8%E6%8E%92%E6%9F%A5/" title="dpdk占用排查">dpdk占用排查</a><time datetime="2026-02-25T16:00:00.000Z" title="发表于 2026-02-26 00:00:00">2026-02-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/02/26/hexo_github%E9%83%A8%E7%BD%B2%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2/" title="Hexo + GitHub Pages 搭建个人博客全流程指南">Hexo + GitHub Pages 搭建个人博客全流程指南</a><time datetime="2026-02-25T16:00:00.000Z" title="发表于 2026-02-26 00:00:00">2026-02-26</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By PCLTXSYWZ</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.4</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
