@@ -512,10 +512,13 @@ window.addEventListener('load', () => {
   }
 
   const closeSearch = () => {
-    btf.overflowPaddingR.remove()
-    btf.animateOut($searchDialog, 'search_close .5s')
-    btf.animateOut($searchMask, 'to_hide 0.5s')
-    window.removeEventListener('resize', fixSafariHeight)
+    const searchText = input.value.trim()
+    if (searchText === '') {
+      btf.overflowPaddingR.remove()
+      btf.animateOut($searchDialog, 'search_close .5s')
+      btf.animateOut($searchMask, 'to_hide 0.5s')
+      window.removeEventListener('resize', fixSafariHeight)
+    }
   }
 
   const searchClickFn = () => {
