@@ -1,0 +1,340 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Linux-系统常见故障排查指南 | 体系所运维知识库</title><meta name="author" content="PCLTXSYWZ"><meta name="copyright" content="PCLTXSYWZ"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Linux 系统常见故障排查指南一、前言在运维工作中，Linux 系统故障排查是最常见的任务之一。本文档总结了日常运维中遇到的高频问题及排查方法，帮助快速定位和解决问题。 二、系统无法启动2.1 现象 系统卡在启动界面 出现 kernel panic 错误 进入 emergency mode  2.2 排查步骤 检查启动日志  12journalctl -xb -p 3dmesg | grep -">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux-系统常见故障排查指南">
+<meta property="og:url" content="https://pcltxs.github.io/2026/03/03/Linux-%E7%B3%BB%E7%BB%9F%E5%B8%B8%E8%A7%81%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/index.html">
+<meta property="og:site_name" content="体系所运维知识库">
+<meta property="og:description" content="Linux 系统常见故障排查指南一、前言在运维工作中，Linux 系统故障排查是最常见的任务之一。本文档总结了日常运维中遇到的高频问题及排查方法，帮助快速定位和解决问题。 二、系统无法启动2.1 现象 系统卡在启动界面 出现 kernel panic 错误 进入 emergency mode  2.2 排查步骤 检查启动日志  12journalctl -xb -p 3dmesg | grep -">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://pcltxs.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-03-03T03:00:00.000Z">
+<meta property="article:modified_time" content="2026-03-03T06:24:09.298Z">
+<meta property="article:author" content="PCLTXSYWZ">
+<meta property="article:tag" content="故障排查，Linux">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pcltxs.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Linux-系统常见故障排查指南",
+  "url": "https://pcltxs.github.io/2026/03/03/Linux-%E7%B3%BB%E7%BB%9F%E5%B8%B8%E8%A7%81%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/",
+  "image": "https://pcltxs.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-03-03T03:00:00.000Z",
+  "dateModified": "2026-03-03T06:24:09.298Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "PCLTXSYWZ",
+      "url": "https://pcltxs.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://pcltxs.github.io/2026/03/03/Linux-%E7%B3%BB%E7%BB%9F%E5%B8%B8%E8%A7%81%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Linux-系统常见故障排查指南',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.1"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">体系所运维知识库</span></a><a class="nav-page-title" href="/"><span class="site-name">Linux-系统常见故障排查指南</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div></div></nav><div id="post-info"><h1 class="post-title">Linux-系统常见故障排查指南</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-03-03T03:00:00.000Z" title="发表于 2026-03-03 11:00:00">2026-03-03</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-03-03T06:24:09.298Z" title="更新于 2026-03-03 14:24:09">2026-03-03</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E6%95%85%E9%9A%9C%E5%A4%84%E7%90%86%E4%B8%8E%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5/">故障处理与问题排查</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="Linux-系统常见故障排查指南"><a href="#Linux-系统常见故障排查指南" class="headerlink" title="Linux 系统常见故障排查指南"></a>Linux 系统常见故障排查指南</h1><h2 id="一、前言"><a href="#一、前言" class="headerlink" title="一、前言"></a>一、前言</h2><p>在运维工作中，Linux 系统故障排查是最常见的任务之一。本文档总结了日常运维中遇到的高频问题及排查方法，帮助快速定位和解决问题。</p>
+<h2 id="二、系统无法启动"><a href="#二、系统无法启动" class="headerlink" title="二、系统无法启动"></a>二、系统无法启动</h2><h3 id="2-1-现象"><a href="#2-1-现象" class="headerlink" title="2.1 现象"></a>2.1 现象</h3><ul>
+<li>系统卡在启动界面</li>
+<li>出现 kernel panic 错误</li>
+<li>进入 emergency mode</li>
+</ul>
+<h3 id="2-2-排查步骤"><a href="#2-2-排查步骤" class="headerlink" title="2.2 排查步骤"></a>2.2 排查步骤</h3><ol>
+<li><strong>检查启动日志</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">journalctl -xb -p 3</span><br><span class="line">dmesg | grep -i error</span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li><strong>检查文件系统</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">fsck -f /dev/sda1</span><br><span class="line">mount -o remount,ro /</span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li><strong>检查磁盘空间</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">df</span> -h</span><br><span class="line"><span class="built_in">df</span> -i  <span class="comment"># 检查 inode</span></span><br></pre></td></tr></table></figure>
+
+<ol start="4">
+<li><strong>检查关键服务</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">systemctl list-units --failed</span><br><span class="line">systemctl status sshd</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、网络连接问题"><a href="#三、网络连接问题" class="headerlink" title="三、网络连接问题"></a>三、网络连接问题</h2><h3 id="3-1-现象"><a href="#3-1-现象" class="headerlink" title="3.1 现象"></a>3.1 现象</h3><ul>
+<li>无法 ping 通外部地址</li>
+<li>服务端口无法访问</li>
+<li>DNS 解析失败</li>
+</ul>
+<h3 id="3-2-排查步骤"><a href="#3-2-排查步骤" class="headerlink" title="3.2 排查步骤"></a>3.2 排查步骤</h3><ol>
+<li><strong>检查网络接口</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ip addr show</span><br><span class="line">ip <span class="built_in">link</span> show</span><br><span class="line">ethtool eth0</span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li><strong>检查路由表</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ip route show</span><br><span class="line">route -n</span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li><strong>检查防火墙</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -L -n</span><br><span class="line">firewall-cmd --list-all</span><br></pre></td></tr></table></figure>
+
+<ol start="4">
+<li><strong>检查 DNS</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cat</span> /etc/resolv.conf</span><br><span class="line">nslookup www.example.com</span><br><span class="line">dig @8.8.8.8 www.example.com</span><br></pre></td></tr></table></figure>
+
+<ol start="5">
+<li><strong>检查端口监听</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ss -tlnp</span><br><span class="line">netstat -tlnp</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、服务异常"><a href="#四、服务异常" class="headerlink" title="四、服务异常"></a>四、服务异常</h2><h3 id="4-1-现象"><a href="#4-1-现象" class="headerlink" title="4.1 现象"></a>4.1 现象</h3><ul>
+<li>服务无法启动</li>
+<li>服务频繁重启</li>
+<li>服务响应缓慢</li>
+</ul>
+<h3 id="4-2-排查步骤"><a href="#4-2-排查步骤" class="headerlink" title="4.2 排查步骤"></a>4.2 排查步骤</h3><ol>
+<li><strong>查看服务状态</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">systemctl status &lt;service-name&gt;</span><br><span class="line">systemctl restart &lt;service-name&gt;</span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li><strong>查看服务日志</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">journalctl -u &lt;service-name&gt; -f</span><br><span class="line"><span class="built_in">tail</span> -f /var/log/&lt;service&gt;/&lt;service&gt;.<span class="built_in">log</span></span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li><strong>检查资源占用</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">top -p $(pgrep -d<span class="string">&#x27;,&#x27;</span> -f &lt;service-name&gt;)</span><br><span class="line">ps aux | grep &lt;service-name&gt;</span><br></pre></td></tr></table></figure>
+
+<ol start="4">
+<li><strong>检查依赖服务</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl list-dependencies &lt;service-name&gt;</span><br></pre></td></tr></table></figure>
+
+<h2 id="五、性能问题"><a href="#五、性能问题" class="headerlink" title="五、性能问题"></a>五、性能问题</h2><h3 id="5-1-现象"><a href="#5-1-现象" class="headerlink" title="5.1 现象"></a>5.1 现象</h3><ul>
+<li>系统响应缓慢</li>
+<li>CPU 使用率高</li>
+<li>内存不足</li>
+<li>磁盘 IO 高</li>
+</ul>
+<h3 id="5-2-排查步骤"><a href="#5-2-排查步骤" class="headerlink" title="5.2 排查步骤"></a>5.2 排查步骤</h3><ol>
+<li><strong>CPU 排查</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">top</span><br><span class="line">htop</span><br><span class="line">vmstat 1 5</span><br><span class="line">mpstat -P ALL 1</span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li><strong>内存排查</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">free -h</span><br><span class="line"><span class="built_in">cat</span> /proc/meminfo</span><br><span class="line">vmstat -s</span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li><strong>磁盘 IO 排查</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">iostat -x 1 5</span><br><span class="line">iotop</span><br><span class="line">pidstat -d 1</span><br></pre></td></tr></table></figure>
+
+<ol start="4">
+<li><strong>进程分析</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ps aux --<span class="built_in">sort</span>=-%cpu | <span class="built_in">head</span> -10</span><br><span class="line">ps aux --<span class="built_in">sort</span>=-%mem | <span class="built_in">head</span> -10</span><br></pre></td></tr></table></figure>
+
+<h2 id="六、权限问题"><a href="#六、权限问题" class="headerlink" title="六、权限问题"></a>六、权限问题</h2><h3 id="6-1-现象"><a href="#6-1-现象" class="headerlink" title="6.1 现象"></a>6.1 现象</h3><ul>
+<li>无法访问文件</li>
+<li>服务启动失败（权限拒绝）</li>
+<li>无法执行命令</li>
+</ul>
+<h3 id="6-2-排查步骤"><a href="#6-2-排查步骤" class="headerlink" title="6.2 排查步骤"></a>6.2 排查步骤</h3><ol>
+<li><strong>检查文件权限</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">ls</span> -la /path/to/file</span><br><span class="line"><span class="built_in">stat</span> /path/to/file</span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li><strong>检查 SELinux</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">getenforce</span><br><span class="line">sestatus</span><br><span class="line"><span class="built_in">ls</span> -Z /path/to/file</span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li><strong>检查用户组</strong></li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">id</span></span><br><span class="line"><span class="built_in">groups</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="七、常用排查命令速查"><a href="#七、常用排查命令速查" class="headerlink" title="七、常用排查命令速查"></a>七、常用排查命令速查</h2><table>
+<thead>
+<tr>
+<th>问题类型</th>
+<th>命令</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>系统日志</td>
+<td>journalctl -xe</td>
+</tr>
+<tr>
+<td>磁盘空间</td>
+<td>df -h</td>
+</tr>
+<tr>
+<td>内存使用</td>
+<td>free -h</td>
+</tr>
+<tr>
+<td>进程列表</td>
+<td>ps aux</td>
+</tr>
+<tr>
+<td>网络连接</td>
+<td>ss -tlnp</td>
+</tr>
+<tr>
+<td>端口占用</td>
+<td>lsof -i :port</td>
+</tr>
+<tr>
+<td>文件查找</td>
+<td>find &#x2F; -name “filename”</td>
+</tr>
+<tr>
+<td>文本搜索</td>
+<td>grep -r “pattern” &#x2F;path</td>
+</tr>
+</tbody></table>
+<h2 id="八、总结"><a href="#八、总结" class="headerlink" title="八、总结"></a>八、总结</h2><p>故障排查的核心思路：</p>
+<ol>
+<li><strong>收集信息</strong> - 日志、状态、配置</li>
+<li><strong>定位问题</strong> - 从现象到根源</li>
+<li><strong>验证假设</strong> - 逐步排除</li>
+<li><strong>解决问题</strong> - 修复并验证</li>
+<li><strong>记录归档</strong> - 形成知识库</li>
+</ol>
+<p>保持冷静，按照系统化方法排查，大多数问题都能快速解决。</p>
+<hr>
+<p><em>文档版本：1.0</em><br><em>最后更新：2026-03-03</em></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io">PCLTXSYWZ</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io/2026/03/03/Linux-%E7%B3%BB%E7%BB%9F%E5%B8%B8%E8%A7%81%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/">https://pcltxs.github.io/2026/03/03/Linux-%E7%B3%BB%E7%BB%9F%E5%B8%B8%E8%A7%81%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://pcltxs.github.io" target="_blank">体系所运维知识库</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%EF%BC%8CLinux/">故障排查，Linux</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/03/03/%E7%B3%BB%E7%BB%9F%E7%9B%91%E6%8E%A7%E4%B8%8E%E5%91%8A%E8%AD%A6%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/" title="系统监控与告警最佳实践"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">系统监控与告警最佳实践</div></div><div class="info-2"><div class="info-item-1">系统监控与告警最佳实践一、前言有效的监控和告警体系是保障系统稳定运行的关键。本文档介绍监控系统设计原则、常用指标、告警策略及最佳实践，帮助构建可靠的运维监控体系。 二、监控体系设计原则2.1 黄金指标（Golden Signals）Google SRE 提出的四个关键指标：  延迟（Latency） - 请求处理时间 流量（Traffic） - 系统负载情况 错误（Errors） - 失败请求比例 饱和度（Saturation） - 资源使用程度  2.2 监控层级123456789┌─────────────────────────┐│      业务层监控         │  ← 业务指标、转化率├─────────────────────────┤│      应用层监控         │  ← 服务状态、API 响应├─────────────────────────┤│      系统层监控         │  ← CPU、内存、磁盘├─────────────────────────┤│      基础设施监控       │  ← 网络、电源、硬件└─────...</div></div></div></a><a class="pagination-related" href="/2026/03/03/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-03-03/" title="每日科技要闻-2026-03-03"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">每日科技要闻-2026-03-03</div></div><div class="info-2"><div class="info-item-1">每日科技要闻 2026 年 3 月 3 日 昨日（2026 年 3 月 2 日）全球最热科技新闻精选   📱 智能手机与移动设备1. Apple 正式发布 iPhone 17e来源： Apple NewsroomApple 于 3 月 2 日发布 iPhone 17e，这款新机以出色的性价比为卖点，搭载更快的处理器和先进的相机系统。这是 Apple 在 2026 年春季的首款重要产品发布。 2. MWC 2026：Honor 发布机器人手机和 Magic V6 折叠屏来源： CNBC, Engadget在巴塞罗那举行的 MWC 2026 上，Honor 展示了一款配备机械摄像头臂的智能手机，并发布了 Magic V6 折叠屏手机，预计下半年在国际市场上市。 3. MWC 2026：小米 17 Ultra 携手徕卡亮相来源： Mashable小米在 MWC 2026 上发布了小米 17 Ultra，继续与徕卡合作打造旗舰影像系统。同时展示了 Leitzphone 新概念手机。 4. 三星在 MWC 2026 展示 Galaxy AI 和互联生态系统来源： Samsung News...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">PCLTXSYWZ</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">25</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">8</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">7</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/pcltxs"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">广泛收集运维相关文档资料,欢迎大家投稿分享,文档请发送至邮箱tuwj@pcl.ac.cn。网站建设相关问题和建议请联系邮箱tuwj@pcl.ac.cn。体系所办公区设备分布情况请访问http://device.opendns4.cn,工单系统请访问http://ticket.opendns4.cn,体系所公有云资源使用情况请访问http://mcloud.dns4test.com/</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Linux-%E7%B3%BB%E7%BB%9F%E5%B8%B8%E8%A7%81%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97"><span class="toc-number">1.</span> <span class="toc-text">Linux 系统常见故障排查指南</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E5%89%8D%E8%A8%80"><span class="toc-number">1.1.</span> <span class="toc-text">一、前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E7%B3%BB%E7%BB%9F%E6%97%A0%E6%B3%95%E5%90%AF%E5%8A%A8"><span class="toc-number">1.2.</span> <span class="toc-text">二、系统无法启动</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E7%8E%B0%E8%B1%A1"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 现象</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%8E%92%E6%9F%A5%E6%AD%A5%E9%AA%A4"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 排查步骤</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E7%BD%91%E7%BB%9C%E8%BF%9E%E6%8E%A5%E9%97%AE%E9%A2%98"><span class="toc-number">1.3.</span> <span class="toc-text">三、网络连接问题</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E7%8E%B0%E8%B1%A1"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 现象</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%8E%92%E6%9F%A5%E6%AD%A5%E9%AA%A4"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 排查步骤</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E6%9C%8D%E5%8A%A1%E5%BC%82%E5%B8%B8"><span class="toc-number">1.4.</span> <span class="toc-text">四、服务异常</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E7%8E%B0%E8%B1%A1"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 现象</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E6%8E%92%E6%9F%A5%E6%AD%A5%E9%AA%A4"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 排查步骤</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%80%A7%E8%83%BD%E9%97%AE%E9%A2%98"><span class="toc-number">1.5.</span> <span class="toc-text">五、性能问题</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E7%8E%B0%E8%B1%A1"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 现象</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E6%8E%92%E6%9F%A5%E6%AD%A5%E9%AA%A4"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 排查步骤</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E6%9D%83%E9%99%90%E9%97%AE%E9%A2%98"><span class="toc-number">1.6.</span> <span class="toc-text">六、权限问题</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E7%8E%B0%E8%B1%A1"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 现象</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E6%8E%92%E6%9F%A5%E6%AD%A5%E9%AA%A4"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 排查步骤</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E5%B8%B8%E7%94%A8%E6%8E%92%E6%9F%A5%E5%91%BD%E4%BB%A4%E9%80%9F%E6%9F%A5"><span class="toc-number">1.7.</span> <span class="toc-text">七、常用排查命令速查</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">1.8.</span> <span class="toc-text">八、总结</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/03/Linux-%E7%B3%BB%E7%BB%9F%E5%B8%B8%E8%A7%81%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/" title="Linux-系统常见故障排查指南">Linux-系统常见故障排查指南</a><time datetime="2026-03-03T03:00:00.000Z" title="发表于 2026-03-03 11:00:00">2026-03-03</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/03/%E7%B3%BB%E7%BB%9F%E7%9B%91%E6%8E%A7%E4%B8%8E%E5%91%8A%E8%AD%A6%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/" title="系统监控与告警最佳实践">系统监控与告警最佳实践</a><time datetime="2026-03-03T03:00:00.000Z" title="发表于 2026-03-03 11:00:00">2026-03-03</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/03/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-03-03/" title="每日科技要闻-2026-03-03">每日科技要闻-2026-03-03</a><time datetime="2026-03-03T00:00:00.000Z" title="发表于 2026-03-03 08:00:00">2026-03-03</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/02/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB%20-2026-03-02/" title="每日科技要闻 -2026-03-02">每日科技要闻 -2026-03-02</a><time datetime="2026-03-02T09:59:04.000Z" title="发表于 2026-03-02 17:59:04">2026-03-02</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/02/Linux%20%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/" title="Linux 内存泄漏排查指南">Linux 内存泄漏排查指南</a><time datetime="2026-03-02T08:07:00.000Z" title="发表于 2026-03-02 16:07:00">2026-03-02</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By PCLTXSYWZ</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.4</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>
