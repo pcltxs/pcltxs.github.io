@@ -1,0 +1,303 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Linux 系统备份策略与恢复 | 体系所运维知识库</title><meta name="author" content="PCLTXSYWZ"><meta name="copyright" content="PCLTXSYWZ"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Linux 系统备份策略与恢复一、引言数据是企业的核心资产，完善的备份策略是运维工作的重中之重。本文介绍 Linux 系统备份的完整方案，包括备份策略设计、工具选择、自动化实施和灾难恢复流程。 二、备份策略设计原则2.1 3-2-1 备份原则 3 份数据副本（1 份生产 + 2 份备份） 2 种不同存储介质（如硬盘 + 云存储） 1 份异地备份（防止区域性灾难）  2.2 RTO 与 RPO 定义">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux 系统备份策略与恢复">
+<meta property="og:url" content="https://pcltxs.github.io/2026/03/04/Linux%20%E7%B3%BB%E7%BB%9F%E5%A4%87%E4%BB%BD%E7%AD%96%E7%95%A5%E4%B8%8E%E6%81%A2%E5%A4%8D/index.html">
+<meta property="og:site_name" content="体系所运维知识库">
+<meta property="og:description" content="Linux 系统备份策略与恢复一、引言数据是企业的核心资产，完善的备份策略是运维工作的重中之重。本文介绍 Linux 系统备份的完整方案，包括备份策略设计、工具选择、自动化实施和灾难恢复流程。 二、备份策略设计原则2.1 3-2-1 备份原则 3 份数据副本（1 份生产 + 2 份备份） 2 种不同存储介质（如硬盘 + 云存储） 1 份异地备份（防止区域性灾难）  2.2 RTO 与 RPO 定义">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://pcltxs.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-03-04T06:24:25.000Z">
+<meta property="article:modified_time" content="2026-03-04T06:50:23.931Z">
+<meta property="article:author" content="PCLTXSYWZ">
+<meta property="article:tag" content="备份">
+<meta property="article:tag" content="系统运维">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pcltxs.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Linux 系统备份策略与恢复",
+  "url": "https://pcltxs.github.io/2026/03/04/Linux%20%E7%B3%BB%E7%BB%9F%E5%A4%87%E4%BB%BD%E7%AD%96%E7%95%A5%E4%B8%8E%E6%81%A2%E5%A4%8D/",
+  "image": "https://pcltxs.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-03-04T06:24:25.000Z",
+  "dateModified": "2026-03-04T06:50:23.931Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "PCLTXSYWZ",
+      "url": "https://pcltxs.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://pcltxs.github.io/2026/03/04/Linux%20%E7%B3%BB%E7%BB%9F%E5%A4%87%E4%BB%BD%E7%AD%96%E7%95%A5%E4%B8%8E%E6%81%A2%E5%A4%8D/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Linux 系统备份策略与恢复',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.1"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">体系所运维知识库</span></a><a class="nav-page-title" href="/"><span class="site-name">Linux 系统备份策略与恢复</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div></div></nav><div id="post-info"><h1 class="post-title">Linux 系统备份策略与恢复</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-03-04T06:24:25.000Z" title="发表于 2026-03-04 14:24:25">2026-03-04</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-03-04T06:50:23.931Z" title="更新于 2026-03-04 14:50:23">2026-03-04</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E7%BB%B4%E7%AE%A1%E7%90%86/">系统部署与运维管理</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="Linux-系统备份策略与恢复"><a href="#Linux-系统备份策略与恢复" class="headerlink" title="Linux 系统备份策略与恢复"></a>Linux 系统备份策略与恢复</h1><h2 id="一、引言"><a href="#一、引言" class="headerlink" title="一、引言"></a>一、引言</h2><p>数据是企业的核心资产，完善的备份策略是运维工作的重中之重。本文介绍 Linux 系统备份的完整方案，包括备份策略设计、工具选择、自动化实施和灾难恢复流程。</p>
+<h2 id="二、备份策略设计原则"><a href="#二、备份策略设计原则" class="headerlink" title="二、备份策略设计原则"></a>二、备份策略设计原则</h2><h3 id="2-1-3-2-1-备份原则"><a href="#2-1-3-2-1-备份原则" class="headerlink" title="2.1 3-2-1 备份原则"></a>2.1 3-2-1 备份原则</h3><ul>
+<li><strong>3</strong> 份数据副本（1 份生产 + 2 份备份）</li>
+<li><strong>2</strong> 种不同存储介质（如硬盘 + 云存储）</li>
+<li><strong>1</strong> 份异地备份（防止区域性灾难）</li>
+</ul>
+<h3 id="2-2-RTO-与-RPO-定义"><a href="#2-2-RTO-与-RPO-定义" class="headerlink" title="2.2 RTO 与 RPO 定义"></a>2.2 RTO 与 RPO 定义</h3><table>
+<thead>
+<tr>
+<th>指标</th>
+<th>定义</th>
+<th>示例目标</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>RTO (Recovery Time Objective)</td>
+<td>恢复时间目标</td>
+<td>≤ 4 小时</td>
+</tr>
+<tr>
+<td>RPO (Recovery Point Objective)</td>
+<td>恢复点目标</td>
+<td>≤ 1 小时</td>
+</tr>
+</tbody></table>
+<h3 id="2-3-备份类型选择"><a href="#2-3-备份类型选择" class="headerlink" title="2.3 备份类型选择"></a>2.3 备份类型选择</h3><table>
+<thead>
+<tr>
+<th>类型</th>
+<th>优点</th>
+<th>缺点</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>完全备份</td>
+<td>恢复简单快速</td>
+<td>占用空间大、耗时长</td>
+<td>每周一次</td>
+</tr>
+<tr>
+<td>增量备份</td>
+<td>节省空间和时间</td>
+<td>恢复需要多个备份集</td>
+<td>每日备份</td>
+</tr>
+<tr>
+<td>差异备份</td>
+<td>恢复比增量快</td>
+<td>空间占用逐渐增加</td>
+<td>关键系统</td>
+</tr>
+</tbody></table>
+<h2 id="三、常用备份工具"><a href="#三、常用备份工具" class="headerlink" title="三、常用备份工具"></a>三、常用备份工具</h2><h3 id="3-1-rsync-文件级备份"><a href="#3-1-rsync-文件级备份" class="headerlink" title="3.1 rsync - 文件级备份"></a>3.1 rsync - 文件级备份</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"><span class="comment"># 本地备份脚本</span></span><br><span class="line">SOURCE_DIR=<span class="string">&quot;/data&quot;</span></span><br><span class="line">BACKUP_DIR=<span class="string">&quot;/backup/data_<span class="subst">$(date +%Y%m%d_%H%M%S)</span>&quot;</span></span><br><span class="line"></span><br><span class="line">rsync -avz --delete \</span><br><span class="line">    --exclude <span class="string">&#x27;*.tmp&#x27;</span> \</span><br><span class="line">    --exclude <span class="string">&#x27;*.log&#x27;</span> \</span><br><span class="line">    <span class="variable">$SOURCE_DIR</span>/ <span class="variable">$BACKUP_DIR</span>/</span><br><span class="line"></span><br><span class="line"><span class="comment"># 保留最近 7 天的备份</span></span><br><span class="line">find /backup -<span class="built_in">type</span> d -name <span class="string">&quot;data_*&quot;</span> -mtime +7 -<span class="built_in">exec</span> <span class="built_in">rm</span> -rf &#123;&#125; \;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 远程备份（推送到备份服务器）</span></span><br><span class="line">rsync -avz -e <span class="string">&quot;ssh -p 22&quot;</span> \</span><br><span class="line">    /data/ \</span><br><span class="line">    backup_user@backup-server:/backup/data/</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-tar-归档压缩备份"><a href="#3-2-tar-归档压缩备份" class="headerlink" title="3.2 tar - 归档压缩备份"></a>3.2 tar - 归档压缩备份</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"><span class="comment"># 创建压缩备份</span></span><br><span class="line">BACKUP_FILE=<span class="string">&quot;/backup/system_<span class="subst">$(date +%Y%m%d_%H%M%S)</span>.tar.gz&quot;</span></span><br><span class="line"></span><br><span class="line">tar -czf <span class="variable">$BACKUP_FILE</span> \</span><br><span class="line">    --exclude=<span class="string">&#x27;/proc&#x27;</span> \</span><br><span class="line">    --exclude=<span class="string">&#x27;/sys&#x27;</span> \</span><br><span class="line">    --exclude=<span class="string">&#x27;/tmp&#x27;</span> \</span><br><span class="line">    --exclude=<span class="string">&#x27;/dev&#x27;</span> \</span><br><span class="line">    --exclude=<span class="string">&#x27;/backup&#x27;</span> \</span><br><span class="line">    /etc /home /var/log /opt</span><br><span class="line"></span><br><span class="line"><span class="comment"># 验证备份完整性</span></span><br><span class="line">tar -tzf <span class="variable">$BACKUP_FILE</span> &gt; /dev/null &amp;&amp; <span class="built_in">echo</span> <span class="string">&quot;备份验证成功&quot;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 增量备份（使用 --listed-incremental）</span></span><br><span class="line"><span class="comment"># 首次完全备份</span></span><br><span class="line">tar -czf backup-1.tar.gz --listed-incremental=/var/tmp/snapshot.snar /data</span><br><span class="line"></span><br><span class="line"><span class="comment"># 后续增量备份</span></span><br><span class="line">tar -czf backup-2.tar.gz --listed-incremental=/var/tmp/snapshot.snar /data</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-BorgBackup-去重备份工具"><a href="#3-3-BorgBackup-去重备份工具" class="headerlink" title="3.3 BorgBackup - 去重备份工具"></a>3.3 BorgBackup - 去重备份工具</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 初始化仓库</span></span><br><span class="line">borg init --encryption=repokey /backup/borg-repo</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建备份</span></span><br><span class="line">borg create \</span><br><span class="line">    --compression lz4 \</span><br><span class="line">    --exclude <span class="string">&#x27;*.tmp&#x27;</span> \</span><br><span class="line">    /backup/borg-repo::<span class="string">&#x27;&#123;now:%Y-%m-%d_%H:%M&#125;&#x27;</span> \</span><br><span class="line">    /data /etc /home</span><br><span class="line"></span><br><span class="line"><span class="comment"># 列出备份</span></span><br><span class="line">borg list /backup/borg-repo</span><br><span class="line"></span><br><span class="line"><span class="comment"># 恢复备份</span></span><br><span class="line">borg extract /backup/borg-repo::2026-03-04_14:00 /data</span><br><span class="line"></span><br><span class="line"><span class="comment"># 清理旧备份（保留最近 7 天、4 周、6 个月）</span></span><br><span class="line">borg prune \</span><br><span class="line">    --keep-daily=7 \</span><br><span class="line">    --keep-weekly=4 \</span><br><span class="line">    --keep-monthly=6 \</span><br><span class="line">    /backup/borg-repo</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-dd-磁盘镜像备份"><a href="#3-4-dd-磁盘镜像备份" class="headerlink" title="3.4 dd - 磁盘镜像备份"></a>3.4 dd - 磁盘镜像备份</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 整盘备份（适用于系统迁移）</span></span><br><span class="line"><span class="built_in">dd</span> <span class="keyword">if</span>=/dev/sda of=/backup/disk_image.img bs=4M status=progress</span><br><span class="line"></span><br><span class="line"><span class="comment"># 压缩备份</span></span><br><span class="line"><span class="built_in">dd</span> <span class="keyword">if</span>=/dev/sda bs=4M status=progress | gzip &gt; /backup/disk_image.img.gz</span><br><span class="line"></span><br><span class="line"><span class="comment"># 恢复磁盘</span></span><br><span class="line"><span class="built_in">dd</span> <span class="keyword">if</span>=/backup/disk_image.img of=/dev/sda bs=4M status=progress</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、数据库备份"><a href="#四、数据库备份" class="headerlink" title="四、数据库备份"></a>四、数据库备份</h2><h3 id="4-1-MySQL-MariaDB-备份"><a href="#4-1-MySQL-MariaDB-备份" class="headerlink" title="4.1 MySQL&#x2F;MariaDB 备份"></a>4.1 MySQL&#x2F;MariaDB 备份</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"><span class="comment"># MySQL 备份脚本</span></span><br><span class="line">BACKUP_DIR=<span class="string">&quot;/backup/mysql&quot;</span></span><br><span class="line">DATE=$(<span class="built_in">date</span> +%Y%m%d_%H%M%S)</span><br><span class="line">MYSQL_USER=<span class="string">&quot;backup_user&quot;</span></span><br><span class="line">MYSQL_PASS=<span class="string">&quot;your_password&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 完全备份</span></span><br><span class="line">mysqldump -u<span class="variable">$MYSQL_USER</span> -p<span class="variable">$MYSQL_PASS</span> \</span><br><span class="line">    --all-databases \</span><br><span class="line">    --single-transaction \</span><br><span class="line">    --routines \</span><br><span class="line">    --triggers \</span><br><span class="line">    --events | gzip &gt; <span class="variable">$BACKUP_DIR</span>/all_databases_<span class="variable">$DATE</span>.sql.gz</span><br><span class="line"></span><br><span class="line"><span class="comment"># 保留 30 天备份</span></span><br><span class="line">find <span class="variable">$BACKUP_DIR</span> -name <span class="string">&quot;*.sql.gz&quot;</span> -mtime +30 -delete</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-PostgreSQL-备份"><a href="#4-2-PostgreSQL-备份" class="headerlink" title="4.2 PostgreSQL 备份"></a>4.2 PostgreSQL 备份</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"><span class="comment"># PostgreSQL 备份脚本</span></span><br><span class="line">BACKUP_DIR=<span class="string">&quot;/backup/postgresql&quot;</span></span><br><span class="line">DATE=$(<span class="built_in">date</span> +%Y%m%d_%H%M%S)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 完全备份</span></span><br><span class="line">pg_dumpall -U postgres | gzip &gt; <span class="variable">$BACKUP_DIR</span>/full_backup_<span class="variable">$DATE</span>.sql.gz</span><br><span class="line"></span><br><span class="line"><span class="comment"># 单数据库备份</span></span><br><span class="line">pg_dump -U postgres mydb | gzip &gt; <span class="variable">$BACKUP_DIR</span>/mydb_<span class="variable">$DATE</span>.sql.gz</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-MongoDB-备份"><a href="#4-3-MongoDB-备份" class="headerlink" title="4.3 MongoDB 备份"></a>4.3 MongoDB 备份</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"><span class="comment"># MongoDB 备份</span></span><br><span class="line">BACKUP_DIR=<span class="string">&quot;/backup/mongodb&quot;</span></span><br><span class="line">DATE=$(<span class="built_in">date</span> +%Y%m%d_%H%M%S)</span><br><span class="line"></span><br><span class="line">mongodump --out <span class="variable">$BACKUP_DIR</span>/mongo_<span class="variable">$DATE</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 恢复</span></span><br><span class="line">mongorestore <span class="variable">$BACKUP_DIR</span>/mongo_20260304_140000</span><br></pre></td></tr></table></figure>
+
+<h2 id="五、自动化备份方案"><a href="#五、自动化备份方案" class="headerlink" title="五、自动化备份方案"></a>五、自动化备份方案</h2><h3 id="5-1-Cron-定时任务"><a href="#5-1-Cron-定时任务" class="headerlink" title="5.1 Cron 定时任务"></a>5.1 Cron 定时任务</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 编辑 crontab</span></span><br><span class="line">crontab -e</span><br><span class="line"></span><br><span class="line"><span class="comment"># 每日凌晨 2 点执行完全备份</span></span><br><span class="line">0 2 * * * /usr/local/bin/backup_daily.sh &gt;&gt; /var/log/backup.log 2&gt;&amp;1</span><br><span class="line"></span><br><span class="line"><span class="comment"># 每小时执行增量备份</span></span><br><span class="line">0 * * * * /usr/local/bin/backup_hourly.sh &gt;&gt; /var/log/backup.log 2&gt;&amp;1</span><br><span class="line"></span><br><span class="line"><span class="comment"># 每周日清理旧备份</span></span><br><span class="line">0 3 * * 0 /usr/local/bin/backup_cleanup.sh &gt;&gt; /var/log/backup.log 2&gt;&amp;1</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-systemd-Timer（推荐）"><a href="#5-2-systemd-Timer（推荐）" class="headerlink" title="5.2 systemd Timer（推荐）"></a>5.2 systemd Timer（推荐）</h3><figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># /etc/systemd/system/backup.service</span></span><br><span class="line"><span class="section">[Unit]</span></span><br><span class="line"><span class="attr">Description</span>=Daily System Backup</span><br><span class="line"><span class="attr">After</span>=network.target</span><br><span class="line"></span><br><span class="line"><span class="section">[Service]</span></span><br><span class="line"><span class="attr">Type</span>=<span class="literal">on</span>eshot</span><br><span class="line"><span class="attr">ExecStart</span>=/usr/local/bin/backup_daily.sh</span><br><span class="line"><span class="attr">User</span>=root</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># /etc/systemd/system/backup.timer</span></span><br><span class="line"><span class="section">[Unit]</span></span><br><span class="line"><span class="attr">Description</span>=Run backup daily at <span class="number">2</span>:<span class="number">00</span> AM</span><br><span class="line"></span><br><span class="line"><span class="section">[Timer]</span></span><br><span class="line"><span class="attr">OnCalendar</span>=*-*-* <span class="number">02</span>:<span class="number">00</span>:<span class="number">00</span></span><br><span class="line"><span class="attr">Persistent</span>=<span class="literal">true</span></span><br><span class="line"></span><br><span class="line"><span class="section">[Install]</span></span><br><span class="line"><span class="attr">WantedBy</span>=timers.target</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启用定时任务</span></span><br><span class="line">systemctl daemon-reload</span><br><span class="line">systemctl <span class="built_in">enable</span> backup.timer</span><br><span class="line">systemctl start backup.timer</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看状态</span></span><br><span class="line">systemctl list-timers</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-备份监控与告警"><a href="#5-3-备份监控与告警" class="headerlink" title="5.3 备份监控与告警"></a>5.3 备份监控与告警</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"><span class="comment"># 备份状态检查脚本</span></span><br><span class="line">BACKUP_DIR=<span class="string">&quot;/backup&quot;</span></span><br><span class="line">ALERT_EMAIL=<span class="string">&quot;admin@example.com&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查最新备份时间</span></span><br><span class="line">LATEST_BACKUP=$(<span class="built_in">ls</span> -t <span class="variable">$BACKUP_DIR</span>/*.tar.gz 2&gt;/dev/null | <span class="built_in">head</span> -1)</span><br><span class="line"><span class="keyword">if</span> [ -z <span class="string">&quot;<span class="variable">$LATEST_BACKUP</span>&quot;</span> ]; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;警告：未找到备份文件&quot;</span> | mail -s <span class="string">&quot;备份告警&quot;</span> <span class="variable">$ALERT_EMAIL</span></span><br><span class="line">    <span class="built_in">exit</span> 1</span><br><span class="line"><span class="keyword">fi</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查备份是否超过 24 小时</span></span><br><span class="line">BACKUP_TIME=$(<span class="built_in">stat</span> -c %Y <span class="string">&quot;<span class="variable">$LATEST_BACKUP</span>&quot;</span>)</span><br><span class="line">CURRENT_TIME=$(<span class="built_in">date</span> +%s)</span><br><span class="line">AGE_HOURS=$(( (CURRENT_TIME - BACKUP_TIME) / <span class="number">3600</span> ))</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> [ <span class="variable">$AGE_HOURS</span> -gt 24 ]; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;警告：备份已超过 <span class="variable">$&#123;AGE_HOURS&#125;</span> 小时&quot;</span> | mail -s <span class="string">&quot;备份告警&quot;</span> <span class="variable">$ALERT_EMAIL</span></span><br><span class="line">    <span class="built_in">exit</span> 1</span><br><span class="line"><span class="keyword">fi</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;备份检查正常&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="六、灾难恢复流程"><a href="#六、灾难恢复流程" class="headerlink" title="六、灾难恢复流程"></a>六、灾难恢复流程</h2><h3 id="6-1-恢复前准备"><a href="#6-1-恢复前准备" class="headerlink" title="6.1 恢复前准备"></a>6.1 恢复前准备</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 确认备份可用性</span></span><br><span class="line">tar -tzf /backup/system_20260304_020000.tar.gz | <span class="built_in">head</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 检查磁盘空间</span></span><br><span class="line"><span class="built_in">df</span> -h /restore</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 准备恢复环境</span></span><br><span class="line"><span class="built_in">mkdir</span> -p /restore</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-系统恢复步骤"><a href="#6-2-系统恢复步骤" class="headerlink" title="6.2 系统恢复步骤"></a>6.2 系统恢复步骤</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 场景 1：文件恢复</span></span><br><span class="line">tar -xzf /backup/system_20260304_020000.tar.gz -C /restore</span><br><span class="line"></span><br><span class="line"><span class="comment"># 场景 2：rsync 恢复</span></span><br><span class="line">rsync -avz /backup/data_20260304_020000/ /data/</span><br><span class="line"></span><br><span class="line"><span class="comment"># 场景 3：Borg 恢复</span></span><br><span class="line">borg extract /backup/borg-repo::2026-03-04_02:00 --target /restore</span><br><span class="line"></span><br><span class="line"><span class="comment"># 场景 4：数据库恢复</span></span><br><span class="line">gunzip &lt; /backup/mysql/all_databases_20260304_020000.sql.gz | mysql -u root -p</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-3-恢复验证"><a href="#6-3-恢复验证" class="headerlink" title="6.3 恢复验证"></a>6.3 恢复验证</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"><span class="comment"># 恢复验证脚本</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 1. 检查关键文件</span></span><br><span class="line"><span class="keyword">for</span> file <span class="keyword">in</span> /etc/passwd /etc/fstab /etc/hosts; <span class="keyword">do</span></span><br><span class="line">    <span class="keyword">if</span> [ ! -f <span class="string">&quot;<span class="variable">$file</span>&quot;</span> ]; <span class="keyword">then</span></span><br><span class="line">        <span class="built_in">echo</span> <span class="string">&quot;错误：<span class="variable">$file</span> 不存在&quot;</span></span><br><span class="line">        <span class="built_in">exit</span> 1</span><br><span class="line">    <span class="keyword">fi</span></span><br><span class="line"><span class="keyword">done</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 检查服务状态</span></span><br><span class="line">systemctl is-active --quiet nginx || <span class="built_in">echo</span> <span class="string">&quot;警告：nginx 未运行&quot;</span></span><br><span class="line">systemctl is-active --quiet mysql || <span class="built_in">echo</span> <span class="string">&quot;警告：mysql 未运行&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 数据完整性检查</span></span><br><span class="line">mysqlcheck -u root -p --all-databases</span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;恢复验证完成&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="七、备份最佳实践总结"><a href="#七、备份最佳实践总结" class="headerlink" title="七、备份最佳实践总结"></a>七、备份最佳实践总结</h2><h3 id="7-1-必须执行"><a href="#7-1-必须执行" class="headerlink" title="7.1 必须执行"></a>7.1 必须执行</h3><ul>
+<li>✅ 定期测试恢复流程（至少每季度一次）</li>
+<li>✅ 备份加密存储（特别是敏感数据）</li>
+<li>✅ 异地备份（防止区域性灾难）</li>
+<li>✅ 备份日志记录与监控</li>
+<li>✅ 文档化恢复流程</li>
+</ul>
+<h3 id="7-2-避免事项"><a href="#7-2-避免事项" class="headerlink" title="7.2 避免事项"></a>7.2 避免事项</h3><ul>
+<li>❌ 备份与生产数据同盘存储</li>
+<li>❌ 无验证的备份（可能备份了损坏数据）</li>
+<li>❌ 过度依赖单一备份工具</li>
+<li>❌ 忽略备份权限管理</li>
+<li>❌ 忘记测试恢复流程</li>
+</ul>
+<h2 id="八、备份检查清单"><a href="#八、备份检查清单" class="headerlink" title="八、备份检查清单"></a>八、备份检查清单</h2><table>
+<thead>
+<tr>
+<th>检查项</th>
+<th>频率</th>
+<th>负责人</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>备份任务执行状态</td>
+<td>每日</td>
+<td>运维值班</td>
+</tr>
+<tr>
+<td>备份空间使用率</td>
+<td>每周</td>
+<td>运维主管</td>
+</tr>
+<tr>
+<td>恢复演练测试</td>
+<td>每季度</td>
+<td>全体运维</td>
+</tr>
+<tr>
+<td>备份策略评审</td>
+<td>每半年</td>
+<td>技术负责人</td>
+</tr>
+<tr>
+<td>异地备份验证</td>
+<td>每月</td>
+<td>运维主管</td>
+</tr>
+</tbody></table>
+<h2 id="参考资源"><a href="#参考资源" class="headerlink" title="参考资源"></a>参考资源</h2><ul>
+<li><a target="_blank" rel="noopener" href="https://borgbackup.readthedocs.io/">BorgBackup 官方文档</a></li>
+<li><a target="_blank" rel="noopener" href="https://rsync.samba.org/">rsync 官方文档</a></li>
+<li><a target="_blank" rel="noopener" href="https://wiki.archlinux.org/title/Backup_programs">Linux Backup and Recovery Strategies</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io">PCLTXSYWZ</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io/2026/03/04/Linux%20%E7%B3%BB%E7%BB%9F%E5%A4%87%E4%BB%BD%E7%AD%96%E7%95%A5%E4%B8%8E%E6%81%A2%E5%A4%8D/">https://pcltxs.github.io/2026/03/04/Linux%20%E7%B3%BB%E7%BB%9F%E5%A4%87%E4%BB%BD%E7%AD%96%E7%95%A5%E4%B8%8E%E6%81%A2%E5%A4%8D/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://pcltxs.github.io" target="_blank">体系所运维知识库</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E5%A4%87%E4%BB%BD/">备份</a><a class="post-meta__tags" href="/tags/%E7%B3%BB%E7%BB%9F%E8%BF%90%E7%BB%B4/">系统运维</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/03/04/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-03-04/" title="每日科技要闻-2026-03-04"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">每日科技要闻-2026-03-04</div></div><div class="info-2"><div class="info-item-1">每日科技要闻 2026-03-04 昨日全球最热 20 条科技新闻汇总   🔬 人工智能与机器学习1. Tempus 与默克达成战略合作，推进 AI 精准医疗Tempus AI 公司宣布与默克（MSD）达成战略合作协议，将 AI 技术应用于精准医疗领域，加速药物研发和个性化治疗方案。来源 2. Anthropic 事件引发科技界对军事 AI 应用的反思在 Alphabet 和 OpenAI 的员工呼吁加强对军事 AI 使用的限制，Anthropic 被列入黑名单后，科技行业对 AI 军事化应用的争议升温。来源 3. UNC 研究：AI 加速抗体疗法开发北卡罗来纳大学研究人员利用 AI 和机器学习技术，大幅缩短抗体疗法的开发周期，为癌症和自身免疫疾病治疗带来新希望。来源 4. AI-Weekly 第 206 期：AI 领域重大进展汇总本周 AI 新闻汇总涵盖多个重要发布，包括新模型、行业应用和政策动态。来源 5. LLM 开源模型动态：Hugging Face 发布新模型LLM Stats 追踪到多个开源 AI 模型更新，包括 Hugging Face 的新发布、GGUF 量化版...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">PCLTXSYWZ</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">28</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">11</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">7</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/pcltxs"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">广泛收集运维相关文档资料,欢迎大家投稿分享,文档请发送至邮箱tuwj@pcl.ac.cn。网站建设相关问题和建议请联系邮箱tuwj@pcl.ac.cn。体系所办公区设备分布情况请访问http://device.opendns4.cn,工单系统请访问http://ticket.opendns4.cn,体系所公有云资源使用情况请访问http://mcloud.dns4test.com/</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Linux-%E7%B3%BB%E7%BB%9F%E5%A4%87%E4%BB%BD%E7%AD%96%E7%95%A5%E4%B8%8E%E6%81%A2%E5%A4%8D"><span class="toc-number">1.</span> <span class="toc-text">Linux 系统备份策略与恢复</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E5%BC%95%E8%A8%80"><span class="toc-number">1.1.</span> <span class="toc-text">一、引言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E5%A4%87%E4%BB%BD%E7%AD%96%E7%95%A5%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99"><span class="toc-number">1.2.</span> <span class="toc-text">二、备份策略设计原则</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-3-2-1-%E5%A4%87%E4%BB%BD%E5%8E%9F%E5%88%99"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 3-2-1 备份原则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-RTO-%E4%B8%8E-RPO-%E5%AE%9A%E4%B9%89"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 RTO 与 RPO 定义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E5%A4%87%E4%BB%BD%E7%B1%BB%E5%9E%8B%E9%80%89%E6%8B%A9"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 备份类型选择</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%B8%B8%E7%94%A8%E5%A4%87%E4%BB%BD%E5%B7%A5%E5%85%B7"><span class="toc-number">1.3.</span> <span class="toc-text">三、常用备份工具</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-rsync-%E6%96%87%E4%BB%B6%E7%BA%A7%E5%A4%87%E4%BB%BD"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 rsync - 文件级备份</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-tar-%E5%BD%92%E6%A1%A3%E5%8E%8B%E7%BC%A9%E5%A4%87%E4%BB%BD"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 tar - 归档压缩备份</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-BorgBackup-%E5%8E%BB%E9%87%8D%E5%A4%87%E4%BB%BD%E5%B7%A5%E5%85%B7"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 BorgBackup - 去重备份工具</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-dd-%E7%A3%81%E7%9B%98%E9%95%9C%E5%83%8F%E5%A4%87%E4%BB%BD"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 dd - 磁盘镜像备份</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E6%95%B0%E6%8D%AE%E5%BA%93%E5%A4%87%E4%BB%BD"><span class="toc-number">1.4.</span> <span class="toc-text">四、数据库备份</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-MySQL-MariaDB-%E5%A4%87%E4%BB%BD"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 MySQL&#x2F;MariaDB 备份</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-PostgreSQL-%E5%A4%87%E4%BB%BD"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 PostgreSQL 备份</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-MongoDB-%E5%A4%87%E4%BB%BD"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 MongoDB 备份</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E8%87%AA%E5%8A%A8%E5%8C%96%E5%A4%87%E4%BB%BD%E6%96%B9%E6%A1%88"><span class="toc-number">1.5.</span> <span class="toc-text">五、自动化备份方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-Cron-%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 Cron 定时任务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-systemd-Timer%EF%BC%88%E6%8E%A8%E8%8D%90%EF%BC%89"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 systemd Timer（推荐）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E5%A4%87%E4%BB%BD%E7%9B%91%E6%8E%A7%E4%B8%8E%E5%91%8A%E8%AD%A6"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 备份监控与告警</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E7%81%BE%E9%9A%BE%E6%81%A2%E5%A4%8D%E6%B5%81%E7%A8%8B"><span class="toc-number">1.6.</span> <span class="toc-text">六、灾难恢复流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E6%81%A2%E5%A4%8D%E5%89%8D%E5%87%86%E5%A4%87"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 恢复前准备</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E7%B3%BB%E7%BB%9F%E6%81%A2%E5%A4%8D%E6%AD%A5%E9%AA%A4"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 系统恢复步骤</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E6%81%A2%E5%A4%8D%E9%AA%8C%E8%AF%81"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 恢复验证</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E5%A4%87%E4%BB%BD%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5%E6%80%BB%E7%BB%93"><span class="toc-number">1.7.</span> <span class="toc-text">七、备份最佳实践总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E5%BF%85%E9%A1%BB%E6%89%A7%E8%A1%8C"><span class="toc-number">1.7.1.</span> <span class="toc-text">7.1 必须执行</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E9%81%BF%E5%85%8D%E4%BA%8B%E9%A1%B9"><span class="toc-number">1.7.2.</span> <span class="toc-text">7.2 避免事项</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E5%A4%87%E4%BB%BD%E6%A3%80%E6%9F%A5%E6%B8%85%E5%8D%95"><span class="toc-number">1.8.</span> <span class="toc-text">八、备份检查清单</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%BA%90"><span class="toc-number">1.9.</span> <span class="toc-text">参考资源</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/04/Linux%20%E7%B3%BB%E7%BB%9F%E5%A4%87%E4%BB%BD%E7%AD%96%E7%95%A5%E4%B8%8E%E6%81%A2%E5%A4%8D/" title="Linux 系统备份策略与恢复">Linux 系统备份策略与恢复</a><time datetime="2026-03-04T06:24:25.000Z" title="发表于 2026-03-04 14:24:25">2026-03-04</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/04/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-03-04/" title="每日科技要闻-2026-03-04">每日科技要闻-2026-03-04</a><time datetime="2026-03-04T00:00:00.000Z" title="发表于 2026-03-04 08:00:00">2026-03-04</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/03/Linux%20%E6%9C%8D%E5%8A%A1%E5%99%A8%20CPU%20%E5%8D%A0%E7%94%A8%E8%BF%87%E9%AB%98%E6%8E%92%E6%9F%A5%E6%B5%81%E7%A8%8B/" title="Linux 服务器 CPU 占用过高排查流程">Linux 服务器 CPU 占用过高排查流程</a><time datetime="2026-03-03T08:00:00.000Z" title="发表于 2026-03-03 16:00:00">2026-03-03</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/03/Linux-%E7%B3%BB%E7%BB%9F%E5%B8%B8%E8%A7%81%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/" title="Linux-系统常见故障排查指南">Linux-系统常见故障排查指南</a><time datetime="2026-03-03T03:00:00.000Z" title="发表于 2026-03-03 11:00:00">2026-03-03</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/03/%E7%B3%BB%E7%BB%9F%E7%9B%91%E6%8E%A7%E4%B8%8E%E5%91%8A%E8%AD%A6%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/" title="系统监控与告警最佳实践">系统监控与告警最佳实践</a><time datetime="2026-03-03T03:00:00.000Z" title="发表于 2026-03-03 11:00:00">2026-03-03</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By PCLTXSYWZ</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.4</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>
