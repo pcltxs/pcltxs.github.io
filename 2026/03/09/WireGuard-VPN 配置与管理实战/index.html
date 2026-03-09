@@ -1,0 +1,253 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>WireGuard-VPN 配置与管理实战 | 体系所运维知识库</title><meta name="author" content="PCLTXSYWZ"><meta name="copyright" content="PCLTXSYWZ"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="WireGuard VPN 配置与管理实战一、概述WireGuard 是一款现代化的 VPN 协议，以其简洁的代码库、高性能和易配置性著称。相比 OpenVPN 和 IPsec，WireGuard 具有以下优势：  代码简洁：核心代码仅约 4000 行，易于审计 性能优异：基于 UDP，支持多队列，吞吐量更高 配置简单：无需复杂的证书管理，使用公钥&#x2F;私钥对 连接快速：握手延迟低，重连速度">
+<meta property="og:type" content="article">
+<meta property="og:title" content="WireGuard-VPN 配置与管理实战">
+<meta property="og:url" content="https://pcltxs.github.io/2026/03/09/WireGuard-VPN%20%E9%85%8D%E7%BD%AE%E4%B8%8E%E7%AE%A1%E7%90%86%E5%AE%9E%E6%88%98/index.html">
+<meta property="og:site_name" content="体系所运维知识库">
+<meta property="og:description" content="WireGuard VPN 配置与管理实战一、概述WireGuard 是一款现代化的 VPN 协议，以其简洁的代码库、高性能和易配置性著称。相比 OpenVPN 和 IPsec，WireGuard 具有以下优势：  代码简洁：核心代码仅约 4000 行，易于审计 性能优异：基于 UDP，支持多队列，吞吐量更高 配置简单：无需复杂的证书管理，使用公钥&#x2F;私钥对 连接快速：握手延迟低，重连速度">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://pcltxs.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-03-09T03:00:00.000Z">
+<meta property="article:modified_time" content="2026-03-09T03:17:57.172Z">
+<meta property="article:author" content="PCLTXSYWZ">
+<meta property="article:tag" content="VPN">
+<meta property="article:tag" content="网络安全">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pcltxs.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "WireGuard-VPN 配置与管理实战",
+  "url": "https://pcltxs.github.io/2026/03/09/WireGuard-VPN%20%E9%85%8D%E7%BD%AE%E4%B8%8E%E7%AE%A1%E7%90%86%E5%AE%9E%E6%88%98/",
+  "image": "https://pcltxs.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-03-09T03:00:00.000Z",
+  "dateModified": "2026-03-09T03:17:57.172Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "PCLTXSYWZ",
+      "url": "https://pcltxs.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://pcltxs.github.io/2026/03/09/WireGuard-VPN%20%E9%85%8D%E7%BD%AE%E4%B8%8E%E7%AE%A1%E7%90%86%E5%AE%9E%E6%88%98/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'WireGuard-VPN 配置与管理实战',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.1"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">体系所运维知识库</span></a><a class="nav-page-title" href="/"><span class="site-name">WireGuard-VPN 配置与管理实战</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div></div></nav><div id="post-info"><h1 class="post-title">WireGuard-VPN 配置与管理实战</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-03-09T03:00:00.000Z" title="发表于 2026-03-09 11:00:00">2026-03-09</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-03-09T03:17:57.172Z" title="更新于 2026-03-09 11:17:57">2026-03-09</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%BD%AF%E4%BB%B6%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E7%BB%B4%E7%AE%A1%E7%90%86/">软件部署与运维管理</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="WireGuard-VPN-配置与管理实战"><a href="#WireGuard-VPN-配置与管理实战" class="headerlink" title="WireGuard VPN 配置与管理实战"></a>WireGuard VPN 配置与管理实战</h1><h2 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h2><p>WireGuard 是一款现代化的 VPN 协议，以其简洁的代码库、高性能和易配置性著称。相比 OpenVPN 和 IPsec，WireGuard 具有以下优势：</p>
+<ul>
+<li><strong>代码简洁</strong>：核心代码仅约 4000 行，易于审计</li>
+<li><strong>性能优异</strong>：基于 UDP，支持多队列，吞吐量更高</li>
+<li><strong>配置简单</strong>：无需复杂的证书管理，使用公钥&#x2F;私钥对</li>
+<li><strong>连接快速</strong>：握手延迟低，重连速度快</li>
+</ul>
+<p>本文将在 Linux 服务器上部署 WireGuard VPN，实现安全的远程访问。</p>
+<h2 id="二、环境准备"><a href="#二、环境准备" class="headerlink" title="二、环境准备"></a>二、环境准备</h2><h3 id="2-1-系统要求"><a href="#2-1-系统要求" class="headerlink" title="2.1 系统要求"></a>2.1 系统要求</h3><ul>
+<li>Linux 内核 5.6+（WireGuard 已并入主线内核）</li>
+<li>或安装 wireguard-dkms 模块支持旧内核</li>
+<li>服务器具有公网 IP 地址</li>
+</ul>
+<h3 id="2-2-安装-WireGuard"><a href="#2-2-安装-WireGuard" class="headerlink" title="2.2 安装 WireGuard"></a>2.2 安装 WireGuard</h3><p><strong>Ubuntu&#x2F;Debian:</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> apt update</span><br><span class="line"><span class="built_in">sudo</span> apt install wireguard wireguard-tools</span><br></pre></td></tr></table></figure>
+
+<p><strong>CentOS&#x2F;RHEL:</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> yum install epel-release</span><br><span class="line"><span class="built_in">sudo</span> yum install kmod-wireguard wireguard-tools</span><br></pre></td></tr></table></figure>
+
+<p><strong>检查内核模块:</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> modprobe wireguard</span><br><span class="line">lsmod | grep wireguard</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、服务端配置"><a href="#三、服务端配置" class="headerlink" title="三、服务端配置"></a>三、服务端配置</h2><h3 id="3-1-生成密钥对"><a href="#3-1-生成密钥对" class="headerlink" title="3.1 生成密钥对"></a>3.1 生成密钥对</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> /etc/wireguard</span><br><span class="line"><span class="built_in">umask</span> 077</span><br><span class="line"></span><br><span class="line"><span class="comment"># 生成服务器私钥</span></span><br><span class="line">wg genkey | <span class="built_in">tee</span> server_private.key | wg pubkey &gt; server_public.key</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看密钥</span></span><br><span class="line"><span class="built_in">cat</span> server_private.key</span><br><span class="line"><span class="built_in">cat</span> server_public.key</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-配置服务器接口"><a href="#3-2-配置服务器接口" class="headerlink" title="3.2 配置服务器接口"></a>3.2 配置服务器接口</h3><p>创建配置文件 <code>/etc/wireguard/wg0.conf</code>:</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[Interface]</span></span><br><span class="line"><span class="comment"># 服务器内网 IP（VPN 网段）</span></span><br><span class="line"><span class="attr">Address</span> = <span class="number">10.0</span>.<span class="number">0.1</span>/<span class="number">24</span></span><br><span class="line"><span class="comment"># 监听端口</span></span><br><span class="line"><span class="attr">ListenPort</span> = <span class="number">51820</span></span><br><span class="line"><span class="comment"># 服务器私钥</span></span><br><span class="line"><span class="attr">PrivateKey</span> = &lt;server_private_key&gt;</span><br><span class="line"><span class="comment"># 可选：保存配置后自动启用</span></span><br><span class="line"><span class="attr">PostUp</span> = iptables -A FORWARD -i %i -j ACCEPT<span class="comment">; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE</span></span><br><span class="line"><span class="attr">PostDown</span> = iptables -D FORWARD -i %i -j ACCEPT<span class="comment">; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 客户端 1</span></span><br><span class="line"><span class="section">[Peer]</span></span><br><span class="line"><span class="attr">PublicKey</span> = &lt;client1_public_key&gt;</span><br><span class="line"><span class="comment"># 可选：限制客户端 IP</span></span><br><span class="line"><span class="attr">AllowedIPs</span> = <span class="number">10.0</span>.<span class="number">0.2</span>/<span class="number">32</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 客户端 2</span></span><br><span class="line"><span class="section">[Peer]</span></span><br><span class="line"><span class="attr">PublicKey</span> = &lt;client2_public_key&gt;</span><br><span class="line"><span class="attr">AllowedIPs</span> = <span class="number">10.0</span>.<span class="number">0.3</span>/<span class="number">32</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-启用-IP-转发"><a href="#3-3-启用-IP-转发" class="headerlink" title="3.3 启用 IP 转发"></a>3.3 启用 IP 转发</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 临时启用</span></span><br><span class="line"><span class="built_in">echo</span> 1 &gt; /proc/sys/net/ipv4/ip_forward</span><br><span class="line"></span><br><span class="line"><span class="comment"># 永久启用</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;net.ipv4.ip_forward = 1&quot;</span> &gt;&gt; /etc/sysctl.conf</span><br><span class="line">sysctl -p</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-配置防火墙"><a href="#3-4-配置防火墙" class="headerlink" title="3.4 配置防火墙"></a>3.4 配置防火墙</h3><p><strong>使用 iptables:</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 允许 WireGuard 端口</span></span><br><span class="line">iptables -A INPUT -p udp --dport 51820 -j ACCEPT</span><br><span class="line"></span><br><span class="line"><span class="comment"># 配置 NAT 转发</span></span><br><span class="line">iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE</span><br><span class="line"></span><br><span class="line"><span class="comment"># 保存规则（根据发行版）</span></span><br><span class="line">iptables-save &gt; /etc/iptables/rules.v4</span><br></pre></td></tr></table></figure>
+
+<p><strong>使用 firewalld (CentOS):</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">firewall-cmd --permanent --add-port=51820/udp</span><br><span class="line">firewall-cmd --permanent --add-masquerade</span><br><span class="line">firewall-cmd --reload</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-5-启动-WireGuard-服务"><a href="#3-5-启动-WireGuard-服务" class="headerlink" title="3.5 启动 WireGuard 服务"></a>3.5 启动 WireGuard 服务</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启动服务</span></span><br><span class="line">wg-quick up wg0</span><br><span class="line"></span><br><span class="line"><span class="comment"># 设置开机自启</span></span><br><span class="line">systemctl <span class="built_in">enable</span> wg-quick@wg0</span><br><span class="line">systemctl start wg-quick@wg0</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查状态</span></span><br><span class="line">systemctl status wg-quick@wg0</span><br><span class="line">wg show</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、客户端配置"><a href="#四、客户端配置" class="headerlink" title="四、客户端配置"></a>四、客户端配置</h2><h3 id="4-1-生成客户端密钥"><a href="#4-1-生成客户端密钥" class="headerlink" title="4.1 生成客户端密钥"></a>4.1 生成客户端密钥</h3><p>在客户端机器上：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> /etc/wireguard</span><br><span class="line"><span class="built_in">umask</span> 077</span><br><span class="line">wg genkey | <span class="built_in">tee</span> client_private.key | wg pubkey &gt; client_public.key</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-配置客户端"><a href="#4-2-配置客户端" class="headerlink" title="4.2 配置客户端"></a>4.2 配置客户端</h3><p>创建 <code>/etc/wireguard/wg0.conf</code>:</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[Interface]</span></span><br><span class="line"><span class="comment"># 客户端 VPN IP</span></span><br><span class="line"><span class="attr">Address</span> = <span class="number">10.0</span>.<span class="number">0.2</span>/<span class="number">24</span></span><br><span class="line"><span class="comment"># 客户端私钥</span></span><br><span class="line"><span class="attr">PrivateKey</span> = &lt;client_private_key&gt;</span><br><span class="line"><span class="comment"># DNS 服务器（可选，使用内网 DNS 或公共 DNS）</span></span><br><span class="line"><span class="attr">DNS</span> = <span class="number">8.8</span>.<span class="number">8.8</span>,<span class="number">1.1</span>.<span class="number">1.1</span></span><br><span class="line"></span><br><span class="line"><span class="section">[Peer]</span></span><br><span class="line"><span class="comment"># 服务器公钥</span></span><br><span class="line"><span class="attr">PublicKey</span> = &lt;server_public_key&gt;</span><br><span class="line"><span class="comment"># 服务器公网 IP 和端口</span></span><br><span class="line"><span class="attr">Endpoint</span> = &lt;server_public_ip&gt;:<span class="number">51820</span></span><br><span class="line"><span class="comment"># 通过 VPN 访问的网段（0.0.0.0/0 表示所有流量走 VPN）</span></span><br><span class="line"><span class="attr">AllowedIPs</span> = <span class="number">0.0</span>.<span class="number">0.0</span>/<span class="number">0</span></span><br><span class="line"><span class="comment"># 保持连接（NAT 穿透）</span></span><br><span class="line"><span class="attr">PersistentKeepalive</span> = <span class="number">25</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-启动客户端"><a href="#4-3-启动客户端" class="headerlink" title="4.3 启动客户端"></a>4.3 启动客户端</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Linux</span></span><br><span class="line">wg-quick up wg0</span><br><span class="line"></span><br><span class="line"><span class="comment"># macOS (使用 Homebrew)</span></span><br><span class="line">brew install wireguard-tools</span><br><span class="line">wg-quick up wg0</span><br><span class="line"></span><br><span class="line"><span class="comment"># Windows</span></span><br><span class="line"><span class="comment"># 下载官方客户端：https://www.wireguard.com/install/</span></span><br><span class="line"><span class="comment"># 导入配置文件后启用</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="五、高级配置"><a href="#五、高级配置" class="headerlink" title="五、高级配置"></a>五、高级配置</h2><h3 id="5-1-多客户端管理"><a href="#5-1-多客户端管理" class="headerlink" title="5.1 多客户端管理"></a>5.1 多客户端管理</h3><p>为每个客户端生成独立密钥对，并在服务端配置中添加对应的 <code>[Peer]</code> 段：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 批量生成 10 个客户端密钥</span></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> &#123;1..10&#125;; <span class="keyword">do</span></span><br><span class="line">    wg genkey | <span class="built_in">tee</span> client<span class="variable">$&#123;i&#125;</span>_private.key | wg pubkey &gt; client<span class="variable">$&#123;i&#125;</span>_public.key</span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-路由配置"><a href="#5-2-路由配置" class="headerlink" title="5.2 路由配置"></a>5.2 路由配置</h3><p><strong>仅特定网段走 VPN:</strong></p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 客户端配置</span></span><br><span class="line"><span class="attr">AllowedIPs</span> = <span class="number">10.0</span>.<span class="number">0.0</span>/<span class="number">24</span>, <span class="number">192.168</span>.<span class="number">1.0</span>/<span class="number">24</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>分流配置（国内直连，国外走 VPN）:</strong></p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 仅默认路由走 VPN</span></span><br><span class="line"><span class="attr">AllowedIPs</span> = <span class="number">0.0</span>.<span class="number">0.0</span>/<span class="number">0</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 配合路由表实现分流（高级）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-监控与日志"><a href="#5-3-监控与日志" class="headerlink" title="5.3 监控与日志"></a>5.3 监控与日志</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看连接状态</span></span><br><span class="line">wg show wg0</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看实时流量</span></span><br><span class="line">watch -n 1 <span class="string">&#x27;wg show wg0 transfer&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看系统日志</span></span><br><span class="line">journalctl -u wg-quick@wg0 -f</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-4-配置备份"><a href="#5-4-配置备份" class="headerlink" title="5.4 配置备份"></a>5.4 配置备份</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 备份配置</span></span><br><span class="line"><span class="built_in">cp</span> -r /etc/wireguard /backup/wireguard-$(<span class="built_in">date</span> +%Y%m%d)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 恢复配置</span></span><br><span class="line"><span class="built_in">cp</span> -r /backup/wireguard-20260309 /etc/wireguard</span><br><span class="line">wg-quick down wg0</span><br><span class="line">wg-quick up wg0</span><br></pre></td></tr></table></figure>
+
+<h2 id="六、故障排查"><a href="#六、故障排查" class="headerlink" title="六、故障排查"></a>六、故障排查</h2><h3 id="6-1-常见问题"><a href="#6-1-常见问题" class="headerlink" title="6.1 常见问题"></a>6.1 常见问题</h3><p><strong>无法连接:</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 检查服务端监听</span></span><br><span class="line">ss -ulnp | grep 51820</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查防火墙</span></span><br><span class="line">iptables -L -n -v | grep 51820</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查路由</span></span><br><span class="line">ip route show</span><br></pre></td></tr></table></figure>
+
+<p><strong>连接但无法上网:</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 检查 IP 转发</span></span><br><span class="line"><span class="built_in">cat</span> /proc/sys/net/ipv4/ip_forward</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查 NAT 规则</span></span><br><span class="line">iptables -t nat -L -n -v</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查客户端 DNS</span></span><br><span class="line"><span class="built_in">cat</span> /etc/resolv.conf</span><br></pre></td></tr></table></figure>
+
+<p><strong>密钥不匹配:</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 重新生成并交换公钥</span></span><br><span class="line">wg genkey | <span class="built_in">tee</span> private.key | wg pubkey &gt; public.key</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-性能优化"><a href="#6-2-性能优化" class="headerlink" title="6.2 性能优化"></a>6.2 性能优化</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 调整 MTU（避免分片）</span></span><br><span class="line"><span class="comment"># 在 Interface 段添加</span></span><br><span class="line">MTU = 1420</span><br><span class="line"></span><br><span class="line"><span class="comment"># 使用更快的加密算法（WireGuard 默认已优化）</span></span><br><span class="line"><span class="comment"># 确保 CPU 支持 AES-NI</span></span><br><span class="line"><span class="built_in">cat</span> /proc/cpuinfo | grep aes</span><br></pre></td></tr></table></figure>
+
+<h2 id="七、安全建议"><a href="#七、安全建议" class="headerlink" title="七、安全建议"></a>七、安全建议</h2><ol>
+<li><strong>定期轮换密钥</strong>：建议每 3-6 个月更换一次密钥对</li>
+<li><strong>限制 AllowedIPs</strong>：仅允许必要的 IP 地址</li>
+<li><strong>使用防火墙</strong>：仅开放必要端口</li>
+<li><strong>监控连接</strong>：定期检查异常连接</li>
+<li><strong>日志审计</strong>：启用并定期审查日志</li>
+</ol>
+<h2 id="八、总结"><a href="#八、总结" class="headerlink" title="八、总结"></a>八、总结</h2><p>WireGuard 以其简洁高效的特点，成为现代 VPN 部署的首选方案。通过本文的配置指南，您可以快速搭建安全可靠的 VPN 服务，实现远程访问、站点互联等场景。</p>
+<p><strong>关键要点:</strong></p>
+<ul>
+<li>密钥管理是安全的核心</li>
+<li>防火墙和 NAT 配置必不可少</li>
+<li>合理设置 AllowedIPs 实现流量控制</li>
+<li>定期维护和监控确保服务稳定</li>
+</ul>
+<hr>
+<p><strong>参考文档:</strong></p>
+<ul>
+<li>WireGuard 官方文档：<a target="_blank" rel="noopener" href="https://www.wireguard.com/">https://www.wireguard.com/</a></li>
+<li>Linux 内核文档：<a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/latest/networking/wireguard.html">https://www.kernel.org/doc/html/latest/networking/wireguard.html</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io">PCLTXSYWZ</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io/2026/03/09/WireGuard-VPN%20%E9%85%8D%E7%BD%AE%E4%B8%8E%E7%AE%A1%E7%90%86%E5%AE%9E%E6%88%98/">https://pcltxs.github.io/2026/03/09/WireGuard-VPN%20%E9%85%8D%E7%BD%AE%E4%B8%8E%E7%AE%A1%E7%90%86%E5%AE%9E%E6%88%98/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://pcltxs.github.io" target="_blank">体系所运维知识库</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/VPN/">VPN</a><a class="post-meta__tags" href="/tags/%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8/">网络安全</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/03/09/PostgreSQL%20%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97/" title="PostgreSQL 高可用集群部署指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">PostgreSQL 高可用集群部署指南</div></div><div class="info-2"><div class="info-item-1">PostgreSQL 高可用集群部署指南一、概述PostgreSQL 是一款功能强大的开源关系型数据库，广泛应用于企业级应用。为保障数据库服务的高可用性，本文介绍基于 Patroni + etcd + HAProxy 的高可用集群部署方案。 1.1 架构组件   组件 作用    PostgreSQL 数据库核心   Patroni 高可用管理，自动故障切换   etcd 分布式键值存储，保存集群状态   HAProxy 负载均衡，读写分离   Keepalived VIP 漂移，确保入口高可用   1.2 集群拓扑123456789101112131415161718                 ┌─────────────┐                 │   HAProxy   │                 │  (读写分离)  │                 └──────┬──────┘                        │ VIP     ┌──────────────────┼──────────────────┐     │     ...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">PCLTXSYWZ</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">48</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">37</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">7</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/pcltxs"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">广泛收集运维相关文档资料,欢迎大家投稿分享,文档请发送至邮箱tuwj@pcl.ac.cn。网站建设相关问题和建议请联系邮箱tuwj@pcl.ac.cn。体系所办公区设备分布情况请访问http://device.opendns4.cn,工单系统请访问http://ticket.opendns4.cn,体系所公有云资源使用情况请访问http://mcloud.dns4test.com/</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#WireGuard-VPN-%E9%85%8D%E7%BD%AE%E4%B8%8E%E7%AE%A1%E7%90%86%E5%AE%9E%E6%88%98"><span class="toc-number">1.</span> <span class="toc-text">WireGuard VPN 配置与管理实战</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">一、概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E7%8E%AF%E5%A2%83%E5%87%86%E5%A4%87"><span class="toc-number">1.2.</span> <span class="toc-text">二、环境准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E7%B3%BB%E7%BB%9F%E8%A6%81%E6%B1%82"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 系统要求</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E5%AE%89%E8%A3%85-WireGuard"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 安装 WireGuard</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%9C%8D%E5%8A%A1%E7%AB%AF%E9%85%8D%E7%BD%AE"><span class="toc-number">1.3.</span> <span class="toc-text">三、服务端配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E7%94%9F%E6%88%90%E5%AF%86%E9%92%A5%E5%AF%B9"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 生成密钥对</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E9%85%8D%E7%BD%AE%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%8E%A5%E5%8F%A3"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 配置服务器接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%90%AF%E7%94%A8-IP-%E8%BD%AC%E5%8F%91"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 启用 IP 转发</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E9%85%8D%E7%BD%AE%E9%98%B2%E7%81%AB%E5%A2%99"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 配置防火墙</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E5%90%AF%E5%8A%A8-WireGuard-%E6%9C%8D%E5%8A%A1"><span class="toc-number">1.3.5.</span> <span class="toc-text">3.5 启动 WireGuard 服务</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%AE%A2%E6%88%B7%E7%AB%AF%E9%85%8D%E7%BD%AE"><span class="toc-number">1.4.</span> <span class="toc-text">四、客户端配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E7%94%9F%E6%88%90%E5%AE%A2%E6%88%B7%E7%AB%AF%E5%AF%86%E9%92%A5"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 生成客户端密钥</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E9%85%8D%E7%BD%AE%E5%AE%A2%E6%88%B7%E7%AB%AF"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 配置客户端</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E5%90%AF%E5%8A%A8%E5%AE%A2%E6%88%B7%E7%AB%AF"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 启动客户端</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E9%AB%98%E7%BA%A7%E9%85%8D%E7%BD%AE"><span class="toc-number">1.5.</span> <span class="toc-text">五、高级配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E5%A4%9A%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%AE%A1%E7%90%86"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 多客户端管理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E8%B7%AF%E7%94%B1%E9%85%8D%E7%BD%AE"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 路由配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E7%9B%91%E6%8E%A7%E4%B8%8E%E6%97%A5%E5%BF%97"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 监控与日志</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E9%85%8D%E7%BD%AE%E5%A4%87%E4%BB%BD"><span class="toc-number">1.5.4.</span> <span class="toc-text">5.4 配置备份</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5"><span class="toc-number">1.6.</span> <span class="toc-text">六、故障排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 常见问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 性能优化</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E5%AE%89%E5%85%A8%E5%BB%BA%E8%AE%AE"><span class="toc-number">1.7.</span> <span class="toc-text">七、安全建议</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">1.8.</span> <span class="toc-text">八、总结</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/09/PostgreSQL%20%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97/" title="PostgreSQL 高可用集群部署指南">PostgreSQL 高可用集群部署指南</a><time datetime="2026-03-09T03:00:00.000Z" title="发表于 2026-03-09 11:00:00">2026-03-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/09/WireGuard-VPN%20%E9%85%8D%E7%BD%AE%E4%B8%8E%E7%AE%A1%E7%90%86%E5%AE%9E%E6%88%98/" title="WireGuard-VPN 配置与管理实战">WireGuard-VPN 配置与管理实战</a><time datetime="2026-03-09T03:00:00.000Z" title="发表于 2026-03-09 11:00:00">2026-03-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/09/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB%20-2026-03-09/" title="每日科技要闻 -2026-03-09">每日科技要闻 -2026-03-09</a><time datetime="2026-03-09T00:00:00.000Z" title="发表于 2026-03-09 08:00:00">2026-03-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/08/Linux-TCP%20%E8%BF%9E%E6%8E%A5%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/" title="Linux-TCP 连接问题排查指南">Linux-TCP 连接问题排查指南</a><time datetime="2026-03-08T08:00:00.000Z" title="发表于 2026-03-08 16:00:00">2026-03-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/08/%E7%A1%AC%E7%9B%98%20SMART%20%E6%A3%80%E6%B5%8B%E4%B8%8E%E9%A2%84%E8%AD%A6%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97/" title="硬盘 SMART 检测与预警配置指南">硬盘 SMART 检测与预警配置指南</a><time datetime="2026-03-08T08:00:00.000Z" title="发表于 2026-03-08 16:00:00">2026-03-08</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By PCLTXSYWZ</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.4</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>
