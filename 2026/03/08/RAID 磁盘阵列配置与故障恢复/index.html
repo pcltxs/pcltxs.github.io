@@ -1,0 +1,303 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>RAID 磁盘阵列配置与故障恢复 | 体系所运维知识库</title><meta name="author" content="PCLTXSYWZ"><meta name="copyright" content="PCLTXSYWZ"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="RAID 磁盘阵列配置与故障恢复一、RAID 级别选择指南1.1 常见 RAID 级别对比   RAID 级别 最少磁盘数 可用容量 容错能力 读性能 写性能 适用场景    RAID 0 2 100% 无 最优 最优 临时数据、缓存   RAID 1 2 50% 1 块磁盘 优 中 系统盘、关键数据   RAID 5 3 (N-1)&#x2F;N 1 块磁盘 优 中 通用文件服务器   RAID">
+<meta property="og:type" content="article">
+<meta property="og:title" content="RAID 磁盘阵列配置与故障恢复">
+<meta property="og:url" content="https://pcltxs.github.io/2026/03/08/RAID%20%E7%A3%81%E7%9B%98%E9%98%B5%E5%88%97%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%95%85%E9%9A%9C%E6%81%A2%E5%A4%8D/index.html">
+<meta property="og:site_name" content="体系所运维知识库">
+<meta property="og:description" content="RAID 磁盘阵列配置与故障恢复一、RAID 级别选择指南1.1 常见 RAID 级别对比   RAID 级别 最少磁盘数 可用容量 容错能力 读性能 写性能 适用场景    RAID 0 2 100% 无 最优 最优 临时数据、缓存   RAID 1 2 50% 1 块磁盘 优 中 系统盘、关键数据   RAID 5 3 (N-1)&#x2F;N 1 块磁盘 优 中 通用文件服务器   RAID">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://pcltxs.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-03-08T03:00:00.000Z">
+<meta property="article:modified_time" content="2026-03-09T00:53:37.405Z">
+<meta property="article:author" content="PCLTXSYWZ">
+<meta property="article:tag" content="RAID">
+<meta property="article:tag" content="磁盘阵列">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pcltxs.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "RAID 磁盘阵列配置与故障恢复",
+  "url": "https://pcltxs.github.io/2026/03/08/RAID%20%E7%A3%81%E7%9B%98%E9%98%B5%E5%88%97%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%95%85%E9%9A%9C%E6%81%A2%E5%A4%8D/",
+  "image": "https://pcltxs.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-03-08T03:00:00.000Z",
+  "dateModified": "2026-03-09T00:53:37.405Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "PCLTXSYWZ",
+      "url": "https://pcltxs.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://pcltxs.github.io/2026/03/08/RAID%20%E7%A3%81%E7%9B%98%E9%98%B5%E5%88%97%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%95%85%E9%9A%9C%E6%81%A2%E5%A4%8D/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'RAID 磁盘阵列配置与故障恢复',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.1"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">体系所运维知识库</span></a><a class="nav-page-title" href="/"><span class="site-name">RAID 磁盘阵列配置与故障恢复</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div></div></nav><div id="post-info"><h1 class="post-title">RAID 磁盘阵列配置与故障恢复</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-03-08T03:00:00.000Z" title="发表于 2026-03-08 11:00:00">2026-03-08</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-03-09T00:53:37.405Z" title="更新于 2026-03-09 08:53:37">2026-03-09</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%A1%AC%E4%BB%B6%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E7%BB%B4%E7%AE%A1%E7%90%86/">硬件部署与运维管理</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="RAID-磁盘阵列配置与故障恢复"><a href="#RAID-磁盘阵列配置与故障恢复" class="headerlink" title="RAID 磁盘阵列配置与故障恢复"></a>RAID 磁盘阵列配置与故障恢复</h1><h2 id="一、RAID-级别选择指南"><a href="#一、RAID-级别选择指南" class="headerlink" title="一、RAID 级别选择指南"></a>一、RAID 级别选择指南</h2><h3 id="1-1-常见-RAID-级别对比"><a href="#1-1-常见-RAID-级别对比" class="headerlink" title="1.1 常见 RAID 级别对比"></a>1.1 常见 RAID 级别对比</h3><table>
+<thead>
+<tr>
+<th>RAID 级别</th>
+<th>最少磁盘数</th>
+<th>可用容量</th>
+<th>容错能力</th>
+<th>读性能</th>
+<th>写性能</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>RAID 0</td>
+<td>2</td>
+<td>100%</td>
+<td>无</td>
+<td>最优</td>
+<td>最优</td>
+<td>临时数据、缓存</td>
+</tr>
+<tr>
+<td>RAID 1</td>
+<td>2</td>
+<td>50%</td>
+<td>1 块磁盘</td>
+<td>优</td>
+<td>中</td>
+<td>系统盘、关键数据</td>
+</tr>
+<tr>
+<td>RAID 5</td>
+<td>3</td>
+<td>(N-1)&#x2F;N</td>
+<td>1 块磁盘</td>
+<td>优</td>
+<td>中</td>
+<td>通用文件服务器</td>
+</tr>
+<tr>
+<td>RAID 6</td>
+<td>4</td>
+<td>(N-2)&#x2F;N</td>
+<td>2 块磁盘</td>
+<td>优</td>
+<td>较差</td>
+<td>大容量存储、归档</td>
+</tr>
+<tr>
+<td>RAID 10</td>
+<td>4</td>
+<td>50%</td>
+<td>每组 1 块</td>
+<td>最优</td>
+<td>优</td>
+<td>数据库、高 IOPS 场景</td>
+</tr>
+</tbody></table>
+<h3 id="1-2-选型建议"><a href="#1-2-选型建议" class="headerlink" title="1.2 选型建议"></a>1.2 选型建议</h3><ul>
+<li><strong>数据库服务器</strong>：优先 RAID 10，兼顾性能与冗余</li>
+<li><strong>文件服务器</strong>：RAID 5 或 RAID 6，平衡容量与成本</li>
+<li><strong>系统启动盘</strong>：RAID 1，简单可靠</li>
+<li><strong>备份存储</strong>：RAID 6，允许同时损坏 2 块磁盘</li>
+</ul>
+<h2 id="二、软件-RAID-配置（mdadm）"><a href="#二、软件-RAID-配置（mdadm）" class="headerlink" title="二、软件 RAID 配置（mdadm）"></a>二、软件 RAID 配置（mdadm）</h2><h3 id="2-1-安装-mdadm"><a href="#2-1-安装-mdadm" class="headerlink" title="2.1 安装 mdadm"></a>2.1 安装 mdadm</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># CentOS/RHEL</span></span><br><span class="line">yum install -y mdadm</span><br><span class="line"></span><br><span class="line"><span class="comment"># Ubuntu/Debian</span></span><br><span class="line">apt-get install -y mdadm</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-创建-RAID-1-阵列"><a href="#2-2-创建-RAID-1-阵列" class="headerlink" title="2.2 创建 RAID 1 阵列"></a>2.2 创建 RAID 1 阵列</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看可用磁盘</span></span><br><span class="line">lsblk</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建 RAID 1（镜像）</span></span><br><span class="line">mdadm --create --verbose /dev/md0 \</span><br><span class="line">  --level=1 \</span><br><span class="line">  --raid-devices=2 \</span><br><span class="line">  /dev/sdb /dev/sdc</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看创建进度</span></span><br><span class="line"><span class="built_in">cat</span> /proc/mdstat</span><br><span class="line">mdadm --detail /dev/md0</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-创建-RAID-5-阵列"><a href="#2-3-创建-RAID-5-阵列" class="headerlink" title="2.3 创建 RAID 5 阵列"></a>2.3 创建 RAID 5 阵列</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建 RAID 5（至少 3 块磁盘）</span></span><br><span class="line">mdadm --create --verbose /dev/md0 \</span><br><span class="line">  --level=5 \</span><br><span class="line">  --raid-devices=3 \</span><br><span class="line">  /dev/sdb /dev/sdc /dev/sdd</span><br><span class="line"></span><br><span class="line"><span class="comment"># 监控重建进度</span></span><br><span class="line">watch <span class="built_in">cat</span> /proc/mdstat</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-4-创建文件系统并挂载"><a href="#2-4-创建文件系统并挂载" class="headerlink" title="2.4 创建文件系统并挂载"></a>2.4 创建文件系统并挂载</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建 ext4 文件系统</span></span><br><span class="line">mkfs.ext4 /dev/md0</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建挂载点</span></span><br><span class="line"><span class="built_in">mkdir</span> -p /data/raid</span><br><span class="line"></span><br><span class="line"><span class="comment"># 获取 UUID</span></span><br><span class="line">blkid /dev/md0</span><br><span class="line"></span><br><span class="line"><span class="comment"># 写入 fstab（使用 UUID）</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;UUID=&lt;your-uuid&gt; /data/raid ext4 defaults,noatime 0 0&quot;</span> &gt;&gt; /etc/fstab</span><br><span class="line"></span><br><span class="line"><span class="comment"># 挂载</span></span><br><span class="line">mount -a</span><br><span class="line"><span class="built_in">df</span> -h /data/raid</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-5-保存-RAID-配置"><a href="#2-5-保存-RAID-配置" class="headerlink" title="2.5 保存 RAID 配置"></a>2.5 保存 RAID 配置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 备份当前配置</span></span><br><span class="line">mdadm --detail --scan &gt;&gt; /etc/mdadm/mdadm.conf</span><br><span class="line"></span><br><span class="line"><span class="comment"># 或手动编辑</span></span><br><span class="line">mdadm --detail --scan &gt; /etc/mdadm.conf</span><br><span class="line"></span><br><span class="line"><span class="comment"># 更新 initramfs（确保启动时可识别）</span></span><br><span class="line">update-initramfs -u  <span class="comment"># Ubuntu/Debian</span></span><br><span class="line">dracut -f            <span class="comment"># CentOS/RHEL</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="三、硬件-RAID-配置"><a href="#三、硬件-RAID-配置" class="headerlink" title="三、硬件 RAID 配置"></a>三、硬件 RAID 配置</h2><h3 id="3-1-进入-RAID-配置界面"><a href="#3-1-进入-RAID-配置界面" class="headerlink" title="3.1 进入 RAID 配置界面"></a>3.1 进入 RAID 配置界面</h3><ul>
+<li><strong>开机自检时</strong>：根据 RAID 卡提示按键（常见：Ctrl+R、Ctrl+H、F10）</li>
+<li><strong>IPMI&#x2F;BMC</strong>：通过 Web 界面远程配置</li>
+<li><strong>操作系统工具</strong>：<code>MegaCli</code>、<code>storcli</code>（LSI&#x2F;Broadcom）</li>
+</ul>
+<h3 id="3-2-使用-storcli-管理-LSI-RAID"><a href="#3-2-使用-storcli-管理-LSI-RAID" class="headerlink" title="3.2 使用 storcli 管理 LSI RAID"></a>3.2 使用 storcli 管理 LSI RAID</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 安装 storcli</span></span><br><span class="line">yum install -y storcli</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看 RAID 卡信息</span></span><br><span class="line">storcli /c0 show</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看虚拟磁盘状态</span></span><br><span class="line">storcli /c0/vall show</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看物理磁盘状态</span></span><br><span class="line">storcli /c0/eall/sall show</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建 RAID 1</span></span><br><span class="line">storcli /c0 add vd r1 drives=eall:s0,eall:s1</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建 RAID 5</span></span><br><span class="line">storcli /c0 add vd r5 drives=eall:s0,eall:s1,eall:s2</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看重建进度</span></span><br><span class="line">storcli /c0/vall show rebuild</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、RAID-故障处理"><a href="#四、RAID-故障处理" class="headerlink" title="四、RAID 故障处理"></a>四、RAID 故障处理</h2><h3 id="4-1-磁盘故障识别"><a href="#4-1-磁盘故障识别" class="headerlink" title="4.1 磁盘故障识别"></a>4.1 磁盘故障识别</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看 RAID 状态</span></span><br><span class="line"><span class="built_in">cat</span> /proc/mdstat</span><br><span class="line"></span><br><span class="line"><span class="comment"># 正常状态示例</span></span><br><span class="line">Personalities : [raid1]</span><br><span class="line">md0 : active raid1 sdc1[1] sdb1[0]</span><br><span class="line">      488244664 blocks super 1.2 [2/2] [UU]</span><br><span class="line"></span><br><span class="line"><span class="comment"># 故障状态示例（[U_] 表示一块磁盘失效）</span></span><br><span class="line">md0 : active raid1 sdc1[1] sdb1[0](F)</span><br><span class="line">      488244664 blocks super 1.2 [2/1] [U_]</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-标记磁盘失效并移除"><a href="#4-2-标记磁盘失效并移除" class="headerlink" title="4.2 标记磁盘失效并移除"></a>4.2 标记磁盘失效并移除</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 标记磁盘为失效</span></span><br><span class="line">mdadm /dev/md0 --fail /dev/sdb1</span><br><span class="line"></span><br><span class="line"><span class="comment"># 从阵列中移除</span></span><br><span class="line">mdadm /dev/md0 --remove /dev/sdb1</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-更换磁盘并重建"><a href="#4-3-更换磁盘并重建" class="headerlink" title="4.3 更换磁盘并重建"></a>4.3 更换磁盘并重建</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 物理更换磁盘后，将新磁盘加入阵列</span></span><br><span class="line">mdadm /dev/md0 --add /dev/sdb1</span><br><span class="line"></span><br><span class="line"><span class="comment"># 监控重建进度</span></span><br><span class="line">watch <span class="built_in">cat</span> /proc/mdstat</span><br><span class="line"></span><br><span class="line"><span class="comment"># 重建完成后验证</span></span><br><span class="line">mdadm --detail /dev/md0</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-4-常见故障代码"><a href="#4-4-常见故障代码" class="headerlink" title="4.4 常见故障代码"></a>4.4 常见故障代码</h3><table>
+<thead>
+<tr>
+<th>状态标识</th>
+<th>含义</th>
+<th>处理措施</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>[UU]</td>
+<td>健康</td>
+<td>无需操作</td>
+</tr>
+<tr>
+<td>[U_]</td>
+<td>一块磁盘失效</td>
+<td>尽快更换</td>
+</tr>
+<tr>
+<td>[_U]</td>
+<td>一块磁盘失效</td>
+<td>尽快更换</td>
+</tr>
+<tr>
+<td>[__]</td>
+<td>阵列崩溃</td>
+<td>尝试数据恢复</td>
+</tr>
+<tr>
+<td>degraded</td>
+<td>降级运行</td>
+<td>避免重启，立即更换</td>
+</tr>
+</tbody></table>
+<h2 id="五、日常维护与监控"><a href="#五、日常维护与监控" class="headerlink" title="五、日常维护与监控"></a>五、日常维护与监控</h2><h3 id="5-1-配置邮件告警"><a href="#5-1-配置邮件告警" class="headerlink" title="5.1 配置邮件告警"></a>5.1 配置邮件告警</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 编辑 mdadm 配置</span></span><br><span class="line">vim /etc/mdadm/mdadm.conf</span><br><span class="line"></span><br><span class="line"><span class="comment"># 添加邮件通知</span></span><br><span class="line">MAILADDR admin@example.com</span><br><span class="line">MAILFROM raid-monitor@example.com</span><br><span class="line"></span><br><span class="line"><span class="comment"># 重启 mdadm 监控服务</span></span><br><span class="line">systemctl restart mdmonitor</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-定期检查脚本"><a href="#5-2-定期检查脚本" class="headerlink" title="5.2 定期检查脚本"></a>5.2 定期检查脚本</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"><span class="comment"># /usr/local/bin/raid-check.sh</span></span><br><span class="line"></span><br><span class="line">MD_STATUS=$(<span class="built_in">cat</span> /proc/mdstat | grep -E <span class="string">&quot;md[0-9]+&quot;</span> | grep -v <span class="string">&quot;unused&quot;</span>)</span><br><span class="line"><span class="keyword">if</span> <span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$MD_STATUS</span>&quot;</span> | grep -q <span class="string">&quot;_\|degraded&quot;</span>; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;RAID 阵列异常！&quot;</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$MD_STATUS</span>&quot;</span></span><br><span class="line">    <span class="built_in">exit</span> 1</span><br><span class="line"><span class="keyword">fi</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;RAID 阵列状态正常&quot;</span></span><br><span class="line"><span class="built_in">exit</span> 0</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-添加-cron-定时检查"><a href="#5-3-添加-cron-定时检查" class="headerlink" title="5.3 添加 cron 定时检查"></a>5.3 添加 cron 定时检查</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 每天上午 9 点检查</span></span><br><span class="line">0 9 * * * /usr/local/bin/raid-check.sh</span><br></pre></td></tr></table></figure>
+
+<h2 id="六、最佳实践总结"><a href="#六、最佳实践总结" class="headerlink" title="六、最佳实践总结"></a>六、最佳实践总结</h2><ol>
+<li><strong>定期巡检</strong>：每周检查 RAID 状态，关注 SMART 信息</li>
+<li><strong>备件储备</strong>：保持 1-2 块同型号磁盘作为备件</li>
+<li><strong>监控告警</strong>：配置邮件&#x2F;短信告警，故障第一时间通知</li>
+<li><strong>数据备份</strong>：RAID 不是备份，重要数据仍需异地备份</li>
+<li><strong>重建优先</strong>：故障磁盘尽快更换，避免第二块磁盘故障导致数据丢失</li>
+<li><strong>文档记录</strong>：记录 RAID 配置、磁盘序列号、更换历史</li>
+</ol>
+<h2 id="七、参考资料"><a href="#七、参考资料" class="headerlink" title="七、参考资料"></a>七、参考资料</h2><ul>
+<li>mdadm 官方文档：<a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man8/mdadm.8.html">https://man7.org/linux/man-pages/man8/mdadm.8.html</a></li>
+<li>LSI storcli 用户指南</li>
+<li>《Linux 磁盘管理权威指南》</li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io">PCLTXSYWZ</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io/2026/03/08/RAID%20%E7%A3%81%E7%9B%98%E9%98%B5%E5%88%97%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%95%85%E9%9A%9C%E6%81%A2%E5%A4%8D/">https://pcltxs.github.io/2026/03/08/RAID%20%E7%A3%81%E7%9B%98%E9%98%B5%E5%88%97%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%95%85%E9%9A%9C%E6%81%A2%E5%A4%8D/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://pcltxs.github.io" target="_blank">体系所运维知识库</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/RAID/">RAID</a><a class="post-meta__tags" href="/tags/%E7%A3%81%E7%9B%98%E9%98%B5%E5%88%97/">磁盘阵列</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/03/08/Linux-TCP%20%E8%BF%9E%E6%8E%A5%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/" title="Linux-TCP 连接问题排查指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Linux-TCP 连接问题排查指南</div></div><div class="info-2"><div class="info-item-1">Linux TCP 连接问题排查指南一、问题现象TCP 连接问题通常表现为：  客户端连接超时或连接被拒绝 连接建立后数据传输缓慢或中断 大量连接处于 TIME_WAIT、CLOSE_WAIT 状态 服务端无法接受新连接  二、排查工具2.1 查看 TCP 连接状态12345678# 查看所有 TCP 连接ss -tanp# 统计各状态连接数ss -tan | awk &#x27;&#123;print $1&#125;&#x27; | sort | uniq -c# 查看特定端口的连接ss -tan | grep :80  2.2 常用连接状态说明   状态 含义 可能原因    ESTABLISHED 连接已建立 正常状态   SYN_SENT 已发送 SYN，等待响应 网络不通或对方未响应   SYN_RECV 收到 SYN，已回复 SYN-ACK 等待客户端 ACK   TIME_WAIT 主动关闭方等待 2MSL 正常关闭流程   CLOSE_WAIT 被动关闭方等待应用关闭 应用未调用 close()   FIN_WAIT1&#x2F;2 等待关闭确认 正常关闭流程 ...</div></div></div></a><a class="pagination-related" href="/2026/03/08/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-03-08/" title="每日科技要闻-2026-03-08"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">每日科技要闻-2026-03-08</div></div><div class="info-2"><div class="info-item-1">每日科技要闻 2026 年 3 月 8 日 精选昨日全球最热 20 条科技新闻   🔥 人工智能与大模型1. OpenAI 推迟 ChatGPT”成人模式”上线OpenAI 发言人确认，原定于本季度推出的 ChatGPT 成人模式将延期。公司表示将优先专注于智能提升、个性化改进和更主动的用户体验。 2. OpenAI 发布 Codex 安全研究预览版OpenAI 推出专注于识别和修复应用安全问题的 AI 代理 Codex Security，同时宣布 Codex 开源基金将为开源开发者提供为期六个月的 ChatGPT Pro 订阅。 3. 研究显示：使用 AI 的开发者工作时间更长《科学美国人》报道，新研究发现使用 AI 辅助编程的开发者反而工作时间更长，引发对 AI 生产力工具实际效果的讨论。 4. Andrej Karpathy 开源 AutoResearch 项目前特斯拉 AI 总监 Karpathy 在 GitHub 发布 AutoResearch，一个能在单 GPU 上自动进行纳米聊天训练的 AI 研究代理项目。 5. 加州社区学院斥资 50 万美元购买效果不佳的 AI...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">PCLTXSYWZ</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">46</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">33</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">7</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/pcltxs"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">广泛收集运维相关文档资料,欢迎大家投稿分享,文档请发送至邮箱tuwj@pcl.ac.cn。网站建设相关问题和建议请联系邮箱tuwj@pcl.ac.cn。体系所办公区设备分布情况请访问http://device.opendns4.cn,工单系统请访问http://ticket.opendns4.cn,体系所公有云资源使用情况请访问http://mcloud.dns4test.com/</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#RAID-%E7%A3%81%E7%9B%98%E9%98%B5%E5%88%97%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%95%85%E9%9A%9C%E6%81%A2%E5%A4%8D"><span class="toc-number">1.</span> <span class="toc-text">RAID 磁盘阵列配置与故障恢复</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81RAID-%E7%BA%A7%E5%88%AB%E9%80%89%E6%8B%A9%E6%8C%87%E5%8D%97"><span class="toc-number">1.1.</span> <span class="toc-text">一、RAID 级别选择指南</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E5%B8%B8%E8%A7%81-RAID-%E7%BA%A7%E5%88%AB%E5%AF%B9%E6%AF%94"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 常见 RAID 级别对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E9%80%89%E5%9E%8B%E5%BB%BA%E8%AE%AE"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 选型建议</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%BD%AF%E4%BB%B6-RAID-%E9%85%8D%E7%BD%AE%EF%BC%88mdadm%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、软件 RAID 配置（mdadm）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E5%AE%89%E8%A3%85-mdadm"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 安装 mdadm</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E5%88%9B%E5%BB%BA-RAID-1-%E9%98%B5%E5%88%97"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 创建 RAID 1 阵列</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E5%88%9B%E5%BB%BA-RAID-5-%E9%98%B5%E5%88%97"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 创建 RAID 5 阵列</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-%E5%88%9B%E5%BB%BA%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E5%B9%B6%E6%8C%82%E8%BD%BD"><span class="toc-number">1.2.4.</span> <span class="toc-text">2.4 创建文件系统并挂载</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-5-%E4%BF%9D%E5%AD%98-RAID-%E9%85%8D%E7%BD%AE"><span class="toc-number">1.2.5.</span> <span class="toc-text">2.5 保存 RAID 配置</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E7%A1%AC%E4%BB%B6-RAID-%E9%85%8D%E7%BD%AE"><span class="toc-number">1.3.</span> <span class="toc-text">三、硬件 RAID 配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E8%BF%9B%E5%85%A5-RAID-%E9%85%8D%E7%BD%AE%E7%95%8C%E9%9D%A2"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 进入 RAID 配置界面</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E4%BD%BF%E7%94%A8-storcli-%E7%AE%A1%E7%90%86-LSI-RAID"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 使用 storcli 管理 LSI RAID</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81RAID-%E6%95%85%E9%9A%9C%E5%A4%84%E7%90%86"><span class="toc-number">1.4.</span> <span class="toc-text">四、RAID 故障处理</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E7%A3%81%E7%9B%98%E6%95%85%E9%9A%9C%E8%AF%86%E5%88%AB"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 磁盘故障识别</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E6%A0%87%E8%AE%B0%E7%A3%81%E7%9B%98%E5%A4%B1%E6%95%88%E5%B9%B6%E7%A7%BB%E9%99%A4"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 标记磁盘失效并移除</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E6%9B%B4%E6%8D%A2%E7%A3%81%E7%9B%98%E5%B9%B6%E9%87%8D%E5%BB%BA"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 更换磁盘并重建</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-%E5%B8%B8%E8%A7%81%E6%95%85%E9%9A%9C%E4%BB%A3%E7%A0%81"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 常见故障代码</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%97%A5%E5%B8%B8%E7%BB%B4%E6%8A%A4%E4%B8%8E%E7%9B%91%E6%8E%A7"><span class="toc-number">1.5.</span> <span class="toc-text">五、日常维护与监控</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E9%85%8D%E7%BD%AE%E9%82%AE%E4%BB%B6%E5%91%8A%E8%AD%A6"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 配置邮件告警</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%AE%9A%E6%9C%9F%E6%A3%80%E6%9F%A5%E8%84%9A%E6%9C%AC"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 定期检查脚本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E6%B7%BB%E5%8A%A0-cron-%E5%AE%9A%E6%97%B6%E6%A3%80%E6%9F%A5"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 添加 cron 定时检查</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5%E6%80%BB%E7%BB%93"><span class="toc-number">1.6.</span> <span class="toc-text">六、最佳实践总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">1.7.</span> <span class="toc-text">七、参考资料</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/09/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB%20-2026-03-09/" title="每日科技要闻 -2026-03-09">每日科技要闻 -2026-03-09</a><time datetime="2026-03-09T00:00:00.000Z" title="发表于 2026-03-09 08:00:00">2026-03-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/08/Linux-TCP%20%E8%BF%9E%E6%8E%A5%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/" title="Linux-TCP 连接问题排查指南">Linux-TCP 连接问题排查指南</a><time datetime="2026-03-08T08:00:00.000Z" title="发表于 2026-03-08 16:00:00">2026-03-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/08/%E7%A1%AC%E7%9B%98%20SMART%20%E6%A3%80%E6%B5%8B%E4%B8%8E%E9%A2%84%E8%AD%A6%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97/" title="硬盘 SMART 检测与预警配置指南">硬盘 SMART 检测与预警配置指南</a><time datetime="2026-03-08T08:00:00.000Z" title="发表于 2026-03-08 16:00:00">2026-03-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/08/RAID%20%E7%A3%81%E7%9B%98%E9%98%B5%E5%88%97%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%95%85%E9%9A%9C%E6%81%A2%E5%A4%8D/" title="RAID 磁盘阵列配置与故障恢复">RAID 磁盘阵列配置与故障恢复</a><time datetime="2026-03-08T03:00:00.000Z" title="发表于 2026-03-08 11:00:00">2026-03-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/08/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-03-08/" title="每日科技要闻-2026-03-08">每日科技要闻-2026-03-08</a><time datetime="2026-03-08T00:00:00.000Z" title="发表于 2026-03-08 08:00:00">2026-03-08</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By PCLTXSYWZ</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.4</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>

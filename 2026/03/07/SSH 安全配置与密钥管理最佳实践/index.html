@@ -1,0 +1,324 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>SSH 安全配置与密钥管理最佳实践 | 体系所运维知识库</title><meta name="author" content="PCLTXSYWZ"><meta name="copyright" content="PCLTXSYWZ"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="SSH 安全配置与密钥管理最佳实践一、概述SSH（Secure Shell）是远程服务器管理的核心工具。不安全的 SSH 配置可能导致服务器被入侵。本文详细介绍 SSH 安全加固和密钥管理的最佳实践。 二、SSH 协议基础2.1 认证方式对比   认证方式 安全性 便捷性 推荐场景    密码认证 ★★☆☆☆ ★★★★☆ 临时访问、应急   密钥认证 ★★★★★ ★★★☆☆ 日常运维、自动化">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SSH 安全配置与密钥管理最佳实践">
+<meta property="og:url" content="https://pcltxs.github.io/2026/03/07/SSH%20%E5%AE%89%E5%85%A8%E9%85%8D%E7%BD%AE%E4%B8%8E%E5%AF%86%E9%92%A5%E7%AE%A1%E7%90%86%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/index.html">
+<meta property="og:site_name" content="体系所运维知识库">
+<meta property="og:description" content="SSH 安全配置与密钥管理最佳实践一、概述SSH（Secure Shell）是远程服务器管理的核心工具。不安全的 SSH 配置可能导致服务器被入侵。本文详细介绍 SSH 安全加固和密钥管理的最佳实践。 二、SSH 协议基础2.1 认证方式对比   认证方式 安全性 便捷性 推荐场景    密码认证 ★★☆☆☆ ★★★★☆ 临时访问、应急   密钥认证 ★★★★★ ★★★☆☆ 日常运维、自动化">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://pcltxs.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-03-07T08:00:26.000Z">
+<meta property="article:modified_time" content="2026-03-09T00:53:55.656Z">
+<meta property="article:author" content="PCLTXSYWZ">
+<meta property="article:tag" content="SSH">
+<meta property="article:tag" content="安全加固">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pcltxs.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "SSH 安全配置与密钥管理最佳实践",
+  "url": "https://pcltxs.github.io/2026/03/07/SSH%20%E5%AE%89%E5%85%A8%E9%85%8D%E7%BD%AE%E4%B8%8E%E5%AF%86%E9%92%A5%E7%AE%A1%E7%90%86%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/",
+  "image": "https://pcltxs.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-03-07T08:00:26.000Z",
+  "dateModified": "2026-03-09T00:53:55.656Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "PCLTXSYWZ",
+      "url": "https://pcltxs.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://pcltxs.github.io/2026/03/07/SSH%20%E5%AE%89%E5%85%A8%E9%85%8D%E7%BD%AE%E4%B8%8E%E5%AF%86%E9%92%A5%E7%AE%A1%E7%90%86%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'SSH 安全配置与密钥管理最佳实践',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.1"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">体系所运维知识库</span></a><a class="nav-page-title" href="/"><span class="site-name">SSH 安全配置与密钥管理最佳实践</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div></div></nav><div id="post-info"><h1 class="post-title">SSH 安全配置与密钥管理最佳实践</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-03-07T08:00:26.000Z" title="发表于 2026-03-07 16:00:26">2026-03-07</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-03-09T00:53:55.656Z" title="更新于 2026-03-09 08:53:55">2026-03-09</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E7%BB%B4%E7%AE%A1%E7%90%86/">系统部署与运维管理</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="SSH-安全配置与密钥管理最佳实践"><a href="#SSH-安全配置与密钥管理最佳实践" class="headerlink" title="SSH 安全配置与密钥管理最佳实践"></a>SSH 安全配置与密钥管理最佳实践</h1><h2 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h2><p>SSH（Secure Shell）是远程服务器管理的核心工具。不安全的 SSH 配置可能导致服务器被入侵。本文详细介绍 SSH 安全加固和密钥管理的最佳实践。</p>
+<h2 id="二、SSH-协议基础"><a href="#二、SSH-协议基础" class="headerlink" title="二、SSH 协议基础"></a>二、SSH 协议基础</h2><h3 id="2-1-认证方式对比"><a href="#2-1-认证方式对比" class="headerlink" title="2.1 认证方式对比"></a>2.1 认证方式对比</h3><table>
+<thead>
+<tr>
+<th>认证方式</th>
+<th>安全性</th>
+<th>便捷性</th>
+<th>推荐场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>密码认证</td>
+<td>★★☆☆☆</td>
+<td>★★★★☆</td>
+<td>临时访问、应急</td>
+</tr>
+<tr>
+<td>密钥认证</td>
+<td>★★★★★</td>
+<td>★★★☆☆</td>
+<td>日常运维、自动化</td>
+</tr>
+<tr>
+<td>双因素认证</td>
+<td>★★★★★</td>
+<td>★★☆☆☆</td>
+<td>高安全要求场景</td>
+</tr>
+</tbody></table>
+<h3 id="2-2-SSH-工作流程"><a href="#2-2-SSH-工作流程" class="headerlink" title="2.2 SSH 工作流程"></a>2.2 SSH 工作流程</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">客户端                          服务器</span><br><span class="line">  |                              |</span><br><span class="line">  |------ TCP 连接建立 ---------&gt;|</span><br><span class="line">  |                              |</span><br><span class="line">  |&lt;----- 协议版本协商 ----------|</span><br><span class="line">  |                              |</span><br><span class="line">  |------ 密钥交换 -------------&gt;|</span><br><span class="line">  |                              |</span><br><span class="line">  |&lt;----- 服务器公钥 -----------|</span><br><span class="line">  |                              |</span><br><span class="line">  |------ 用户认证 -------------&gt;|</span><br><span class="line">  |                              |</span><br><span class="line">  |&lt;----- 认证成功 -------------|</span><br><span class="line">  |                              |</span><br><span class="line">  |====== 加密会话建立 =========&gt;|</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、SSH-服务端配置"><a href="#三、SSH-服务端配置" class="headerlink" title="三、SSH 服务端配置"></a>三、SSH 服务端配置</h2><h3 id="3-1-配置文件位置"><a href="#3-1-配置文件位置" class="headerlink" title="3.1 配置文件位置"></a>3.1 配置文件位置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 主配置文件</span></span><br><span class="line">/etc/ssh/sshd_config</span><br><span class="line"></span><br><span class="line"><span class="comment"># 客户端配置</span></span><br><span class="line">~/.ssh/config</span><br><span class="line"></span><br><span class="line"><span class="comment"># 主机密钥</span></span><br><span class="line">/etc/ssh/ssh_host_*_key</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-基础安全配置"><a href="#3-2-基础安全配置" class="headerlink" title="3.2 基础安全配置"></a>3.2 基础安全配置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># /etc/ssh/sshd_config</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 禁用密码认证（强制使用密钥）</span></span><br><span class="line">PasswordAuthentication no</span><br><span class="line"></span><br><span class="line"><span class="comment"># 禁用空密码</span></span><br><span class="line">PermitEmptyPasswords no</span><br><span class="line"></span><br><span class="line"><span class="comment"># 禁用 root 直接登录</span></span><br><span class="line">PermitRootLogin no</span><br><span class="line"></span><br><span class="line"><span class="comment"># 限制登录用户</span></span><br><span class="line">AllowUsers admin deploy</span><br><span class="line"></span><br><span class="line"><span class="comment"># 限制登录组</span></span><br><span class="line">AllowGroups sshusers</span><br><span class="line"></span><br><span class="line"><span class="comment"># 修改默认端口（可选，减少扫描）</span></span><br><span class="line">Port 2222</span><br><span class="line"></span><br><span class="line"><span class="comment"># 仅使用 SSH 协议版本 2</span></span><br><span class="line">Protocol 2</span><br><span class="line"></span><br><span class="line"><span class="comment"># 监听特定地址</span></span><br><span class="line">ListenAddress 0.0.0.0</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-会话安全配置"><a href="#3-3-会话安全配置" class="headerlink" title="3.3 会话安全配置"></a>3.3 会话安全配置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 最大认证尝试次数</span></span><br><span class="line">MaxAuthTries 3</span><br><span class="line"></span><br><span class="line"><span class="comment"># 最大并发未认证连接</span></span><br><span class="line">MaxStartups 10:30:60</span><br><span class="line"></span><br><span class="line"><span class="comment"># 登录宽限时间</span></span><br><span class="line">LoginGraceTime 60</span><br><span class="line"></span><br><span class="line"><span class="comment"># 客户端活跃检查间隔</span></span><br><span class="line">ClientAliveInterval 300</span><br><span class="line"></span><br><span class="line"><span class="comment"># 客户端活跃检查次数</span></span><br><span class="line">ClientAliveCountMax 2</span><br><span class="line"></span><br><span class="line"><span class="comment"># 禁用转发（根据需求）</span></span><br><span class="line">X11Forwarding no</span><br><span class="line">AllowTcpForwarding no</span><br><span class="line">AllowAgentForwarding no</span><br><span class="line">PermitTunnel no</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-密钥算法配置"><a href="#3-4-密钥算法配置" class="headerlink" title="3.4 密钥算法配置"></a>3.4 密钥算法配置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 推荐的主机密钥算法</span></span><br><span class="line">HostKeyAlgorithms ssh-ed25519,rsa-sha2-512,rsa-sha2-256</span><br><span class="line"></span><br><span class="line"><span class="comment"># 推荐的密钥交换算法</span></span><br><span class="line">KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256</span><br><span class="line"></span><br><span class="line"><span class="comment"># 推荐的加密算法</span></span><br><span class="line">Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com</span><br><span class="line"></span><br><span class="line"><span class="comment"># 推荐的 MAC 算法</span></span><br><span class="line">MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-5-日志配置"><a href="#3-5-日志配置" class="headerlink" title="3.5 日志配置"></a>3.5 日志配置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 日志级别</span></span><br><span class="line">LogLevel VERBOSE</span><br><span class="line"></span><br><span class="line"><span class="comment"># 日志文件</span></span><br><span class="line">SyslogFacility AUTH</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、SSH-密钥管理"><a href="#四、SSH-密钥管理" class="headerlink" title="四、SSH 密钥管理"></a>四、SSH 密钥管理</h2><h3 id="4-1-生成密钥对"><a href="#4-1-生成密钥对" class="headerlink" title="4.1 生成密钥对"></a>4.1 生成密钥对</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 生成 Ed25519 密钥（推荐）</span></span><br><span class="line">ssh-keygen -t ed25519 -C <span class="string">&quot;your_email@example.com&quot;</span> -f ~/.ssh/id_ed25519</span><br><span class="line"></span><br><span class="line"><span class="comment"># 生成 RSA 密钥（4096 位）</span></span><br><span class="line">ssh-keygen -t rsa -b 4096 -C <span class="string">&quot;your_email@example.com&quot;</span> -f ~/.ssh/id_rsa</span><br><span class="line"></span><br><span class="line"><span class="comment"># 生成 ECDSA 密钥</span></span><br><span class="line">ssh-keygen -t ecdsa -b 521 -C <span class="string">&quot;your_email@example.com&quot;</span> -f ~/.ssh/id_ecdsa</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-密钥参数说明"><a href="#4-2-密钥参数说明" class="headerlink" title="4.2 密钥参数说明"></a>4.2 密钥参数说明</h3><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>-t</code></td>
+<td>密钥类型 (ed25519&#x2F;rsa&#x2F;ecdsa)</td>
+</tr>
+<tr>
+<td><code>-b</code></td>
+<td>密钥位数 (RSA&#x2F;ECDSA)</td>
+</tr>
+<tr>
+<td><code>-C</code></td>
+<td>注释（通常是邮箱）</td>
+</tr>
+<tr>
+<td><code>-f</code></td>
+<td>输出文件路径</td>
+</tr>
+<tr>
+<td><code>-N</code></td>
+<td>设置 passphrase（空字符串表示无密码）</td>
+</tr>
+</tbody></table>
+<h3 id="4-3-部署公钥到服务器"><a href="#4-3-部署公钥到服务器" class="headerlink" title="4.3 部署公钥到服务器"></a>4.3 部署公钥到服务器</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 方法 1：使用 ssh-copy-id（推荐）</span></span><br><span class="line">ssh-copy-id -i ~/.ssh/id_ed25519.pub user@hostname</span><br><span class="line"></span><br><span class="line"><span class="comment"># 方法 2：手动复制</span></span><br><span class="line"><span class="built_in">cat</span> ~/.ssh/id_ed25519.pub | ssh user@hostname <span class="string">&quot;mkdir -p ~/.ssh &amp;&amp; cat &gt;&gt; ~/.ssh/authorized_keys&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 方法 3：使用脚本批量部署</span></span><br><span class="line"><span class="keyword">for</span> host <span class="keyword">in</span> server1 server2 server3; <span class="keyword">do</span></span><br><span class="line">    ssh-copy-id user@<span class="variable">$host</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-4-authorized-keys-管理"><a href="#4-4-authorized-keys-管理" class="headerlink" title="4.4 authorized_keys 管理"></a>4.4 authorized_keys 管理</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># authorized_keys 格式</span></span><br><span class="line"><span class="comment"># [选项] 密钥类型 公钥数据 注释</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 限制特定 IP 访问</span></span><br><span class="line">from=<span class="string">&quot;192.168.1.0/24&quot;</span> ssh-ed25519 AAAA... user@work</span><br><span class="line"></span><br><span class="line"><span class="comment"># 限制命令执行</span></span><br><span class="line"><span class="built_in">command</span>=<span class="string">&quot;/usr/bin/rsync --server&quot;</span> ssh-ed25519 AAAA... backup@server</span><br><span class="line"></span><br><span class="line"><span class="comment"># 禁用端口转发</span></span><br><span class="line">no-port-forwarding,no-X11-forwarding ssh-ed25519 AAAA... restricted@user</span><br><span class="line"></span><br><span class="line"><span class="comment"># 完整示例</span></span><br><span class="line">from=<span class="string">&quot;10.0.0.0/8&quot;</span>,<span class="built_in">command</span>=<span class="string">&quot;/bin/date&quot;</span>,no-agent-forwarding,no-X11-forwarding ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... admin@office</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-5-密钥权限设置"><a href="#4-5-密钥权限设置" class="headerlink" title="4.5 密钥权限设置"></a>4.5 密钥权限设置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 本地密钥权限</span></span><br><span class="line"><span class="built_in">chmod</span> 700 ~/.ssh</span><br><span class="line"><span class="built_in">chmod</span> 600 ~/.ssh/id_ed25519</span><br><span class="line"><span class="built_in">chmod</span> 644 ~/.ssh/id_ed25519.pub</span><br><span class="line"></span><br><span class="line"><span class="comment"># 服务器端权限</span></span><br><span class="line"><span class="built_in">chmod</span> 700 ~/.ssh</span><br><span class="line"><span class="built_in">chmod</span> 600 ~/.ssh/authorized_keys</span><br><span class="line"><span class="built_in">chown</span> -R <span class="variable">$USER</span>:<span class="variable">$USER</span> ~/.ssh</span><br></pre></td></tr></table></figure>
+
+<h2 id="五、SSH-客户端配置"><a href="#五、SSH-客户端配置" class="headerlink" title="五、SSH 客户端配置"></a>五、SSH 客户端配置</h2><h3 id="5-1-客户端配置文件"><a href="#5-1-客户端配置文件" class="headerlink" title="5.1 客户端配置文件"></a>5.1 客户端配置文件</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># ~/.ssh/config</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 全局默认设置</span></span><br><span class="line">Host *</span><br><span class="line">    AddKeysToAgent <span class="built_in">yes</span></span><br><span class="line">    UseKeychain <span class="built_in">yes</span></span><br><span class="line">    IdentityFile ~/.ssh/id_ed25519</span><br><span class="line">    ServerAliveInterval 60</span><br><span class="line">    ServerAliveCountMax 3</span><br><span class="line"></span><br><span class="line"><span class="comment"># 生产服务器</span></span><br><span class="line">Host prod-*</span><br><span class="line">    User admin</span><br><span class="line">    Port 2222</span><br><span class="line">    IdentityFile ~/.ssh/id_ed25519_prod</span><br><span class="line">    StrictHostKeyChecking <span class="built_in">yes</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 开发服务器</span></span><br><span class="line">Host dev-*</span><br><span class="line">    User developer</span><br><span class="line">    Port 22</span><br><span class="line">    IdentityFile ~/.ssh/id_ed25519_dev</span><br><span class="line">    StrictHostKeyChecking no</span><br><span class="line"></span><br><span class="line"><span class="comment"># 跳板机配置</span></span><br><span class="line">Host jump</span><br><span class="line">    HostName bastion.example.com</span><br><span class="line">    User admin</span><br><span class="line">    IdentityFile ~/.ssh/id_ed25519</span><br><span class="line"></span><br><span class="line"><span class="comment"># 通过跳板机访问内网服务器</span></span><br><span class="line">Host internal-*</span><br><span class="line">    ProxyJump jump</span><br><span class="line">    User admin</span><br><span class="line">    IdentityFile ~/.ssh/id_ed25519_internal</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-常用快捷命令"><a href="#5-2-常用快捷命令" class="headerlink" title="5.2 常用快捷命令"></a>5.2 常用快捷命令</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 使用配置别名连接</span></span><br><span class="line">ssh prod-web01</span><br><span class="line"></span><br><span class="line"><span class="comment"># 执行远程命令</span></span><br><span class="line">ssh prod-web01 <span class="string">&quot;systemctl status nginx&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 传输文件</span></span><br><span class="line">scp file.txt prod-web01:/tmp/</span><br><span class="line">scp -r directory/ prod-web01:/tmp/</span><br><span class="line"></span><br><span class="line"><span class="comment"># 端口转发（本地）</span></span><br><span class="line">ssh -L 8080:localhost:80 prod-web01</span><br><span class="line"></span><br><span class="line"><span class="comment"># 端口转发（远程）</span></span><br><span class="line">ssh -R 9090:localhost:22 prod-web01</span><br><span class="line"></span><br><span class="line"><span class="comment"># SOCKS 代理</span></span><br><span class="line">ssh -D 1080 prod-web01</span><br></pre></td></tr></table></figure>
+
+<h2 id="六、高级安全配置"><a href="#六、高级安全配置" class="headerlink" title="六、高级安全配置"></a>六、高级安全配置</h2><h3 id="6-1-双因素认证（2FA）"><a href="#6-1-双因素认证（2FA）" class="headerlink" title="6.1 双因素认证（2FA）"></a>6.1 双因素认证（2FA）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 安装 Google Authenticator</span></span><br><span class="line"><span class="comment"># Ubuntu/Debian</span></span><br><span class="line"><span class="built_in">sudo</span> apt install libpam-google-authenticator</span><br><span class="line"></span><br><span class="line"><span class="comment"># CentOS/RHEL</span></span><br><span class="line"><span class="built_in">sudo</span> yum install google-authenticator</span><br><span class="line"></span><br><span class="line"><span class="comment"># 配置 PAM</span></span><br><span class="line"><span class="comment"># /etc/pam.d/sshd</span></span><br><span class="line">auth required pam_google_authenticator.so</span><br><span class="line"></span><br><span class="line"><span class="comment"># 启用挑战 - 响应认证</span></span><br><span class="line"><span class="comment"># /etc/ssh/sshd_config</span></span><br><span class="line">ChallengeResponseAuthentication <span class="built_in">yes</span></span><br><span class="line">AuthenticationMethods publickey,keyboard-interactive</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-Fail2Ban-防护"><a href="#6-2-Fail2Ban-防护" class="headerlink" title="6.2 Fail2Ban 防护"></a>6.2 Fail2Ban 防护</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 安装 Fail2Ban</span></span><br><span class="line"><span class="built_in">sudo</span> apt install fail2ban</span><br><span class="line"></span><br><span class="line"><span class="comment"># 配置 SSH 防护</span></span><br><span class="line"><span class="comment"># /etc/fail2ban/jail.local</span></span><br><span class="line">[sshd]</span><br><span class="line">enabled = <span class="literal">true</span></span><br><span class="line">port = 22,2222</span><br><span class="line">filter = sshd</span><br><span class="line">logpath = /var/log/auth.log</span><br><span class="line">maxretry = 3</span><br><span class="line">bantime = 3600</span><br><span class="line">findtime = 600</span><br><span class="line"></span><br><span class="line"><span class="comment"># 重启服务</span></span><br><span class="line"><span class="built_in">sudo</span> systemctl restart fail2ban</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-3-证书认证（CA）"><a href="#6-3-证书认证（CA）" class="headerlink" title="6.3 证书认证（CA）"></a>6.3 证书认证（CA）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 生成 CA 密钥</span></span><br><span class="line">ssh-keygen -t ed25519 -f ssh_ca</span><br><span class="line"></span><br><span class="line"><span class="comment"># 签署用户密钥</span></span><br><span class="line">ssh-keygen -s ssh_ca -I user_cert -n admin -V +52w ~/.ssh/id_ed25519.pub</span><br><span class="line"></span><br><span class="line"><span class="comment"># 配置服务器信任 CA</span></span><br><span class="line"><span class="comment"># /etc/ssh/sshd_config</span></span><br><span class="line">TrustedUserCAKeys /etc/ssh/ca.pub</span><br><span class="line"></span><br><span class="line"><span class="comment"># 部署 CA 公钥到服务器</span></span><br><span class="line"><span class="built_in">sudo</span> <span class="built_in">cp</span> ssh_ca.pub /etc/ssh/ca.pub</span><br></pre></td></tr></table></figure>
+
+<h2 id="七、审计与监控"><a href="#七、审计与监控" class="headerlink" title="七、审计与监控"></a>七、审计与监控</h2><h3 id="7-1-查看登录日志"><a href="#7-1-查看登录日志" class="headerlink" title="7.1 查看登录日志"></a>7.1 查看登录日志</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看成功登录</span></span><br><span class="line">last</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看失败登录</span></span><br><span class="line">lastb</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看当前登录用户</span></span><br><span class="line"><span class="built_in">who</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看用户登录历史</span></span><br><span class="line">lastlog</span><br><span class="line"></span><br><span class="line"><span class="comment"># 实时查看 SSH 登录</span></span><br><span class="line"><span class="built_in">tail</span> -f /var/log/auth.log | grep sshd</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-2-审计配置"><a href="#7-2-审计配置" class="headerlink" title="7.2 审计配置"></a>7.2 审计配置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启用详细日志</span></span><br><span class="line"><span class="comment"># /etc/ssh/sshd_config</span></span><br><span class="line">LogLevel VERBOSE</span><br><span class="line"></span><br><span class="line"><span class="comment"># 使用 auditd 监控</span></span><br><span class="line"><span class="built_in">sudo</span> auditctl -w /etc/ssh/sshd_config -p wa -k sshd_config</span><br><span class="line"><span class="built_in">sudo</span> auditctl -w /etc/ssh/ -p wa -k ssh_keys</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查询审计日志</span></span><br><span class="line">ausearch -k sshd_config</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-3-安全扫描"><a href="#7-3-安全扫描" class="headerlink" title="7.3 安全扫描"></a>7.3 安全扫描</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 使用 lynis 进行安全审计</span></span><br><span class="line"><span class="built_in">sudo</span> apt install lynis</span><br><span class="line"><span class="built_in">sudo</span> lynis audit system</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查 SSH 配置</span></span><br><span class="line"><span class="built_in">sudo</span> sshd -T | grep -E <span class="string">&quot;(password|root|permit)&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="八、常见问题排查"><a href="#八、常见问题排查" class="headerlink" title="八、常见问题排查"></a>八、常见问题排查</h2><h3 id="8-1-连接问题诊断"><a href="#8-1-连接问题诊断" class="headerlink" title="8.1 连接问题诊断"></a>8.1 连接问题诊断</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 详细调试模式</span></span><br><span class="line">ssh -vvv user@hostname</span><br><span class="line"></span><br><span class="line"><span class="comment"># 测试端口连通性</span></span><br><span class="line">nc -zv hostname 22</span><br><span class="line">telnet hostname 22</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查防火墙</span></span><br><span class="line"><span class="built_in">sudo</span> ufw status</span><br><span class="line"><span class="built_in">sudo</span> iptables -L -n</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查 SSH 服务状态</span></span><br><span class="line"><span class="built_in">sudo</span> systemctl status sshd</span><br><span class="line"><span class="built_in">sudo</span> netstat -tlnp | grep :22</span><br></pre></td></tr></table></figure>
+
+<h3 id="8-2-常见错误及解决"><a href="#8-2-常见错误及解决" class="headerlink" title="8.2 常见错误及解决"></a>8.2 常见错误及解决</h3><table>
+<thead>
+<tr>
+<th>错误信息</th>
+<th>可能原因</th>
+<th>解决方案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Permission denied (publickey)</td>
+<td>密钥未授权</td>
+<td>检查 authorized_keys</td>
+</tr>
+<tr>
+<td>Connection refused</td>
+<td>服务未运行</td>
+<td>systemctl start sshd</td>
+</tr>
+<tr>
+<td>Connection timed out</td>
+<td>防火墙阻挡</td>
+<td>检查防火墙规则</td>
+</tr>
+<tr>
+<td>Host key verification failed</td>
+<td>主机密钥变更</td>
+<td>删除~&#x2F;.ssh&#x2F;known_hosts 中对应条目</td>
+</tr>
+<tr>
+<td>Bad owner or permissions</td>
+<td>权限不正确</td>
+<td>chmod 700 ~&#x2F;.ssh &amp;&amp; chmod 600 ~&#x2F;.ssh&#x2F;*</td>
+</tr>
+</tbody></table>
+<h3 id="8-3-密钥权限修复脚本"><a href="#8-3-密钥权限修复脚本" class="headerlink" title="8.3 密钥权限修复脚本"></a>8.3 密钥权限修复脚本</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"><span class="comment"># fix_ssh_permissions.sh</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;Fixing SSH permissions...&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">chmod</span> 700 ~/.ssh</span><br><span class="line"><span class="built_in">chmod</span> 600 ~/.ssh/id_*</span><br><span class="line"><span class="built_in">chmod</span> 644 ~/.ssh/*.pub</span><br><span class="line"><span class="built_in">chmod</span> 644 ~/.ssh/known_hosts</span><br><span class="line"><span class="built_in">chmod</span> 600 ~/.ssh/config 2&gt;/dev/null</span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;Permissions fixed.&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="九、安全加固检查清单"><a href="#九、安全加固检查清单" class="headerlink" title="九、安全加固检查清单"></a>九、安全加固检查清单</h2><h3 id="9-1-基础检查"><a href="#9-1-基础检查" class="headerlink" title="9.1 基础检查"></a>9.1 基础检查</h3><ul>
+<li><input disabled="" type="checkbox"> 禁用密码认证</li>
+<li><input disabled="" type="checkbox"> 禁用 root 登录</li>
+<li><input disabled="" type="checkbox"> 修改默认端口（可选）</li>
+<li><input disabled="" type="checkbox"> 限制允许登录的用户&#x2F;组</li>
+<li><input disabled="" type="checkbox"> 使用强密钥算法</li>
+</ul>
+<h3 id="9-2-进阶检查"><a href="#9-2-进阶检查" class="headerlink" title="9.2 进阶检查"></a>9.2 进阶检查</h3><ul>
+<li><input disabled="" type="checkbox"> 启用双因素认证</li>
+<li><input disabled="" type="checkbox"> 配置 Fail2Ban</li>
+<li><input disabled="" type="checkbox"> 设置会话超时</li>
+<li><input disabled="" type="checkbox"> 禁用不必要的转发</li>
+<li><input disabled="" type="checkbox"> 启用详细日志</li>
+</ul>
+<h3 id="9-3-运维检查"><a href="#9-3-运维检查" class="headerlink" title="9.3 运维检查"></a>9.3 运维检查</h3><ul>
+<li><input disabled="" type="checkbox"> 定期轮换密钥</li>
+<li><input disabled="" type="checkbox"> 审计登录日志</li>
+<li><input disabled="" type="checkbox"> 清理未使用的 authorized_keys</li>
+<li><input disabled="" type="checkbox"> 备份 SSH 配置</li>
+<li><input disabled="" type="checkbox"> 监控异常登录</li>
+</ul>
+<h2 id="十、总结"><a href="#十、总结" class="headerlink" title="十、总结"></a>十、总结</h2><p>SSH 安全是服务器安全的第一道防线。通过合理的配置和密钥管理，可以大幅降低被入侵的风险。建议：</p>
+<ol>
+<li><strong>强制使用密钥认证</strong>，禁用密码登录</li>
+<li><strong>定期轮换密钥</strong>，特别是人员变动时</li>
+<li><strong>启用日志审计</strong>，及时发现异常</li>
+<li><strong>使用跳板机</strong>，集中管理访问入口</li>
+<li><strong>实施最小权限</strong>，只开放必要的访问</li>
+</ol>
+<p>安全是一个持续的过程，定期审查和更新 SSH 配置至关重要。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io">PCLTXSYWZ</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io/2026/03/07/SSH%20%E5%AE%89%E5%85%A8%E9%85%8D%E7%BD%AE%E4%B8%8E%E5%AF%86%E9%92%A5%E7%AE%A1%E7%90%86%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/">https://pcltxs.github.io/2026/03/07/SSH%20%E5%AE%89%E5%85%A8%E9%85%8D%E7%BD%AE%E4%B8%8E%E5%AF%86%E9%92%A5%E7%AE%A1%E7%90%86%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://pcltxs.github.io" target="_blank">体系所运维知识库</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA/">安全加固</a><a class="post-meta__tags" href="/tags/SSH/">SSH</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/03/08/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-03-08/" title="每日科技要闻-2026-03-08"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">每日科技要闻-2026-03-08</div></div><div class="info-2"><div class="info-item-1">每日科技要闻 2026 年 3 月 8 日 精选昨日全球最热 20 条科技新闻   🔥 人工智能与大模型1. OpenAI 推迟 ChatGPT”成人模式”上线OpenAI 发言人确认，原定于本季度推出的 ChatGPT 成人模式将延期。公司表示将优先专注于智能提升、个性化改进和更主动的用户体验。 2. OpenAI 发布 Codex 安全研究预览版OpenAI 推出专注于识别和修复应用安全问题的 AI 代理 Codex Security，同时宣布 Codex 开源基金将为开源开发者提供为期六个月的 ChatGPT Pro 订阅。 3. 研究显示：使用 AI 的开发者工作时间更长《科学美国人》报道，新研究发现使用 AI 辅助编程的开发者反而工作时间更长，引发对 AI 生产力工具实际效果的讨论。 4. Andrej Karpathy 开源 AutoResearch 项目前特斯拉 AI 总监 Karpathy 在 GitHub 发布 AutoResearch，一个能在单 GPU 上自动进行纳米聊天训练的 AI 研究代理项目。 5. 加州社区学院斥资 50 万美元购买效果不佳的 AI...</div></div></div></a><a class="pagination-related" href="/2026/03/07/Nginx%20%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86%E4%B8%8E%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E9%85%8D%E7%BD%AE%E5%AE%9E%E6%88%98/" title="Nginx 反向代理与负载均衡配置实战"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Nginx 反向代理与负载均衡配置实战</div></div><div class="info-2"><div class="info-item-1">Nginx 反向代理与负载均衡配置实战一、概述Nginx 作为高性能的 HTTP 和反向代理服务器，在现代运维架构中扮演着核心角色。本文详细介绍 Nginx 反向代理和负载均衡的配置方法与最佳实践。 二、基础概念2.1 反向代理 vs 正向代理   类型 代理对象 客户端感知 典型场景    正向代理 客户端 服务器知道代理存在 翻墙、内网访问外网   反向代理 服务器 客户端不知道代理存在 负载均衡、SSL 终止   2.2 负载均衡算法 round_robin（默认）：轮询分发 least_conn：最少连接优先 ip_hash：源 IP 哈希保持会话 weight：权重分配  三、安装与基础配置3.1 安装 Nginx123456789# Ubuntu/Debiansudo apt updatesudo apt install nginx -y# CentOS/RHELsudo yum install nginx -y# 验证安装nginx -v  3.2 目录结构12345/etc/nginx/├── nginx.conf          # 主配置文件├── conf...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/03/06/Linux%20%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA%E6%8C%87%E5%8D%97/" title="Linux 服务器安全加固指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-06</div><div class="info-item-2">Linux 服务器安全加固指南</div></div><div class="info-2"><div class="info-item-1">Linux 服务器安全加固指南一、前言服务器安全是运维工作的重中之重。本文档提供一套完整的 Linux 服务器安全加固方案，涵盖系统配置、网络防护、访问控制、审计监控等多个维度，适用于生产环境的 CentOS&#x2F;Ubuntu 服务器。 二、系统更新与补丁管理2.1 更新系统包123456789# Ubuntu/Debianapt-get update &amp;&amp; apt-get upgrade -y# CentOS/RHELyum update -y# 启用自动安全更新apt-get install -y unattended-upgradesdpkg-reconfigure -plow unattended-upgrades  2.2 配置自动更新12345# /etc/apt/apt.conf.d/20auto-upgradesAPT::Periodic::Update-Package-Lists &quot;1&quot;;APT::Periodic::Unattended-Upgrade &quot;1&quot;;APT::Periodic::Down...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">PCLTXSYWZ</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">46</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">33</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">7</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/pcltxs"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">广泛收集运维相关文档资料,欢迎大家投稿分享,文档请发送至邮箱tuwj@pcl.ac.cn。网站建设相关问题和建议请联系邮箱tuwj@pcl.ac.cn。体系所办公区设备分布情况请访问http://device.opendns4.cn,工单系统请访问http://ticket.opendns4.cn,体系所公有云资源使用情况请访问http://mcloud.dns4test.com/</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#SSH-%E5%AE%89%E5%85%A8%E9%85%8D%E7%BD%AE%E4%B8%8E%E5%AF%86%E9%92%A5%E7%AE%A1%E7%90%86%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5"><span class="toc-number">1.</span> <span class="toc-text">SSH 安全配置与密钥管理最佳实践</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">一、概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81SSH-%E5%8D%8F%E8%AE%AE%E5%9F%BA%E7%A1%80"><span class="toc-number">1.2.</span> <span class="toc-text">二、SSH 协议基础</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E8%AE%A4%E8%AF%81%E6%96%B9%E5%BC%8F%E5%AF%B9%E6%AF%94"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 认证方式对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-SSH-%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 SSH 工作流程</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81SSH-%E6%9C%8D%E5%8A%A1%E7%AB%AF%E9%85%8D%E7%BD%AE"><span class="toc-number">1.3.</span> <span class="toc-text">三、SSH 服务端配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6%E4%BD%8D%E7%BD%AE"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 配置文件位置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E5%9F%BA%E7%A1%80%E5%AE%89%E5%85%A8%E9%85%8D%E7%BD%AE"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 基础安全配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E4%BC%9A%E8%AF%9D%E5%AE%89%E5%85%A8%E9%85%8D%E7%BD%AE"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 会话安全配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E5%AF%86%E9%92%A5%E7%AE%97%E6%B3%95%E9%85%8D%E7%BD%AE"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 密钥算法配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E6%97%A5%E5%BF%97%E9%85%8D%E7%BD%AE"><span class="toc-number">1.3.5.</span> <span class="toc-text">3.5 日志配置</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81SSH-%E5%AF%86%E9%92%A5%E7%AE%A1%E7%90%86"><span class="toc-number">1.4.</span> <span class="toc-text">四、SSH 密钥管理</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E7%94%9F%E6%88%90%E5%AF%86%E9%92%A5%E5%AF%B9"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 生成密钥对</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%AF%86%E9%92%A5%E5%8F%82%E6%95%B0%E8%AF%B4%E6%98%8E"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 密钥参数说明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E9%83%A8%E7%BD%B2%E5%85%AC%E9%92%A5%E5%88%B0%E6%9C%8D%E5%8A%A1%E5%99%A8"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 部署公钥到服务器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-authorized-keys-%E7%AE%A1%E7%90%86"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 authorized_keys 管理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-5-%E5%AF%86%E9%92%A5%E6%9D%83%E9%99%90%E8%AE%BE%E7%BD%AE"><span class="toc-number">1.4.5.</span> <span class="toc-text">4.5 密钥权限设置</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81SSH-%E5%AE%A2%E6%88%B7%E7%AB%AF%E9%85%8D%E7%BD%AE"><span class="toc-number">1.5.</span> <span class="toc-text">五、SSH 客户端配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E5%AE%A2%E6%88%B7%E7%AB%AF%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 客户端配置文件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%B8%B8%E7%94%A8%E5%BF%AB%E6%8D%B7%E5%91%BD%E4%BB%A4"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 常用快捷命令</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%AB%98%E7%BA%A7%E5%AE%89%E5%85%A8%E9%85%8D%E7%BD%AE"><span class="toc-number">1.6.</span> <span class="toc-text">六、高级安全配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E5%8F%8C%E5%9B%A0%E7%B4%A0%E8%AE%A4%E8%AF%81%EF%BC%882FA%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 双因素认证（2FA）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-Fail2Ban-%E9%98%B2%E6%8A%A4"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 Fail2Ban 防护</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E8%AF%81%E4%B9%A6%E8%AE%A4%E8%AF%81%EF%BC%88CA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 证书认证（CA）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E5%AE%A1%E8%AE%A1%E4%B8%8E%E7%9B%91%E6%8E%A7"><span class="toc-number">1.7.</span> <span class="toc-text">七、审计与监控</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E6%9F%A5%E7%9C%8B%E7%99%BB%E5%BD%95%E6%97%A5%E5%BF%97"><span class="toc-number">1.7.1.</span> <span class="toc-text">7.1 查看登录日志</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E5%AE%A1%E8%AE%A1%E9%85%8D%E7%BD%AE"><span class="toc-number">1.7.2.</span> <span class="toc-text">7.2 审计配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E5%AE%89%E5%85%A8%E6%89%AB%E6%8F%8F"><span class="toc-number">1.7.3.</span> <span class="toc-text">7.3 安全扫描</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="toc-number">1.8.</span> <span class="toc-text">八、常见问题排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-%E8%BF%9E%E6%8E%A5%E9%97%AE%E9%A2%98%E8%AF%8A%E6%96%AD"><span class="toc-number">1.8.1.</span> <span class="toc-text">8.1 连接问题诊断</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-%E5%B8%B8%E8%A7%81%E9%94%99%E8%AF%AF%E5%8F%8A%E8%A7%A3%E5%86%B3"><span class="toc-number">1.8.2.</span> <span class="toc-text">8.2 常见错误及解决</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-3-%E5%AF%86%E9%92%A5%E6%9D%83%E9%99%90%E4%BF%AE%E5%A4%8D%E8%84%9A%E6%9C%AC"><span class="toc-number">1.8.3.</span> <span class="toc-text">8.3 密钥权限修复脚本</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9D%E3%80%81%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA%E6%A3%80%E6%9F%A5%E6%B8%85%E5%8D%95"><span class="toc-number">1.9.</span> <span class="toc-text">九、安全加固检查清单</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#9-1-%E5%9F%BA%E7%A1%80%E6%A3%80%E6%9F%A5"><span class="toc-number">1.9.1.</span> <span class="toc-text">9.1 基础检查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-2-%E8%BF%9B%E9%98%B6%E6%A3%80%E6%9F%A5"><span class="toc-number">1.9.2.</span> <span class="toc-text">9.2 进阶检查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-3-%E8%BF%90%E7%BB%B4%E6%A3%80%E6%9F%A5"><span class="toc-number">1.9.3.</span> <span class="toc-text">9.3 运维检查</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">1.10.</span> <span class="toc-text">十、总结</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/09/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB%20-2026-03-09/" title="每日科技要闻 -2026-03-09">每日科技要闻 -2026-03-09</a><time datetime="2026-03-09T00:00:00.000Z" title="发表于 2026-03-09 08:00:00">2026-03-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/08/Linux-TCP%20%E8%BF%9E%E6%8E%A5%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/" title="Linux-TCP 连接问题排查指南">Linux-TCP 连接问题排查指南</a><time datetime="2026-03-08T08:00:00.000Z" title="发表于 2026-03-08 16:00:00">2026-03-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/08/%E7%A1%AC%E7%9B%98%20SMART%20%E6%A3%80%E6%B5%8B%E4%B8%8E%E9%A2%84%E8%AD%A6%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97/" title="硬盘 SMART 检测与预警配置指南">硬盘 SMART 检测与预警配置指南</a><time datetime="2026-03-08T08:00:00.000Z" title="发表于 2026-03-08 16:00:00">2026-03-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/08/RAID%20%E7%A3%81%E7%9B%98%E9%98%B5%E5%88%97%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%95%85%E9%9A%9C%E6%81%A2%E5%A4%8D/" title="RAID 磁盘阵列配置与故障恢复">RAID 磁盘阵列配置与故障恢复</a><time datetime="2026-03-08T03:00:00.000Z" title="发表于 2026-03-08 11:00:00">2026-03-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/08/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-03-08/" title="每日科技要闻-2026-03-08">每日科技要闻-2026-03-08</a><time datetime="2026-03-08T00:00:00.000Z" title="发表于 2026-03-08 08:00:00">2026-03-08</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By PCLTXSYWZ</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.4</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>

@@ -1,0 +1,235 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>硬盘 SMART 检测与预警配置指南 | 体系所运维知识库</title><meta name="author" content="PCLTXSYWZ"><meta name="copyright" content="PCLTXSYWZ"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="硬盘 SMART 检测与预警配置指南一、SMART 简介SMART (Self-Monitoring, Analysis and Reporting Technology) 是硬盘内置的健康监测技术，可提前预警硬盘故障。 关键指标：  Reallocated_Sector_Ct：重映射扇区数（&gt;0 需警惕） Current_Pending_Sector：待映射扇区数（&gt;0 表示有坏道风">
+<meta property="og:type" content="article">
+<meta property="og:title" content="硬盘 SMART 检测与预警配置指南">
+<meta property="og:url" content="https://pcltxs.github.io/2026/03/08/%E7%A1%AC%E7%9B%98%20SMART%20%E6%A3%80%E6%B5%8B%E4%B8%8E%E9%A2%84%E8%AD%A6%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97/index.html">
+<meta property="og:site_name" content="体系所运维知识库">
+<meta property="og:description" content="硬盘 SMART 检测与预警配置指南一、SMART 简介SMART (Self-Monitoring, Analysis and Reporting Technology) 是硬盘内置的健康监测技术，可提前预警硬盘故障。 关键指标：  Reallocated_Sector_Ct：重映射扇区数（&gt;0 需警惕） Current_Pending_Sector：待映射扇区数（&gt;0 表示有坏道风">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://pcltxs.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-03-08T08:00:00.000Z">
+<meta property="article:modified_time" content="2026-03-09T00:53:27.963Z">
+<meta property="article:author" content="PCLTXSYWZ">
+<meta property="article:tag" content="SMART">
+<meta property="article:tag" content="硬盘监控">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pcltxs.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "硬盘 SMART 检测与预警配置指南",
+  "url": "https://pcltxs.github.io/2026/03/08/%E7%A1%AC%E7%9B%98%20SMART%20%E6%A3%80%E6%B5%8B%E4%B8%8E%E9%A2%84%E8%AD%A6%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97/",
+  "image": "https://pcltxs.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-03-08T08:00:00.000Z",
+  "dateModified": "2026-03-09T00:53:27.963Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "PCLTXSYWZ",
+      "url": "https://pcltxs.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://pcltxs.github.io/2026/03/08/%E7%A1%AC%E7%9B%98%20SMART%20%E6%A3%80%E6%B5%8B%E4%B8%8E%E9%A2%84%E8%AD%A6%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '硬盘 SMART 检测与预警配置指南',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.1"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">体系所运维知识库</span></a><a class="nav-page-title" href="/"><span class="site-name">硬盘 SMART 检测与预警配置指南</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div></div></nav><div id="post-info"><h1 class="post-title">硬盘 SMART 检测与预警配置指南</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-03-08T08:00:00.000Z" title="发表于 2026-03-08 16:00:00">2026-03-08</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-03-09T00:53:27.963Z" title="更新于 2026-03-09 08:53:27">2026-03-09</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%A1%AC%E4%BB%B6%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E7%BB%B4%E7%AE%A1%E7%90%86/">硬件部署与运维管理</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="硬盘-SMART-检测与预警配置指南"><a href="#硬盘-SMART-检测与预警配置指南" class="headerlink" title="硬盘 SMART 检测与预警配置指南"></a>硬盘 SMART 检测与预警配置指南</h1><h2 id="一、SMART-简介"><a href="#一、SMART-简介" class="headerlink" title="一、SMART 简介"></a>一、SMART 简介</h2><p>SMART (Self-Monitoring, Analysis and Reporting Technology) 是硬盘内置的健康监测技术，可提前预警硬盘故障。</p>
+<p><strong>关键指标：</strong></p>
+<ul>
+<li><code>Reallocated_Sector_Ct</code>：重映射扇区数（&gt;0 需警惕）</li>
+<li><code>Current_Pending_Sector</code>：待映射扇区数（&gt;0 表示有坏道风险）</li>
+<li><code>Offline_Uncorrectable</code>：无法校正的错误数</li>
+<li><code>Power_On_Hours</code>：通电时间</li>
+<li><code>Temperature_Celsius</code>：工作温度</li>
+<li><code>Wear_Leveling_Count</code>：SSD 磨损程度</li>
+</ul>
+<h2 id="二、安装-smartmontools"><a href="#二、安装-smartmontools" class="headerlink" title="二、安装 smartmontools"></a>二、安装 smartmontools</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># CentOS/RHEL</span></span><br><span class="line">yum install -y smartmontools</span><br><span class="line"></span><br><span class="line"><span class="comment"># Ubuntu/Debian</span></span><br><span class="line">apt-get install -y smartmontools</span><br><span class="line"></span><br><span class="line"><span class="comment"># 验证安装</span></span><br><span class="line">smartctl --version</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、查看硬盘-SMART-信息"><a href="#三、查看硬盘-SMART-信息" class="headerlink" title="三、查看硬盘 SMART 信息"></a>三、查看硬盘 SMART 信息</h2><h3 id="3-1-查看硬盘列表"><a href="#3-1-查看硬盘列表" class="headerlink" title="3.1 查看硬盘列表"></a>3.1 查看硬盘列表</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 列出所有硬盘</span></span><br><span class="line">lsblk</span><br><span class="line"></span><br><span class="line"><span class="comment"># 或使用 smartctl 扫描</span></span><br><span class="line">smartctl --scan</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-查看-SMART-健康状态"><a href="#3-2-查看-SMART-健康状态" class="headerlink" title="3.2 查看 SMART 健康状态"></a>3.2 查看 SMART 健康状态</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 快速健康检查</span></span><br><span class="line">smartctl -H /dev/sda</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看完整 SMART 信息</span></span><br><span class="line">smartctl -a /dev/sda</span><br><span class="line"></span><br><span class="line"><span class="comment"># 保存信息到文件</span></span><br><span class="line">smartctl -a /dev/sda &gt; /var/log/smart/sda_$(<span class="built_in">date</span> +%Y%m%d).<span class="built_in">log</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-关键输出解读"><a href="#3-3-关键输出解读" class="headerlink" title="3.3 关键输出解读"></a>3.3 关键输出解读</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">SMART overall-health self-assessment test result: PASSED</span><br><span class="line"></span><br><span class="line">ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE</span><br><span class="line">  5 Reallocated_Sector_Ct   0x0033   100   100   010    Pre-fail  Always       -       0</span><br><span class="line">197 Current_Pending_Sector  0x0012   100   100   000    Old_age   Always       -       0</span><br><span class="line">198 Offline_Uncorrectable   0x0010   100   100   000    Old_age   Offline      -       0</span><br></pre></td></tr></table></figure>
+
+<p><strong>重点关注：</strong></p>
+<ul>
+<li><code>WHEN_FAILED</code> 列显示 <code>-</code> 表示正常，显示 <code>FAILING_NOW</code> 表示即将故障</li>
+<li><code>RAW_VALUE</code> 为 0 表示正常，非 0 需关注</li>
+<li><code>VALUE</code> 低于 <code>THRESH</code> 表示硬盘已故障</li>
+</ul>
+<h2 id="四、配置自动检测"><a href="#四、配置自动检测" class="headerlink" title="四、配置自动检测"></a>四、配置自动检测</h2><h3 id="4-1-启用-smartd-服务"><a href="#4-1-启用-smartd-服务" class="headerlink" title="4.1 启用 smartd 服务"></a>4.1 启用 smartd 服务</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 编辑配置文件</span></span><br><span class="line">vim /etc/smartmontools/smartd.conf</span><br><span class="line"></span><br><span class="line"><span class="comment"># 添加监控配置（监控所有硬盘）</span></span><br><span class="line">DEVICESCAN -H -m admin@example.com -M <span class="built_in">exec</span> /usr/share/doc/smartmontools/DEVICESCAN</span><br><span class="line"></span><br><span class="line"><span class="comment"># 或指定硬盘</span></span><br><span class="line">/dev/sda -H -l error -l selftest -s (S/../.././02|L/../../6/03) -m admin@example.com</span><br></pre></td></tr></table></figure>
+
+<p><strong>参数说明：</strong></p>
+<ul>
+<li><code>-H</code>：监控健康状态</li>
+<li><code>-l error</code>：监控错误日志</li>
+<li><code>-l selftest</code>：监控自检结果</li>
+<li><code>-s</code>：定期执行自检（S&#x3D;短检，L&#x3D;长检）</li>
+<li><code>-m</code>：告警邮件接收者</li>
+</ul>
+<h3 id="4-2-配置邮件通知（可选）"><a href="#4-2-配置邮件通知（可选）" class="headerlink" title="4.2 配置邮件通知（可选）"></a>4.2 配置邮件通知（可选）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 编辑 smartd 配置，指定邮件参数</span></span><br><span class="line">MAILFROM=<span class="string">&quot;smartd-alert@server.local&quot;</span></span><br><span class="line">SMARTD_ARGS=<span class="string">&quot;-m admin@example.com&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 确保系统能发送邮件（配置 postfix 或使用外部 SMTP）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-启动服务"><a href="#4-3-启动服务" class="headerlink" title="4.3 启动服务"></a>4.3 启动服务</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启动 smartd</span></span><br><span class="line">systemctl <span class="built_in">enable</span> smartd</span><br><span class="line">systemctl start smartd</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看状态</span></span><br><span class="line">systemctl status smartd</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看日志</span></span><br><span class="line">journalctl -u smartd -f</span><br></pre></td></tr></table></figure>
+
+<h2 id="五、手动执行硬盘自检"><a href="#五、手动执行硬盘自检" class="headerlink" title="五、手动执行硬盘自检"></a>五、手动执行硬盘自检</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 执行短自检（约 2 分钟）</span></span><br><span class="line">smartctl -t short /dev/sda</span><br><span class="line"></span><br><span class="line"><span class="comment"># 执行长自检（约数小时）</span></span><br><span class="line">smartctl -t long /dev/sda</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看自检结果</span></span><br><span class="line">smartctl -l selftest /dev/sda</span><br></pre></td></tr></table></figure>
+
+<p><strong>自检结果示例：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">SMART Self-test log structure revision number 1</span><br><span class="line">Num  Test_Description    Status                  Remaining  LifeTime(hours)  LBA_of_first_error</span><br><span class="line"># 1  Short offline       Completed without error       00%      1234         -</span><br><span class="line"># 2  Extended offline    Completed: read failure       90%      5678         12345678</span><br></pre></td></tr></table></figure>
+
+<h2 id="六、监控脚本示例"><a href="#六、监控脚本示例" class="headerlink" title="六、监控脚本示例"></a>六、监控脚本示例</h2><h3 id="6-1-简易检查脚本"><a href="#6-1-简易检查脚本" class="headerlink" title="6.1 简易检查脚本"></a>6.1 简易检查脚本</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"><span class="comment"># /usr/local/bin/smart_check.sh</span></span><br><span class="line"></span><br><span class="line">DISKS=$(lsblk -d -n -o NAME | grep sd)</span><br><span class="line">LOG_FILE=<span class="string">&quot;/var/log/smart_check.log&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> disk <span class="keyword">in</span> <span class="variable">$DISKS</span>; <span class="keyword">do</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;=== Checking /dev/<span class="variable">$disk</span> at <span class="subst">$(date)</span> ===&quot;</span> &gt;&gt; <span class="variable">$LOG_FILE</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment"># 健康状态</span></span><br><span class="line">    HEALTH=$(smartctl -H /dev/<span class="variable">$disk</span> 2&gt;/dev/null | grep <span class="string">&quot;result:&quot;</span> | awk <span class="string">&#x27;&#123;print $NF&#125;&#x27;</span>)</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> [ <span class="string">&quot;<span class="variable">$HEALTH</span>&quot;</span> != <span class="string">&quot;PASSED&quot;</span> ]; <span class="keyword">then</span></span><br><span class="line">        <span class="built_in">echo</span> <span class="string">&quot;WARNING: /dev/<span class="variable">$disk</span> SMART check FAILED: <span class="variable">$HEALTH</span>&quot;</span> &gt;&gt; <span class="variable">$LOG_FILE</span></span><br><span class="line">        <span class="comment"># 可在此处添加告警通知</span></span><br><span class="line">    <span class="keyword">fi</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment"># 检查重映射扇区</span></span><br><span class="line">    REALLOCATED=$(smartctl -A /dev/<span class="variable">$disk</span> 2&gt;/dev/null | grep <span class="string">&quot;Reallocated_Sector_Ct&quot;</span> | awk <span class="string">&#x27;&#123;print $NF&#125;&#x27;</span>)</span><br><span class="line">    <span class="keyword">if</span> [ <span class="string">&quot;<span class="variable">$REALLOCATED</span>&quot;</span> -gt 0 ] 2&gt;/dev/null; <span class="keyword">then</span></span><br><span class="line">        <span class="built_in">echo</span> <span class="string">&quot;WARNING: /dev/<span class="variable">$disk</span> has <span class="variable">$REALLOCATED</span> reallocated sectors&quot;</span> &gt;&gt; <span class="variable">$LOG_FILE</span></span><br><span class="line">    <span class="keyword">fi</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-配置定时任务"><a href="#6-2-配置定时任务" class="headerlink" title="6.2 配置定时任务"></a>6.2 配置定时任务</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 每天凌晨 2 点执行检查</span></span><br><span class="line">crontab -e</span><br><span class="line"></span><br><span class="line"><span class="comment"># 添加</span></span><br><span class="line">0 2 * * * /usr/local/bin/smart_check.sh</span><br></pre></td></tr></table></figure>
+
+<h2 id="七、SSD-特殊注意事项"><a href="#七、SSD-特殊注意事项" class="headerlink" title="七、SSD 特殊注意事项"></a>七、SSD 特殊注意事项</h2><p>SSD 除了常规 SMART 指标外，还需关注：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看 SSD 特有指标</span></span><br><span class="line">smartctl -a /dev/sda | grep -E <span class="string">&quot;Wear|Percentage|TBW&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>关键指标：</strong></p>
+<ul>
+<li><code>Wear_Leveling_Count</code>：磨损均衡计数（越低越危险）</li>
+<li><code>Used_Rsvd_Blk_Cnt_Tot</code>：已用保留块总数</li>
+<li><code>Total_LBAs_Written</code>：总写入量（换算 TBW）</li>
+</ul>
+<p><strong>SSD 寿命估算：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 假设 SSD 标称 TBW=300，已写入量可从 SMART 获取</span></span><br><span class="line"><span class="comment"># 剩余寿命 ≈ (TBW - 已写入 TB) / TBW × 100%</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="八、故障处理流程"><a href="#八、故障处理流程" class="headerlink" title="八、故障处理流程"></a>八、故障处理流程</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">SMART 告警</span><br><span class="line">    ├── 立即备份数据（最高优先级）</span><br><span class="line">    ├── 查看具体故障指标</span><br><span class="line">    │   ├── Reallocated_Sector &gt; 0 → 有坏道，计划更换</span><br><span class="line">    │   ├── Pending_Sector &gt; 0 → 有坏道风险，密切监控</span><br><span class="line">    │   └── SMART health FAILED → 立即更换</span><br><span class="line">    ├── 执行长自检确认</span><br><span class="line">    └── 联系供应商保修（如在保）</span><br></pre></td></tr></table></figure>
+
+<h2 id="九、最佳实践"><a href="#九、最佳实践" class="headerlink" title="九、最佳实践"></a>九、最佳实践</h2><ol>
+<li><strong>定期检查</strong>：生产环境至少每周检查一次 SMART 状态</li>
+<li><strong>监控告警</strong>：配置 smartd 自动监控 + 邮件&#x2F;短信告警</li>
+<li><strong>提前更换</strong>：发现重映射扇区 &gt; 0 即计划更换，不要等到完全故障</li>
+<li><strong>保留日志</strong>：定期归档 SMART 日志，便于趋势分析</li>
+<li><strong>备件管理</strong>：关键业务服务器应备有硬盘备件</li>
+</ol>
+<h2 id="十、总结"><a href="#十、总结" class="headerlink" title="十、总结"></a>十、总结</h2><p>SMART 是硬盘故障预警的第一道防线。正确配置 smartd 并定期分析 SMART 数据，可以在硬盘完全故障前提前发现隐患，避免数据丢失和业务中断。</p>
+<hr>
+<p><strong>参考命令速查：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">smartctl -H /dev/sda          <span class="comment"># 健康检查</span></span><br><span class="line">smartctl -a /dev/sda          <span class="comment"># 完整信息</span></span><br><span class="line">smartctl -t short /dev/sda    <span class="comment"># 短自检</span></span><br><span class="line">smartctl -l selftest /dev/sda <span class="comment"># 查看自检结果</span></span><br><span class="line">systemctl status smartd       <span class="comment"># 服务状态</span></span><br></pre></td></tr></table></figure>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io">PCLTXSYWZ</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io/2026/03/08/%E7%A1%AC%E7%9B%98%20SMART%20%E6%A3%80%E6%B5%8B%E4%B8%8E%E9%A2%84%E8%AD%A6%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97/">https://pcltxs.github.io/2026/03/08/%E7%A1%AC%E7%9B%98%20SMART%20%E6%A3%80%E6%B5%8B%E4%B8%8E%E9%A2%84%E8%AD%A6%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://pcltxs.github.io" target="_blank">体系所运维知识库</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/SMART/">SMART</a><a class="post-meta__tags" href="/tags/%E7%A1%AC%E7%9B%98%E7%9B%91%E6%8E%A7/">硬盘监控</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/03/09/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB%20-2026-03-09/" title="每日科技要闻 -2026-03-09"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">每日科技要闻 -2026-03-09</div></div><div class="info-2"><div class="info-item-1">每日科技要闻 - 2026 年 3 月 9 日 精选全球 20 条最热科技新闻 | 数据来源：The Verge, Hacker News, CNET, WIRED, Ars Technica   🤖 人工智能1. OpenAI 机器人部门负责人因五角大楼合同辞职Caitlin Kalinowski 在 X 平台上宣布辞去 OpenAI 职务，抗议公司与五角大楼的合同未能充分保护美国人免受无证监视，并认为授予 AI”未经人类授权的致命自主权”需要更多审议。 2. OpenAI 推迟 ChatGPT”成人模式”发布该功能原预计本季度推出，但 OpenAI 发言人表示将推迟发布，以便优先处理智能提升、个性改进、个性化和主动体验等更高优先级的工作。 3. OpenAI Codex 更新聚焦安全与开源OpenAI 推出 Codex Security 研究预览版 AI 代理，专注于识别和修复应用安全问题。同时宣布 Codex 开源基金现在为开源开发者提供为期六个月的 ChatGPT Pro with Codex 订阅。 4. DOGE 使用 ChatGPT 裁撤国家人文基金会据《纽约时报...</div></div></div></a><a class="pagination-related" href="/2026/03/08/Linux-TCP%20%E8%BF%9E%E6%8E%A5%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/" title="Linux-TCP 连接问题排查指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Linux-TCP 连接问题排查指南</div></div><div class="info-2"><div class="info-item-1">Linux TCP 连接问题排查指南一、问题现象TCP 连接问题通常表现为：  客户端连接超时或连接被拒绝 连接建立后数据传输缓慢或中断 大量连接处于 TIME_WAIT、CLOSE_WAIT 状态 服务端无法接受新连接  二、排查工具2.1 查看 TCP 连接状态12345678# 查看所有 TCP 连接ss -tanp# 统计各状态连接数ss -tan | awk &#x27;&#123;print $1&#125;&#x27; | sort | uniq -c# 查看特定端口的连接ss -tan | grep :80  2.2 常用连接状态说明   状态 含义 可能原因    ESTABLISHED 连接已建立 正常状态   SYN_SENT 已发送 SYN，等待响应 网络不通或对方未响应   SYN_RECV 收到 SYN，已回复 SYN-ACK 等待客户端 ACK   TIME_WAIT 主动关闭方等待 2MSL 正常关闭流程   CLOSE_WAIT 被动关闭方等待应用关闭 应用未调用 close()   FIN_WAIT1&#x2F;2 等待关闭确认 正常关闭流程 ...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">PCLTXSYWZ</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">46</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">33</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">7</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/pcltxs"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">广泛收集运维相关文档资料,欢迎大家投稿分享,文档请发送至邮箱tuwj@pcl.ac.cn。网站建设相关问题和建议请联系邮箱tuwj@pcl.ac.cn。体系所办公区设备分布情况请访问http://device.opendns4.cn,工单系统请访问http://ticket.opendns4.cn,体系所公有云资源使用情况请访问http://mcloud.dns4test.com/</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%A1%AC%E7%9B%98-SMART-%E6%A3%80%E6%B5%8B%E4%B8%8E%E9%A2%84%E8%AD%A6%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97"><span class="toc-number">1.</span> <span class="toc-text">硬盘 SMART 检测与预警配置指南</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81SMART-%E7%AE%80%E4%BB%8B"><span class="toc-number">1.1.</span> <span class="toc-text">一、SMART 简介</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E5%AE%89%E8%A3%85-smartmontools"><span class="toc-number">1.2.</span> <span class="toc-text">二、安装 smartmontools</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%9F%A5%E7%9C%8B%E7%A1%AC%E7%9B%98-SMART-%E4%BF%A1%E6%81%AF"><span class="toc-number">1.3.</span> <span class="toc-text">三、查看硬盘 SMART 信息</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E6%9F%A5%E7%9C%8B%E7%A1%AC%E7%9B%98%E5%88%97%E8%A1%A8"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 查看硬盘列表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%9F%A5%E7%9C%8B-SMART-%E5%81%A5%E5%BA%B7%E7%8A%B6%E6%80%81"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 查看 SMART 健康状态</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%85%B3%E9%94%AE%E8%BE%93%E5%87%BA%E8%A7%A3%E8%AF%BB"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 关键输出解读</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E9%85%8D%E7%BD%AE%E8%87%AA%E5%8A%A8%E6%A3%80%E6%B5%8B"><span class="toc-number">1.4.</span> <span class="toc-text">四、配置自动检测</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%90%AF%E7%94%A8-smartd-%E6%9C%8D%E5%8A%A1"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 启用 smartd 服务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E9%85%8D%E7%BD%AE%E9%82%AE%E4%BB%B6%E9%80%9A%E7%9F%A5%EF%BC%88%E5%8F%AF%E9%80%89%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 配置邮件通知（可选）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E5%90%AF%E5%8A%A8%E6%9C%8D%E5%8A%A1"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 启动服务</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%89%8B%E5%8A%A8%E6%89%A7%E8%A1%8C%E7%A1%AC%E7%9B%98%E8%87%AA%E6%A3%80"><span class="toc-number">1.5.</span> <span class="toc-text">五、手动执行硬盘自检</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E7%9B%91%E6%8E%A7%E8%84%9A%E6%9C%AC%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.6.</span> <span class="toc-text">六、监控脚本示例</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E7%AE%80%E6%98%93%E6%A3%80%E6%9F%A5%E8%84%9A%E6%9C%AC"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 简易检查脚本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E9%85%8D%E7%BD%AE%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 配置定时任务</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81SSD-%E7%89%B9%E6%AE%8A%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-number">1.7.</span> <span class="toc-text">七、SSD 特殊注意事项</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E6%95%85%E9%9A%9C%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B"><span class="toc-number">1.8.</span> <span class="toc-text">八、故障处理流程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9D%E3%80%81%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5"><span class="toc-number">1.9.</span> <span class="toc-text">九、最佳实践</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">1.10.</span> <span class="toc-text">十、总结</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/09/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB%20-2026-03-09/" title="每日科技要闻 -2026-03-09">每日科技要闻 -2026-03-09</a><time datetime="2026-03-09T00:00:00.000Z" title="发表于 2026-03-09 08:00:00">2026-03-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/08/Linux-TCP%20%E8%BF%9E%E6%8E%A5%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/" title="Linux-TCP 连接问题排查指南">Linux-TCP 连接问题排查指南</a><time datetime="2026-03-08T08:00:00.000Z" title="发表于 2026-03-08 16:00:00">2026-03-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/08/%E7%A1%AC%E7%9B%98%20SMART%20%E6%A3%80%E6%B5%8B%E4%B8%8E%E9%A2%84%E8%AD%A6%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97/" title="硬盘 SMART 检测与预警配置指南">硬盘 SMART 检测与预警配置指南</a><time datetime="2026-03-08T08:00:00.000Z" title="发表于 2026-03-08 16:00:00">2026-03-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/08/RAID%20%E7%A3%81%E7%9B%98%E9%98%B5%E5%88%97%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%95%85%E9%9A%9C%E6%81%A2%E5%A4%8D/" title="RAID 磁盘阵列配置与故障恢复">RAID 磁盘阵列配置与故障恢复</a><time datetime="2026-03-08T03:00:00.000Z" title="发表于 2026-03-08 11:00:00">2026-03-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/08/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-03-08/" title="每日科技要闻-2026-03-08">每日科技要闻-2026-03-08</a><time datetime="2026-03-08T00:00:00.000Z" title="发表于 2026-03-08 08:00:00">2026-03-08</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By PCLTXSYWZ</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.4</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>
