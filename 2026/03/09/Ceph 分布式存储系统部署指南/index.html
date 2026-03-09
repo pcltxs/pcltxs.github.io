@@ -1,0 +1,354 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Ceph 分布式存储系统部署指南 | 体系所运维知识库</title><meta name="author" content="PCLTXSYWZ"><meta name="copyright" content="PCLTXSYWZ"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Ceph 分布式存储系统部署指南一、概述Ceph 是一个统一的分布式存储系统，提供对象存储 (RGW)、块存储 (RBD) 和文件系统 (CephFS) 三种接口，具有高可靠、高性能、易扩展的特点。 二、核心组件   组件 说明 端口    MON (Monitor) 集群状态监控，维护集群映射 6789   OSD (Object Storage Daemon) 数据存储与复制，管理磁盘 680">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Ceph 分布式存储系统部署指南">
+<meta property="og:url" content="https://pcltxs.github.io/2026/03/09/Ceph%20%E5%88%86%E5%B8%83%E5%BC%8F%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97/index.html">
+<meta property="og:site_name" content="体系所运维知识库">
+<meta property="og:description" content="Ceph 分布式存储系统部署指南一、概述Ceph 是一个统一的分布式存储系统，提供对象存储 (RGW)、块存储 (RBD) 和文件系统 (CephFS) 三种接口，具有高可靠、高性能、易扩展的特点。 二、核心组件   组件 说明 端口    MON (Monitor) 集群状态监控，维护集群映射 6789   OSD (Object Storage Daemon) 数据存储与复制，管理磁盘 680">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://pcltxs.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-03-09T08:00:31.000Z">
+<meta property="article:modified_time" content="2026-03-09T08:06:49.133Z">
+<meta property="article:author" content="PCLTXSYWZ">
+<meta property="article:tag" content="分布式存储，Ceph">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pcltxs.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Ceph 分布式存储系统部署指南",
+  "url": "https://pcltxs.github.io/2026/03/09/Ceph%20%E5%88%86%E5%B8%83%E5%BC%8F%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97/",
+  "image": "https://pcltxs.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-03-09T08:00:31.000Z",
+  "dateModified": "2026-03-09T08:06:49.133Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "PCLTXSYWZ",
+      "url": "https://pcltxs.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://pcltxs.github.io/2026/03/09/Ceph%20%E5%88%86%E5%B8%83%E5%BC%8F%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Ceph 分布式存储系统部署指南',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.1"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">体系所运维知识库</span></a><a class="nav-page-title" href="/"><span class="site-name">Ceph 分布式存储系统部署指南</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div></div></nav><div id="post-info"><h1 class="post-title">Ceph 分布式存储系统部署指南</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-03-09T08:00:31.000Z" title="发表于 2026-03-09 16:00:31">2026-03-09</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-03-09T08:06:49.133Z" title="更新于 2026-03-09 16:06:49">2026-03-09</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E7%BB%B4%E7%AE%A1%E7%90%86/">系统部署与运维管理</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="Ceph-分布式存储系统部署指南"><a href="#Ceph-分布式存储系统部署指南" class="headerlink" title="Ceph 分布式存储系统部署指南"></a>Ceph 分布式存储系统部署指南</h1><h2 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h2><p>Ceph 是一个统一的分布式存储系统，提供对象存储 (RGW)、块存储 (RBD) 和文件系统 (CephFS) 三种接口，具有高可靠、高性能、易扩展的特点。</p>
+<h2 id="二、核心组件"><a href="#二、核心组件" class="headerlink" title="二、核心组件"></a>二、核心组件</h2><table>
+<thead>
+<tr>
+<th>组件</th>
+<th>说明</th>
+<th>端口</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>MON (Monitor)</td>
+<td>集群状态监控，维护集群映射</td>
+<td>6789</td>
+</tr>
+<tr>
+<td>OSD (Object Storage Daemon)</td>
+<td>数据存储与复制，管理磁盘</td>
+<td>6800-7300</td>
+</tr>
+<tr>
+<td>MDS (Metadata Server)</td>
+<td>CephFS 元数据服务</td>
+<td>6800</td>
+</tr>
+<tr>
+<td>RGW (RADOS Gateway)</td>
+<td>S3&#x2F;Swift 对象存储接口</td>
+<td>80&#x2F;443</td>
+</tr>
+<tr>
+<td>Manager</td>
+<td>集群管理与监控指标</td>
+<td>8443</td>
+</tr>
+</tbody></table>
+<h2 id="三、环境规划"><a href="#三、环境规划" class="headerlink" title="三、环境规划"></a>三、环境规划</h2><h3 id="3-1-节点规划（5-节点示例）"><a href="#3-1-节点规划（5-节点示例）" class="headerlink" title="3.1 节点规划（5 节点示例）"></a>3.1 节点规划（5 节点示例）</h3><table>
+<thead>
+<tr>
+<th>主机名</th>
+<th>IP</th>
+<th>角色</th>
+<th>磁盘配置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ceph-node1</td>
+<td>192.168.1.101</td>
+<td>mon, mgr, osd</td>
+<td>1×SSD+3×HDD</td>
+</tr>
+<tr>
+<td>ceph-node2</td>
+<td>192.168.1.102</td>
+<td>mon, mgr, osd</td>
+<td>1×SSD+3×HDD</td>
+</tr>
+<tr>
+<td>ceph-node3</td>
+<td>192.168.1.103</td>
+<td>mon, osd</td>
+<td>1×SSD+3×HDD</td>
+</tr>
+<tr>
+<td>ceph-node4</td>
+<td>192.168.1.104</td>
+<td>osd, rgw</td>
+<td>6×HDD</td>
+</tr>
+<tr>
+<td>ceph-node5</td>
+<td>192.168.1.105</td>
+<td>osd, rgw, mds</td>
+<td>6×HDD</td>
+</tr>
+</tbody></table>
+<h3 id="3-2-系统要求"><a href="#3-2-系统要求" class="headerlink" title="3.2 系统要求"></a>3.2 系统要求</h3><ul>
+<li>CentOS 7.9+ &#x2F; Ubuntu 20.04+</li>
+<li>内存 ≥ 8GB（OSD 节点建议 16GB+）</li>
+<li>万兆网络（推荐）</li>
+<li>时间同步（Chrony&#x2F;NTP）</li>
+</ul>
+<h2 id="四、部署前准备"><a href="#四、部署前准备" class="headerlink" title="四、部署前准备"></a>四、部署前准备</h2><h3 id="4-1-基础配置（所有节点）"><a href="#4-1-基础配置（所有节点）" class="headerlink" title="4.1 基础配置（所有节点）"></a>4.1 基础配置（所有节点）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 配置 hosts</span></span><br><span class="line"><span class="built_in">cat</span> &gt;&gt; /etc/hosts &lt;&lt; <span class="string">EOF</span></span><br><span class="line"><span class="string">192.168.1.101 ceph-node1</span></span><br><span class="line"><span class="string">192.168.1.102 ceph-node2</span></span><br><span class="line"><span class="string">192.168.1.103 ceph-node3</span></span><br><span class="line"><span class="string">192.168.1.104 ceph-node4</span></span><br><span class="line"><span class="string">192.168.1.105 ceph-node5</span></span><br><span class="line"><span class="string">EOF</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 关闭防火墙</span></span><br><span class="line">systemctl stop firewalld</span><br><span class="line">systemctl <span class="built_in">disable</span> firewalld</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 关闭 SELinux</span></span><br><span class="line">setenforce 0</span><br><span class="line">sed -i <span class="string">&#x27;s/SELINUX=enforcing/SELINUX=disabled/&#x27;</span> /etc/selinux/config</span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. 时间同步</span></span><br><span class="line">chronyc -a makestep</span><br><span class="line">systemctl <span class="built_in">enable</span> chronyd</span><br><span class="line">systemctl start chronyd</span><br><span class="line"></span><br><span class="line"><span class="comment"># 5. 配置免密 SSH</span></span><br><span class="line">ssh-keygen -t rsa -N <span class="string">&quot;&quot;</span></span><br><span class="line">ssh-copy-id ceph-node1</span><br><span class="line">ssh-copy-id ceph-node2</span><br><span class="line">ssh-copy-id ceph-node3</span><br><span class="line">ssh-copy-id ceph-node4</span><br><span class="line">ssh-copy-id ceph-node5</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-磁盘准备"><a href="#4-2-磁盘准备" class="headerlink" title="4.2 磁盘准备"></a>4.2 磁盘准备</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看磁盘</span></span><br><span class="line">lsblk</span><br><span class="line"></span><br><span class="line"><span class="comment"># 格式化 OSD 磁盘（Ceph 会自动处理，无需预先格式化）</span></span><br><span class="line"><span class="comment"># 确保数据盘为空盘，无分区和文件系统</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查磁盘状态</span></span><br><span class="line">smartctl -a /dev/sdb</span><br><span class="line">smartctl -a /dev/sdc</span><br><span class="line">smartctl -a /dev/sdd</span><br></pre></td></tr></table></figure>
+
+<h2 id="五、Cephadm-部署（推荐方式）"><a href="#五、Cephadm-部署（推荐方式）" class="headerlink" title="五、Cephadm 部署（推荐方式）"></a>五、Cephadm 部署（推荐方式）</h2><h3 id="5-1-安装-Cephadm"><a href="#5-1-安装-Cephadm" class="headerlink" title="5.1 安装 Cephadm"></a>5.1 安装 Cephadm</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 在 admin 节点执行</span></span><br><span class="line">curl --silent --remote-name --location https://github.com/ceph/ceph/raw/quincy/src/cephadm/cephadm</span><br><span class="line"><span class="built_in">chmod</span> +x cephadm</span><br><span class="line"><span class="built_in">mv</span> cephadm /usr/local/bin/</span><br><span class="line"></span><br><span class="line"><span class="comment"># 验证安装</span></span><br><span class="line">cephadm --version</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-引导集群"><a href="#5-2-引导集群" class="headerlink" title="5.2 引导集群"></a>5.2 引导集群</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 在 ceph-node1 执行</span></span><br><span class="line">cephadm bootstrap --mon-ip 192.168.1.101</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看集群状态</span></span><br><span class="line">cephadm shell -- ceph -s</span><br><span class="line">cephadm shell -- ceph orch host <span class="built_in">ls</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-添加主机到集群"><a href="#5-3-添加主机到集群" class="headerlink" title="5.3 添加主机到集群"></a>5.3 添加主机到集群</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 获取公钥</span></span><br><span class="line"><span class="built_in">cat</span> /etc/ceph/ceph.pub</span><br><span class="line"></span><br><span class="line"><span class="comment"># 在其他节点添加公钥</span></span><br><span class="line">ssh-copy-id -f -i /etc/ceph/ceph.pub root@ceph-node2</span><br><span class="line">ssh-copy-id -f -i /etc/ceph/ceph.pub root@ceph-node3</span><br><span class="line">ssh-copy-id -f -i /etc/ceph/ceph.pub root@ceph-node4</span><br><span class="line">ssh-copy-id -f -i /etc/ceph/ceph.pub root@ceph-node5</span><br><span class="line"></span><br><span class="line"><span class="comment"># 添加主机</span></span><br><span class="line">ceph orch host add ceph-node2 192.168.1.102</span><br><span class="line">ceph orch host add ceph-node3 192.168.1.103</span><br><span class="line">ceph orch host add ceph-node4 192.168.1.104</span><br><span class="line">ceph orch host add ceph-node5 192.168.1.105</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-4-部署-OSD"><a href="#5-4-部署-OSD" class="headerlink" title="5.4 部署 OSD"></a>5.4 部署 OSD</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 自动部署所有可用磁盘</span></span><br><span class="line">ceph orch apply osd --all-available-devices</span><br><span class="line"></span><br><span class="line"><span class="comment"># 或指定磁盘部署</span></span><br><span class="line">ceph orch daemon add osd ceph-node1:/dev/sdb</span><br><span class="line">ceph orch daemon add osd ceph-node1:/dev/sdc</span><br><span class="line">ceph orch daemon add osd ceph-node1:/dev/sdd</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看 OSD 状态</span></span><br><span class="line">ceph orch ps --daemon_type osd</span><br><span class="line">ceph osd tree</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-5-部署-Manager"><a href="#5-5-部署-Manager" class="headerlink" title="5.5 部署 Manager"></a>5.5 部署 Manager</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 指定节点部署 mgr</span></span><br><span class="line">ceph orch apply mgr ceph-node1,ceph-node2</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看 mgr 状态</span></span><br><span class="line">ceph mgr <span class="built_in">stat</span></span><br><span class="line">ceph mgr module <span class="built_in">ls</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-6-部署-RGW（对象存储）"><a href="#5-6-部署-RGW（对象存储）" class="headerlink" title="5.6 部署 RGW（对象存储）"></a>5.6 部署 RGW（对象存储）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建 RGW 服务</span></span><br><span class="line">ceph orch apply rgw myrgw --placement=<span class="string">&quot;2 ceph-node4 ceph-node5&quot;</span> --port=8080</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看 RGW 状态</span></span><br><span class="line">ceph orch ps --daemon_type rgw</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建 S3 用户</span></span><br><span class="line">cephadm shell -- radosgw-admin user create --uid=<span class="string">&quot;admin&quot;</span> --display-name=<span class="string">&quot;Admin User&quot;</span> --access-key=AKIAIOSFODNN7EXAMPLE --secret-key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-7-部署-CephFS"><a href="#5-7-部署-CephFS" class="headerlink" title="5.7 部署 CephFS"></a>5.7 部署 CephFS</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建元数据池和数据池</span></span><br><span class="line">cephadm shell -- ceph osd pool create cephfs_metadata 32</span><br><span class="line">cephadm shell -- ceph osd pool create cephfs_data 64</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建文件系统</span></span><br><span class="line">cephadm shell -- ceph fs new myfs cephfs_metadata cephfs_data</span><br><span class="line"></span><br><span class="line"><span class="comment"># 部署 MDS</span></span><br><span class="line">ceph orch apply mds myfs --placement=<span class="string">&quot;2 ceph-node5&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看文件系统状态</span></span><br><span class="line">ceph fs status</span><br></pre></td></tr></table></figure>
+
+<h2 id="六、传统部署方式（ceph-deploy）"><a href="#六、传统部署方式（ceph-deploy）" class="headerlink" title="六、传统部署方式（ceph-deploy）"></a>六、传统部署方式（ceph-deploy）</h2><h3 id="6-1-安装-Ceph"><a href="#6-1-安装-Ceph" class="headerlink" title="6.1 安装 Ceph"></a>6.1 安装 Ceph</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 配置 Ceph 仓库（CentOS）</span></span><br><span class="line"><span class="built_in">cat</span> &gt; /etc/yum.repos.d/ceph.repo &lt;&lt; <span class="string">EOF</span></span><br><span class="line"><span class="string">[Ceph]</span></span><br><span class="line"><span class="string">name=Ceph packages for \$basearch</span></span><br><span class="line"><span class="string">baseurl=https://download.ceph.com/rpm-quincy/el7/\$basearch</span></span><br><span class="line"><span class="string">enabled=1</span></span><br><span class="line"><span class="string">gpgcheck=1</span></span><br><span class="line"><span class="string">gpgkey=https://download.ceph.com/keys/release.asc</span></span><br><span class="line"><span class="string">EOF</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 安装</span></span><br><span class="line">yum install -y ceph ceph-mds ceph-radosgw ceph-deploy</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-初始化集群"><a href="#6-2-初始化集群" class="headerlink" title="6.2 初始化集群"></a>6.2 初始化集群</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建集群目录</span></span><br><span class="line"><span class="built_in">mkdir</span> ~/my-cluster &amp;&amp; <span class="built_in">cd</span> ~/my-cluster</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建新集群</span></span><br><span class="line">ceph-deploy new ceph-node1 ceph-node2 ceph-node3</span><br><span class="line"></span><br><span class="line"><span class="comment"># 修改 ceph.conf</span></span><br><span class="line"><span class="built_in">cat</span> &gt;&gt; ceph.conf &lt;&lt; <span class="string">EOF</span></span><br><span class="line"><span class="string">[global]</span></span><br><span class="line"><span class="string">fsid = $(uuidgen)</span></span><br><span class="line"><span class="string">mon_initial_members = ceph-node1, ceph-node2, ceph-node3</span></span><br><span class="line"><span class="string">mon_host = 192.168.1.101,192.168.1.102,192.168.1.103</span></span><br><span class="line"><span class="string">auth_cluster_required = cephx</span></span><br><span class="line"><span class="string">auth_service_required = cephx</span></span><br><span class="line"><span class="string">auth_client_required = cephx</span></span><br><span class="line"><span class="string">public_network = 192.168.1.0/24</span></span><br><span class="line"><span class="string">osd_pool_default_size = 3</span></span><br><span class="line"><span class="string">osd_pool_default_min_size = 2</span></span><br><span class="line"><span class="string">EOF</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 部署 MON</span></span><br><span class="line">ceph-deploy mon create-initial</span><br><span class="line"></span><br><span class="line"><span class="comment"># 部署 OSD</span></span><br><span class="line">ceph-deploy osd create --data /dev/sdb ceph-node1</span><br><span class="line">ceph-deploy osd create --data /dev/sdc ceph-node1</span><br><span class="line">ceph-deploy osd create --data /dev/sdd ceph-node1</span><br></pre></td></tr></table></figure>
+
+<h2 id="七、存储池管理"><a href="#七、存储池管理" class="headerlink" title="七、存储池管理"></a>七、存储池管理</h2><h3 id="7-1-创建存储池"><a href="#7-1-创建存储池" class="headerlink" title="7.1 创建存储池"></a>7.1 创建存储池</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建副本池</span></span><br><span class="line">cephadm shell -- ceph osd pool create rbd_pool 64 64 replicated</span><br><span class="line">cephadm shell -- ceph osd pool <span class="built_in">set</span> rbd_pool size 3</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建纠删码池（节省空间）</span></span><br><span class="line">cephadm shell -- ceph osd erasure-code-profile <span class="built_in">set</span> ec_profile k=2 m=1</span><br><span class="line">cephadm shell -- ceph osd pool create ec_pool 64 64 erasure ec_profile</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看存储池</span></span><br><span class="line">cephadm shell -- ceph osd pool <span class="built_in">ls</span> detail</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-2-存储池参数调优"><a href="#7-2-存储池参数调优" class="headerlink" title="7.2 存储池参数调优"></a>7.2 存储池参数调优</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 设置 PG 数（根据 OSD 数量计算）</span></span><br><span class="line"><span class="comment"># OSD &lt; 10: PG = OSD × 100</span></span><br><span class="line"><span class="comment"># OSD 10-50: PG = OSD × 50</span></span><br><span class="line"><span class="comment"># OSD &gt; 50: PG = OSD × 20</span></span><br><span class="line"></span><br><span class="line">cephadm shell -- ceph osd pool <span class="built_in">set</span> rbd_pool pg_num 128</span><br><span class="line">cephadm shell -- ceph osd pool <span class="built_in">set</span> rbd_pool pgp_num 128</span><br><span class="line"></span><br><span class="line"><span class="comment"># 设置压缩</span></span><br><span class="line">cephadm shell -- ceph osd pool <span class="built_in">set</span> rbd_pool compression_algorithm lz4</span><br></pre></td></tr></table></figure>
+
+<h2 id="八、RBD-块存储使用"><a href="#八、RBD-块存储使用" class="headerlink" title="八、RBD 块存储使用"></a>八、RBD 块存储使用</h2><h3 id="8-1-创建-RBD-镜像"><a href="#8-1-创建-RBD-镜像" class="headerlink" title="8.1 创建 RBD 镜像"></a>8.1 创建 RBD 镜像</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建镜像</span></span><br><span class="line">cephadm shell -- rbd create --size 100G rbd_pool/volume1</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看镜像</span></span><br><span class="line">cephadm shell -- rbd <span class="built_in">ls</span> rbd_pool</span><br><span class="line">cephadm shell -- rbd info rbd_pool/volume1</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建快照</span></span><br><span class="line">cephadm shell -- rbd snap create rbd_pool/volume1@snap1</span><br><span class="line"></span><br><span class="line"><span class="comment"># 克隆快照</span></span><br><span class="line">cephadm shell -- rbd <span class="built_in">clone</span> rbd_pool/volume1@snap1 rbd_pool/volume1_clone</span><br></pre></td></tr></table></figure>
+
+<h3 id="8-2-映射到客户端"><a href="#8-2-映射到客户端" class="headerlink" title="8.2 映射到客户端"></a>8.2 映射到客户端</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 安装客户端工具</span></span><br><span class="line">yum install -y ceph-common</span><br><span class="line"></span><br><span class="line"><span class="comment"># 复制配置文件</span></span><br><span class="line">scp ceph-node1:/etc/ceph/ceph.conf /etc/ceph/</span><br><span class="line">scp ceph-node1:/etc/ceph/ceph.client.admin.keyring /etc/ceph/</span><br><span class="line"></span><br><span class="line"><span class="comment"># 映射 RBD</span></span><br><span class="line">modprobe rbd</span><br><span class="line">rbd map rbd_pool/volume1</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看映射</span></span><br><span class="line">rbd showmapped</span><br><span class="line"></span><br><span class="line"><span class="comment"># 格式化挂载</span></span><br><span class="line">mkfs.xfs /dev/rbd0</span><br><span class="line"><span class="built_in">mkdir</span> /mnt/volume1</span><br><span class="line">mount /dev/rbd0 /mnt/volume1</span><br></pre></td></tr></table></figure>
+
+<h2 id="九、运维管理"><a href="#九、运维管理" class="headerlink" title="九、运维管理"></a>九、运维管理</h2><h3 id="9-1-常用命令"><a href="#9-1-常用命令" class="headerlink" title="9.1 常用命令"></a>9.1 常用命令</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 集群健康检查</span></span><br><span class="line">ceph -s</span><br><span class="line">ceph health detail</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看 OSD 状态</span></span><br><span class="line">ceph osd <span class="built_in">stat</span></span><br><span class="line">ceph osd tree</span><br><span class="line">ceph osd <span class="built_in">df</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看 MON 状态</span></span><br><span class="line">ceph mon <span class="built_in">stat</span></span><br><span class="line">ceph mon dump</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看 PG 状态</span></span><br><span class="line">ceph pg <span class="built_in">stat</span></span><br><span class="line">ceph pg dump</span><br><span class="line"></span><br><span class="line"><span class="comment"># 数据平衡状态</span></span><br><span class="line">ceph -w</span><br></pre></td></tr></table></figure>
+
+<h3 id="9-2-OSD-维护"><a href="#9-2-OSD-维护" class="headerlink" title="9.2 OSD 维护"></a>9.2 OSD 维护</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># OSD 下线（维护模式）</span></span><br><span class="line">ceph osd out osd.0</span><br><span class="line">ceph osd <span class="built_in">set</span> noout</span><br><span class="line"></span><br><span class="line"><span class="comment"># OSD 上线</span></span><br><span class="line">ceph osd <span class="keyword">in</span> osd.0</span><br><span class="line">ceph osd <span class="built_in">unset</span> noout</span><br><span class="line"></span><br><span class="line"><span class="comment"># 更换故障磁盘</span></span><br><span class="line">ceph osd out osd.5</span><br><span class="line"><span class="comment"># 物理更换磁盘后</span></span><br><span class="line">ceph orch daemon add osd ceph-node1:/dev/sde</span><br></pre></td></tr></table></figure>
+
+<h3 id="9-3-扩容操作"><a href="#9-3-扩容操作" class="headerlink" title="9.3 扩容操作"></a>9.3 扩容操作</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 添加新节点</span></span><br><span class="line">ceph orch host add ceph-node6 192.168.1.106</span><br><span class="line"></span><br><span class="line"><span class="comment"># 添加新 OSD</span></span><br><span class="line">ceph orch daemon add osd ceph-node6:/dev/sdb</span><br><span class="line">ceph orch daemon add osd ceph-node6:/dev/sdc</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看扩容后状态</span></span><br><span class="line">ceph osd tree</span><br><span class="line">ceph -s</span><br></pre></td></tr></table></figure>
+
+<h3 id="9-4-监控指标"><a href="#9-4-监控指标" class="headerlink" title="9.4 监控指标"></a>9.4 监控指标</h3><table>
+<thead>
+<tr>
+<th>指标</th>
+<th>说明</th>
+<th>告警阈值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>集群健康状态</td>
+<td>HEALTH_OK&#x2F;WARN&#x2F;ERR</td>
+<td>!&#x3D; HEALTH_OK</td>
+</tr>
+<tr>
+<td>OSD 存活率</td>
+<td>在线 OSD 比例</td>
+<td>&lt; 90%</td>
+</tr>
+<tr>
+<td>存储使用率</td>
+<td>已用容量比例</td>
+<td>&gt; 85%</td>
+</tr>
+<tr>
+<td>PG 状态</td>
+<td>Placement Group 状态</td>
+<td>active+clean &lt; 95%</td>
+</tr>
+<tr>
+<td>恢复速度</td>
+<td>数据恢复速率</td>
+<td>&lt; 10MB&#x2F;s 持续</td>
+</tr>
+<tr>
+<td>延迟</td>
+<td>读写延迟</td>
+<td>&gt; 100ms</td>
+</tr>
+</tbody></table>
+<h2 id="十、故障排查"><a href="#十、故障排查" class="headerlink" title="十、故障排查"></a>十、故障排查</h2><h3 id="10-1-集群健康告警"><a href="#10-1-集群健康告警" class="headerlink" title="10.1 集群健康告警"></a>10.1 集群健康告警</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看详细信息</span></span><br><span class="line">ceph health detail</span><br><span class="line"></span><br><span class="line"><span class="comment"># 常见告警处理</span></span><br><span class="line"><span class="comment"># 1. OSD down: 检查磁盘、网络、进程</span></span><br><span class="line"><span class="comment"># 2. PG inconsistent: ceph pg repair &lt;pg_id&gt;</span></span><br><span class="line"><span class="comment"># 3. MON clock skew: 检查时间同步</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="10-2-OSD-故障处理"><a href="#10-2-OSD-故障处理" class="headerlink" title="10.2 OSD 故障处理"></a>10.2 OSD 故障处理</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看 OSD 日志</span></span><br><span class="line">journalctl -u ceph-osd@0 -f</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查磁盘状态</span></span><br><span class="line">smartctl -a /dev/sdb</span><br><span class="line">hdparm -I /dev/sdb</span><br><span class="line"></span><br><span class="line"><span class="comment"># 重启 OSD</span></span><br><span class="line">systemctl restart ceph-osd@0</span><br></pre></td></tr></table></figure>
+
+<h3 id="10-3-性能问题排查"><a href="#10-3-性能问题排查" class="headerlink" title="10.3 性能问题排查"></a>10.3 性能问题排查</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看实时 IO</span></span><br><span class="line">ceph -w</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看慢请求</span></span><br><span class="line">ceph health detail | grep slow</span><br><span class="line"></span><br><span class="line"><span class="comment"># 调整慢请求阈值</span></span><br><span class="line">ceph config <span class="built_in">set</span> global osd_slow_op_warn_threshold 30</span><br></pre></td></tr></table></figure>
+
+<h2 id="十一、性能优化"><a href="#十一、性能优化" class="headerlink" title="十一、性能优化"></a>十一、性能优化</h2><h3 id="10-1-网络优化"><a href="#10-1-网络优化" class="headerlink" title="10.1 网络优化"></a>10.1 网络优化</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 分离公共网络和集群网络</span></span><br><span class="line"><span class="comment"># ceph.conf</span></span><br><span class="line">[global]</span><br><span class="line">public_network = 192.168.1.0/24</span><br><span class="line">cluster_network = 192.168.2.0/24</span><br><span class="line"></span><br><span class="line"><span class="comment"># 启用巨帧（MTU 9000）</span></span><br><span class="line">ip <span class="built_in">link</span> <span class="built_in">set</span> dev eth0 mtu 9000</span><br></pre></td></tr></table></figure>
+
+<h3 id="10-2-OSD-调优"><a href="#10-2-OSD-调优" class="headerlink" title="10.2 OSD 调优"></a>10.2 OSD 调优</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 调整 OSD 参数</span></span><br><span class="line">ceph config <span class="built_in">set</span> osd osd_op_threads 8</span><br><span class="line">ceph config <span class="built_in">set</span> osd osd_disk_threads 4</span><br><span class="line">ceph config <span class="built_in">set</span> osd osd_max_write_size 512</span><br></pre></td></tr></table></figure>
+
+<h3 id="10-3-缓存加速"><a href="#10-3-缓存加速" class="headerlink" title="10.3 缓存加速"></a>10.3 缓存加速</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 使用 SSD 作为缓存层</span></span><br><span class="line">ceph osd tier add rbd_pool ssd_pool</span><br><span class="line">ceph osd tier cache-mode ssd_pool writeback</span><br><span class="line">ceph osd tier set-overlay rbd_pool ssd_pool</span><br></pre></td></tr></table></figure>
+
+<h2 id="十二、备份与恢复"><a href="#十二、备份与恢复" class="headerlink" title="十二、备份与恢复"></a>十二、备份与恢复</h2><h3 id="12-1-配置备份"><a href="#12-1-配置备份" class="headerlink" title="12.1 配置备份"></a>12.1 配置备份</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 备份配置文件</span></span><br><span class="line"><span class="built_in">cp</span> -r /etc/ceph /backup/ceph_$(<span class="built_in">date</span> +%Y%m%d)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 导出集群映射</span></span><br><span class="line">cephadm shell -- ceph mon dump &gt; /backup/mon_dump_$(<span class="built_in">date</span> +%Y%m%d).txt</span><br><span class="line">cephadm shell -- ceph osd tree &gt; /backup/osd_tree_$(<span class="built_in">date</span> +%Y%m%d).txt</span><br></pre></td></tr></table></figure>
+
+<h3 id="12-2-数据备份"><a href="#12-2-数据备份" class="headerlink" title="12.2 数据备份"></a>12.2 数据备份</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 导出 RBD 镜像</span></span><br><span class="line">rbd <span class="built_in">export</span> rbd_pool/volume1 /backup/volume1.img</span><br><span class="line"></span><br><span class="line"><span class="comment"># 快照备份</span></span><br><span class="line">rbd snap create rbd_pool/volume1@backup_$(<span class="built_in">date</span> +%Y%m%d)</span><br></pre></td></tr></table></figure>
+
+<h3 id="12-3-灾难恢复"><a href="#12-3-灾难恢复" class="headerlink" title="12.3 灾难恢复"></a>12.3 灾难恢复</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 恢复 MON 集群</span></span><br><span class="line">ceph-mon -i &lt;mon_id&gt; --mkfs --mon-data /var/lib/ceph/mon/ceph-&lt;mon_id&gt;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 恢复 OSD</span></span><br><span class="line">ceph-osd -i &lt;osd_id&gt; --mkfs --osd-data /var/lib/ceph/osd/ceph-&lt;osd_id&gt;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 重新加入集群</span></span><br><span class="line">systemctl start ceph-mon@&lt;mon_id&gt;</span><br><span class="line">systemctl start ceph-osd@&lt;osd_id&gt;</span><br></pre></td></tr></table></figure>
+
+<h2 id="十三、安全加固"><a href="#十三、安全加固" class="headerlink" title="十三、安全加固"></a>十三、安全加固</h2><h3 id="13-1-认证配置"><a href="#13-1-认证配置" class="headerlink" title="13.1 认证配置"></a>13.1 认证配置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建受限用户</span></span><br><span class="line">cephadm shell -- ceph auth get-or-create client.app mon <span class="string">&#x27;allow r&#x27;</span> osd <span class="string">&#x27;allow rwx pool=rbd_pool&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看用户权限</span></span><br><span class="line">cephadm shell -- ceph auth list</span><br></pre></td></tr></table></figure>
+
+<h3 id="13-2-网络隔离"><a href="#13-2-网络隔离" class="headerlink" title="13.2 网络隔离"></a>13.2 网络隔离</h3><ul>
+<li>使用独立网络用于集群通信</li>
+<li>配置防火墙限制访问端口</li>
+<li>RGW 使用 HTTPS</li>
+</ul>
+<h3 id="13-3-数据加密"><a href="#13-3-数据加密" class="headerlink" title="13.3 数据加密"></a>13.3 数据加密</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启用 OSD 静态加密</span></span><br><span class="line">cephadm shell -- ceph config <span class="built_in">set</span> global osd_crypto_op_num_threads 4</span><br></pre></td></tr></table></figure>
+
+<h2 id="十四、总结"><a href="#十四、总结" class="headerlink" title="十四、总结"></a>十四、总结</h2><p>Ceph 部署运维关键点：</p>
+<ol>
+<li><strong>规划先行</strong>: 合理设计节点角色、磁盘配置、网络拓扑</li>
+<li><strong>监控到位</strong>: 集群健康、OSD 状态、存储使用率、PG 状态</li>
+<li><strong>定期维护</strong>: 磁盘巡检、日志分析、性能调优</li>
+<li><strong>备份策略</strong>: 配置备份、快照管理、灾难恢复预案</li>
+<li><strong>安全加固</strong>: 权限控制、网络隔离、数据加密</li>
+</ol>
+<p>Ceph 作为企业级分布式存储，需要持续运维优化以保障稳定运行。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io">PCLTXSYWZ</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io/2026/03/09/Ceph%20%E5%88%86%E5%B8%83%E5%BC%8F%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97/">https://pcltxs.github.io/2026/03/09/Ceph%20%E5%88%86%E5%B8%83%E5%BC%8F%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://pcltxs.github.io" target="_blank">体系所运维知识库</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E5%AD%98%E5%82%A8%EF%BC%8CCeph/">分布式存储，Ceph</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/03/09/RocketMQ%20%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E9%9B%86%E7%BE%A4%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E7%BB%B4/" title="RocketMQ 消息队列集群部署与运维"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">RocketMQ 消息队列集群部署与运维</div></div><div class="info-2"><div class="info-item-1">RocketMQ 消息队列集群部署与运维一、概述RocketMQ 是阿里巴巴开源的分布式消息中间件，具有高吞吐、低延迟、高可用的特点，广泛应用于日志收集、削峰填谷、异步解耦等场景。 二、架构组件   组件 说明    NameServer 无状态注册中心，管理 Broker 路由信息   Broker 消息存储与转发核心，支持主从部署   Producer 消息生产者   Consumer 消息消费者，支持集群&#x2F;广播模式   Topic 消息分类标识   Queue Topic 的物理分区   三、环境准备3.1 系统要求 JDK 1.8+ 内存 ≥ 4GB（生产建议 8GB+） 磁盘 ≥ 50GB（根据消息保留策略调整）  3.2 下载安装12345# 下载 RocketMQ 5.xwget https://archive.apache.org/dist/rocketmq/5.1.1/rocketmq-all-5.1.1-bin-release.zipunzip rocketmq-all-5.1.1-bin-release.zipcd rocketmq-5.1.1ex...</div></div></div></a><a class="pagination-related" href="/2026/03/09/WireGuard-VPN%20%E9%85%8D%E7%BD%AE%E4%B8%8E%E7%AE%A1%E7%90%86%E5%AE%9E%E6%88%98/" title="WireGuard-VPN 配置与管理实战"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">WireGuard-VPN 配置与管理实战</div></div><div class="info-2"><div class="info-item-1">WireGuard VPN 配置与管理实战一、概述WireGuard 是一款现代化的 VPN 协议，以其简洁的代码库、高性能和易配置性著称。相比 OpenVPN 和 IPsec，WireGuard 具有以下优势：  代码简洁：核心代码仅约 4000 行，易于审计 性能优异：基于 UDP，支持多队列，吞吐量更高 配置简单：无需复杂的证书管理，使用公钥&#x2F;私钥对 连接快速：握手延迟低，重连速度快  本文将在 Linux 服务器上部署 WireGuard VPN，实现安全的远程访问。 二、环境准备2.1 系统要求 Linux 内核 5.6+（WireGuard 已并入主线内核） 或安装 wireguard-dkms 模块支持旧内核 服务器具有公网 IP 地址  2.2 安装 WireGuardUbuntu&#x2F;Debian: 12sudo apt updatesudo apt install wireguard wireguard-tools  CentOS&#x2F;RHEL: 12sudo yum install epel-releasesudo yum instal...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">PCLTXSYWZ</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">50</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">39</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">7</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/pcltxs"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">广泛收集运维相关文档资料,欢迎大家投稿分享,文档请发送至邮箱tuwj@pcl.ac.cn。网站建设相关问题和建议请联系邮箱tuwj@pcl.ac.cn。体系所办公区设备分布情况请访问http://device.opendns4.cn,工单系统请访问http://ticket.opendns4.cn,体系所公有云资源使用情况请访问http://mcloud.dns4test.com/</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Ceph-%E5%88%86%E5%B8%83%E5%BC%8F%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97"><span class="toc-number">1.</span> <span class="toc-text">Ceph 分布式存储系统部署指南</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">一、概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%A0%B8%E5%BF%83%E7%BB%84%E4%BB%B6"><span class="toc-number">1.2.</span> <span class="toc-text">二、核心组件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E7%8E%AF%E5%A2%83%E8%A7%84%E5%88%92"><span class="toc-number">1.3.</span> <span class="toc-text">三、环境规划</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E8%8A%82%E7%82%B9%E8%A7%84%E5%88%92%EF%BC%885-%E8%8A%82%E7%82%B9%E7%A4%BA%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 节点规划（5 节点示例）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E7%B3%BB%E7%BB%9F%E8%A6%81%E6%B1%82"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 系统要求</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E9%83%A8%E7%BD%B2%E5%89%8D%E5%87%86%E5%A4%87"><span class="toc-number">1.4.</span> <span class="toc-text">四、部署前准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%9F%BA%E7%A1%80%E9%85%8D%E7%BD%AE%EF%BC%88%E6%89%80%E6%9C%89%E8%8A%82%E7%82%B9%EF%BC%89"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 基础配置（所有节点）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E7%A3%81%E7%9B%98%E5%87%86%E5%A4%87"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 磁盘准备</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81Cephadm-%E9%83%A8%E7%BD%B2%EF%BC%88%E6%8E%A8%E8%8D%90%E6%96%B9%E5%BC%8F%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、Cephadm 部署（推荐方式）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E5%AE%89%E8%A3%85-Cephadm"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 安装 Cephadm</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%BC%95%E5%AF%BC%E9%9B%86%E7%BE%A4"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 引导集群</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E6%B7%BB%E5%8A%A0%E4%B8%BB%E6%9C%BA%E5%88%B0%E9%9B%86%E7%BE%A4"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 添加主机到集群</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E9%83%A8%E7%BD%B2-OSD"><span class="toc-number">1.5.4.</span> <span class="toc-text">5.4 部署 OSD</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-5-%E9%83%A8%E7%BD%B2-Manager"><span class="toc-number">1.5.5.</span> <span class="toc-text">5.5 部署 Manager</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-6-%E9%83%A8%E7%BD%B2-RGW%EF%BC%88%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%EF%BC%89"><span class="toc-number">1.5.6.</span> <span class="toc-text">5.6 部署 RGW（对象存储）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-7-%E9%83%A8%E7%BD%B2-CephFS"><span class="toc-number">1.5.7.</span> <span class="toc-text">5.7 部署 CephFS</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E4%BC%A0%E7%BB%9F%E9%83%A8%E7%BD%B2%E6%96%B9%E5%BC%8F%EF%BC%88ceph-deploy%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">六、传统部署方式（ceph-deploy）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E5%AE%89%E8%A3%85-Ceph"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 安装 Ceph</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%88%9D%E5%A7%8B%E5%8C%96%E9%9B%86%E7%BE%A4"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 初始化集群</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E5%AD%98%E5%82%A8%E6%B1%A0%E7%AE%A1%E7%90%86"><span class="toc-number">1.7.</span> <span class="toc-text">七、存储池管理</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E5%88%9B%E5%BB%BA%E5%AD%98%E5%82%A8%E6%B1%A0"><span class="toc-number">1.7.1.</span> <span class="toc-text">7.1 创建存储池</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E5%AD%98%E5%82%A8%E6%B1%A0%E5%8F%82%E6%95%B0%E8%B0%83%E4%BC%98"><span class="toc-number">1.7.2.</span> <span class="toc-text">7.2 存储池参数调优</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81RBD-%E5%9D%97%E5%AD%98%E5%82%A8%E4%BD%BF%E7%94%A8"><span class="toc-number">1.8.</span> <span class="toc-text">八、RBD 块存储使用</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-%E5%88%9B%E5%BB%BA-RBD-%E9%95%9C%E5%83%8F"><span class="toc-number">1.8.1.</span> <span class="toc-text">8.1 创建 RBD 镜像</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-%E6%98%A0%E5%B0%84%E5%88%B0%E5%AE%A2%E6%88%B7%E7%AB%AF"><span class="toc-number">1.8.2.</span> <span class="toc-text">8.2 映射到客户端</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9D%E3%80%81%E8%BF%90%E7%BB%B4%E7%AE%A1%E7%90%86"><span class="toc-number">1.9.</span> <span class="toc-text">九、运维管理</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#9-1-%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="toc-number">1.9.1.</span> <span class="toc-text">9.1 常用命令</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-2-OSD-%E7%BB%B4%E6%8A%A4"><span class="toc-number">1.9.2.</span> <span class="toc-text">9.2 OSD 维护</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-3-%E6%89%A9%E5%AE%B9%E6%93%8D%E4%BD%9C"><span class="toc-number">1.9.3.</span> <span class="toc-text">9.3 扩容操作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-4-%E7%9B%91%E6%8E%A7%E6%8C%87%E6%A0%87"><span class="toc-number">1.9.4.</span> <span class="toc-text">9.4 监控指标</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E3%80%81%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5"><span class="toc-number">1.10.</span> <span class="toc-text">十、故障排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#10-1-%E9%9B%86%E7%BE%A4%E5%81%A5%E5%BA%B7%E5%91%8A%E8%AD%A6"><span class="toc-number">1.10.1.</span> <span class="toc-text">10.1 集群健康告警</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-2-OSD-%E6%95%85%E9%9A%9C%E5%A4%84%E7%90%86"><span class="toc-number">1.10.2.</span> <span class="toc-text">10.2 OSD 故障处理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-3-%E6%80%A7%E8%83%BD%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="toc-number">1.10.3.</span> <span class="toc-text">10.3 性能问题排查</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E4%B8%80%E3%80%81%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96"><span class="toc-number">1.11.</span> <span class="toc-text">十一、性能优化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#10-1-%E7%BD%91%E7%BB%9C%E4%BC%98%E5%8C%96"><span class="toc-number">1.11.1.</span> <span class="toc-text">10.1 网络优化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-2-OSD-%E8%B0%83%E4%BC%98"><span class="toc-number">1.11.2.</span> <span class="toc-text">10.2 OSD 调优</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-3-%E7%BC%93%E5%AD%98%E5%8A%A0%E9%80%9F"><span class="toc-number">1.11.3.</span> <span class="toc-text">10.3 缓存加速</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E4%BA%8C%E3%80%81%E5%A4%87%E4%BB%BD%E4%B8%8E%E6%81%A2%E5%A4%8D"><span class="toc-number">1.12.</span> <span class="toc-text">十二、备份与恢复</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#12-1-%E9%85%8D%E7%BD%AE%E5%A4%87%E4%BB%BD"><span class="toc-number">1.12.1.</span> <span class="toc-text">12.1 配置备份</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#12-2-%E6%95%B0%E6%8D%AE%E5%A4%87%E4%BB%BD"><span class="toc-number">1.12.2.</span> <span class="toc-text">12.2 数据备份</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#12-3-%E7%81%BE%E9%9A%BE%E6%81%A2%E5%A4%8D"><span class="toc-number">1.12.3.</span> <span class="toc-text">12.3 灾难恢复</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E4%B8%89%E3%80%81%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA"><span class="toc-number">1.13.</span> <span class="toc-text">十三、安全加固</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#13-1-%E8%AE%A4%E8%AF%81%E9%85%8D%E7%BD%AE"><span class="toc-number">1.13.1.</span> <span class="toc-text">13.1 认证配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#13-2-%E7%BD%91%E7%BB%9C%E9%9A%94%E7%A6%BB"><span class="toc-number">1.13.2.</span> <span class="toc-text">13.2 网络隔离</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#13-3-%E6%95%B0%E6%8D%AE%E5%8A%A0%E5%AF%86"><span class="toc-number">1.13.3.</span> <span class="toc-text">13.3 数据加密</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E5%9B%9B%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">1.14.</span> <span class="toc-text">十四、总结</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/09/Ceph%20%E5%88%86%E5%B8%83%E5%BC%8F%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97/" title="Ceph 分布式存储系统部署指南">Ceph 分布式存储系统部署指南</a><time datetime="2026-03-09T08:00:31.000Z" title="发表于 2026-03-09 16:00:31">2026-03-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/09/RocketMQ%20%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E9%9B%86%E7%BE%A4%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E7%BB%B4/" title="RocketMQ 消息队列集群部署与运维">RocketMQ 消息队列集群部署与运维</a><time datetime="2026-03-09T08:00:31.000Z" title="发表于 2026-03-09 16:00:31">2026-03-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/09/PostgreSQL%20%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97/" title="PostgreSQL 高可用集群部署指南">PostgreSQL 高可用集群部署指南</a><time datetime="2026-03-09T03:00:00.000Z" title="发表于 2026-03-09 11:00:00">2026-03-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/09/WireGuard-VPN%20%E9%85%8D%E7%BD%AE%E4%B8%8E%E7%AE%A1%E7%90%86%E5%AE%9E%E6%88%98/" title="WireGuard-VPN 配置与管理实战">WireGuard-VPN 配置与管理实战</a><time datetime="2026-03-09T03:00:00.000Z" title="发表于 2026-03-09 11:00:00">2026-03-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/09/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB%20-2026-03-09/" title="每日科技要闻 -2026-03-09">每日科技要闻 -2026-03-09</a><time datetime="2026-03-09T00:00:00.000Z" title="发表于 2026-03-09 08:00:00">2026-03-09</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By PCLTXSYWZ</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.4</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>
