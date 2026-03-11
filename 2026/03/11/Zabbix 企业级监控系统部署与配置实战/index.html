@@ -1,0 +1,398 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Zabbix 企业级监控系统部署与配置实战 | 体系所运维知识库</title><meta name="author" content="PCLTXSYWZ"><meta name="copyright" content="PCLTXSYWZ"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Zabbix 企业级监控系统部署与配置实战一、概述Zabbix 是一款成熟的企业级开源监控解决方案，支持服务器、网络设备、应用程序的全方位监控。相比 Prometheus，Zabbix 在传统 IT 基础设施监控、自动发现、可视化报表方面具有独特优势。 本文档详细介绍 Zabbix 6.0 LTS 版本的部署、配置及最佳实践。 二、架构设计2.1 核心组件   组件 说明    Zabbix Se">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Zabbix 企业级监控系统部署与配置实战">
+<meta property="og:url" content="https://pcltxs.github.io/2026/03/11/Zabbix%20%E4%BC%81%E4%B8%9A%E7%BA%A7%E7%9B%91%E6%8E%A7%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E4%B8%8E%E9%85%8D%E7%BD%AE%E5%AE%9E%E6%88%98/index.html">
+<meta property="og:site_name" content="体系所运维知识库">
+<meta property="og:description" content="Zabbix 企业级监控系统部署与配置实战一、概述Zabbix 是一款成熟的企业级开源监控解决方案，支持服务器、网络设备、应用程序的全方位监控。相比 Prometheus，Zabbix 在传统 IT 基础设施监控、自动发现、可视化报表方面具有独特优势。 本文档详细介绍 Zabbix 6.0 LTS 版本的部署、配置及最佳实践。 二、架构设计2.1 核心组件   组件 说明    Zabbix Se">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://pcltxs.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-03-11T03:00:00.000Z">
+<meta property="article:modified_time" content="2026-03-11T06:16:14.610Z">
+<meta property="article:author" content="PCLTXSYWZ">
+<meta property="article:tag" content="Zabbix">
+<meta property="article:tag" content="监控">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pcltxs.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Zabbix 企业级监控系统部署与配置实战",
+  "url": "https://pcltxs.github.io/2026/03/11/Zabbix%20%E4%BC%81%E4%B8%9A%E7%BA%A7%E7%9B%91%E6%8E%A7%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E4%B8%8E%E9%85%8D%E7%BD%AE%E5%AE%9E%E6%88%98/",
+  "image": "https://pcltxs.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-03-11T03:00:00.000Z",
+  "dateModified": "2026-03-11T06:16:14.610Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "PCLTXSYWZ",
+      "url": "https://pcltxs.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://pcltxs.github.io/2026/03/11/Zabbix%20%E4%BC%81%E4%B8%9A%E7%BA%A7%E7%9B%91%E6%8E%A7%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E4%B8%8E%E9%85%8D%E7%BD%AE%E5%AE%9E%E6%88%98/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Zabbix 企业级监控系统部署与配置实战',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.1"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">体系所运维知识库</span></a><a class="nav-page-title" href="/"><span class="site-name">Zabbix 企业级监控系统部署与配置实战</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div></div></nav><div id="post-info"><h1 class="post-title">Zabbix 企业级监控系统部署与配置实战</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-03-11T03:00:00.000Z" title="发表于 2026-03-11 11:00:00">2026-03-11</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-03-11T06:16:14.610Z" title="更新于 2026-03-11 14:16:14">2026-03-11</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%9B%91%E6%8E%A7%E4%B8%8E%E5%91%8A%E8%AD%A6/">监控与告警</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="Zabbix-企业级监控系统部署与配置实战"><a href="#Zabbix-企业级监控系统部署与配置实战" class="headerlink" title="Zabbix 企业级监控系统部署与配置实战"></a>Zabbix 企业级监控系统部署与配置实战</h1><h2 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h2><p>Zabbix 是一款成熟的企业级开源监控解决方案，支持服务器、网络设备、应用程序的全方位监控。相比 Prometheus，Zabbix 在传统 IT 基础设施监控、自动发现、可视化报表方面具有独特优势。</p>
+<p>本文档详细介绍 Zabbix 6.0 LTS 版本的部署、配置及最佳实践。</p>
+<h2 id="二、架构设计"><a href="#二、架构设计" class="headerlink" title="二、架构设计"></a>二、架构设计</h2><h3 id="2-1-核心组件"><a href="#2-1-核心组件" class="headerlink" title="2.1 核心组件"></a>2.1 核心组件</h3><table>
+<thead>
+<tr>
+<th>组件</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Zabbix Server</td>
+<td>核心服务，处理监控数据、触发告警</td>
+</tr>
+<tr>
+<td>Zabbix Agent</td>
+<td>部署在被监控主机，采集本地数据</td>
+</tr>
+<tr>
+<td>Zabbix Proxy</td>
+<td>分布式监控，减轻 Server 压力</td>
+</tr>
+<tr>
+<td>Zabbix Frontend</td>
+<td>Web 界面，配置和展示</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>存储配置和监控数据（MySQL&#x2F;PostgreSQL）</td>
+</tr>
+</tbody></table>
+<h3 id="2-2-推荐架构"><a href="#2-2-推荐架构" class="headerlink" title="2.2 推荐架构"></a>2.2 推荐架构</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">                ┌─────────────────┐</span><br><span class="line">                │  Zabbix Server  │</span><br><span class="line">                │  + Frontend     │</span><br><span class="line">                └────────┬────────┘</span><br><span class="line">                         │</span><br><span class="line">       ┌─────────────────┼─────────────────┐</span><br><span class="line">       │                 │                 │</span><br><span class="line">┌──────▼──────┐   ┌──────▼──────┐   ┌──────▼──────┐</span><br><span class="line">│   Proxy 1   │   │   Proxy 2   │   │   Server    │</span><br><span class="line">│  (机房 A)   │   │  (机房 B)   │   │  (直连)     │</span><br><span class="line">└──────┬──────┘   └──────┬──────┘   └──────┬──────┘</span><br><span class="line">       │                 │                 │</span><br><span class="line">┌──────▼──────┐   ┌──────▼──────┐   ┌──────▼──────┐</span><br><span class="line">│  Agents     │   │  Agents     │   │  Agents     │</span><br><span class="line">│  50-100 台   │   │  50-100 台   │   │  &lt;50 台     │</span><br><span class="line">└─────────────┘   └─────────────┘   └─────────────┘</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、环境准备"><a href="#三、环境准备" class="headerlink" title="三、环境准备"></a>三、环境准备</h2><h3 id="3-1-系统要求"><a href="#3-1-系统要求" class="headerlink" title="3.1 系统要求"></a>3.1 系统要求</h3><ul>
+<li><strong>操作系统</strong>: CentOS 7+&#x2F;Ubuntu 20.04+&#x2F;Debian 10+</li>
+<li><strong>CPU</strong>: 4 核+（每 1000 个监控项）</li>
+<li><strong>内存</strong>: 8GB+（每 1000 个监控项）</li>
+<li><strong>磁盘</strong>: SSD 推荐，根据数据保留策略规划</li>
+</ul>
+<h3 id="3-2-数据库选择"><a href="#3-2-数据库选择" class="headerlink" title="3.2 数据库选择"></a>3.2 数据库选择</h3><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>推荐数据库</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>&lt;5000 监控项</td>
+<td>MySQL 8.0</td>
+<td>部署简单，生态完善</td>
+</tr>
+<tr>
+<td>5000-20000 监控项</td>
+<td>PostgreSQL 13+</td>
+<td>性能更优，并发更好</td>
+</tr>
+<tr>
+<td>&gt;20000 监控项</td>
+<td>TimescaleDB</td>
+<td>时序数据优化</td>
+</tr>
+</tbody></table>
+<h2 id="四、部署步骤"><a href="#四、部署步骤" class="headerlink" title="四、部署步骤"></a>四、部署步骤</h2><h3 id="4-1-安装-Zabbix-Server（Ubuntu-22-04-示例）"><a href="#4-1-安装-Zabbix-Server（Ubuntu-22-04-示例）" class="headerlink" title="4.1 安装 Zabbix Server（Ubuntu 22.04 示例）"></a>4.1 安装 Zabbix Server（Ubuntu 22.04 示例）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 安装 Zabbix 仓库</span></span><br><span class="line">wget https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.0-4+ubuntu22.04_all.deb</span><br><span class="line">dpkg -i zabbix-release_6.0-4+ubuntu22.04_all.deb</span><br><span class="line">apt update</span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 安装 Zabbix Server + Frontend + Agent</span></span><br><span class="line">apt install zabbix-server-mysql zabbix-frontend-php zabbix-apache-conf zabbix-sql-scripts zabbix-agent</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 安装并配置 MySQL</span></span><br><span class="line">apt install mysql-server</span><br><span class="line">mysql -e <span class="string">&quot;CREATE DATABASE zabbix CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;&quot;</span></span><br><span class="line">mysql -e <span class="string">&quot;CREATE USER &#x27;zabbix&#x27;@&#x27;localhost&#x27; IDENTIFIED BY &#x27;Zabbix@2026!&#x27;;&quot;</span></span><br><span class="line">mysql -e <span class="string">&quot;GRANT ALL PRIVILEGES ON zabbix.* TO &#x27;zabbix&#x27;@&#x27;localhost&#x27;;&quot;</span></span><br><span class="line">mysql -e <span class="string">&quot;FLUSH PRIVILEGES;&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. 导入初始数据</span></span><br><span class="line">zcat /usr/share/zabbix-sql-scripts/mysql/server.sql.gz | mysql -uzabbix -pZabbix@2026! zabbix</span><br><span class="line"></span><br><span class="line"><span class="comment"># 5. 配置 Server 连接数据库</span></span><br><span class="line">sed -i <span class="string">&#x27;s/# DBPassword=/DBPassword=Zabbix@2026!/&#x27;</span> /etc/zabbix/zabbix_server.conf</span><br><span class="line"></span><br><span class="line"><span class="comment"># 6. 启动服务</span></span><br><span class="line">systemctl restart zabbix-server zabbix-agent apache2</span><br><span class="line">systemctl <span class="built_in">enable</span> zabbix-server zabbix-agent apache2</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-安装-Zabbix-Agent2（推荐）"><a href="#4-2-安装-Zabbix-Agent2（推荐）" class="headerlink" title="4.2 安装 Zabbix Agent2（推荐）"></a>4.2 安装 Zabbix Agent2（推荐）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Agent2 支持更多插件和更好的性能</span></span><br><span class="line">apt install zabbix-agent2</span><br><span class="line"></span><br><span class="line"><span class="comment"># 配置 Agent</span></span><br><span class="line"><span class="built_in">cat</span> &gt; /etc/zabbix/zabbix_agent2.conf &lt;&lt;<span class="string">EOF</span></span><br><span class="line"><span class="string">Server=192.168.1.100</span></span><br><span class="line"><span class="string">ServerActive=192.168.1.100</span></span><br><span class="line"><span class="string">Hostname=$(hostname)</span></span><br><span class="line"><span class="string">Include=/etc/zabbix/zabbix_agent2.d/*.conf</span></span><br><span class="line"><span class="string">EOF</span></span><br><span class="line"></span><br><span class="line">systemctl restart zabbix-agent2</span><br><span class="line">systemctl <span class="built_in">enable</span> zabbix-agent2</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-配置防火墙"><a href="#4-3-配置防火墙" class="headerlink" title="4.3 配置防火墙"></a>4.3 配置防火墙</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Zabbix Server 端口</span></span><br><span class="line">ufw allow 10050/tcp  <span class="comment"># Agent</span></span><br><span class="line">ufw allow 10051/tcp  <span class="comment"># Server</span></span><br><span class="line">ufw allow 80/tcp     <span class="comment"># Frontend</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="五、核心配置"><a href="#五、核心配置" class="headerlink" title="五、核心配置"></a>五、核心配置</h2><h3 id="5-1-添加主机"><a href="#5-1-添加主机" class="headerlink" title="5.1 添加主机"></a>5.1 添加主机</h3><ol>
+<li>登录 Web 界面（默认 <a target="_blank" rel="noopener" href="http://server-ip/zabbix%EF%BC%89">http://server-ip/zabbix）</a></li>
+<li>进入 <strong>数据收集 → 主机 → 创建主机</strong></li>
+<li>填写配置：<ul>
+<li>主机名称：FQDN 或自定义</li>
+<li>可见名称：易读名称</li>
+<li>群组：按业务&#x2F;环境分类</li>
+<li>接口：Agent IP:10050</li>
+</ul>
+</li>
+</ol>
+<h3 id="5-2-关联模板"><a href="#5-2-关联模板" class="headerlink" title="5.2 关联模板"></a>5.2 关联模板</h3><p>Zabbix 提供丰富内置模板：</p>
+<table>
+<thead>
+<tr>
+<th>模板</th>
+<th>监控内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Linux by Zabbix agent</td>
+<td>CPU、内存、磁盘、网络</td>
+</tr>
+<tr>
+<td>Windows by Zabbix agent</td>
+<td>系统性能、服务、事件日志</td>
+</tr>
+<tr>
+<td>Network Generic Device</td>
+<td>SNMP 网络设备</td>
+</tr>
+<tr>
+<td>MySQL by Zabbix agent</td>
+<td>数据库性能指标</td>
+</tr>
+<tr>
+<td>Apache by Zabbix agent</td>
+<td>Web 服务状态</td>
+</tr>
+</tbody></table>
+<h3 id="5-3-自定义监控项"><a href="#5-3-自定义监控项" class="headerlink" title="5.3 自定义监控项"></a>5.3 自定义监控项</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 创建自定义脚本</span></span><br><span class="line"><span class="built_in">cat</span> &gt; /etc/zabbix/zabbix_agent2.d/custom.conf &lt;&lt;<span class="string">EOF</span></span><br><span class="line"><span class="string">UserParameter=custom.app.status,systemctl is-active myapp &amp;&amp; echo 1 || echo 0</span></span><br><span class="line"><span class="string">UserParameter=custom.disk.used[*],df -h $1 | awk &#x27;NR==2&#123;print $5&#125;&#x27; | tr -d &#x27;%&#x27;</span></span><br><span class="line"><span class="string">EOF</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 重启 Agent</span></span><br><span class="line">systemctl restart zabbix-agent2</span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 在 Web 界面添加监控项</span></span><br><span class="line"><span class="comment"># 键值：custom.app.status 或 custom.disk.used[/]</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-4-自动发现规则"><a href="#5-4-自动发现规则" class="headerlink" title="5.4 自动发现规则"></a>5.4 自动发现规则</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 发现磁盘文件系统</span></span><br><span class="line"><span class="built_in">cat</span> &gt; /etc/zabbix/zabbix_agent2.d/discovery.conf &lt;&lt;<span class="string">EOF</span></span><br><span class="line"><span class="string">UserParameter=vfs.fs.discovery,lsblk -nd -o MOUNTPOINT,TYPE | grep -v &quot;swap&quot; | awk &#x27;&#123;print &quot;&#123;\&quot;&#123;#FSNAME&#125;\&quot;:\&quot;&quot;$1&quot;\&quot;&#125;&quot;&#125;&#x27; | paste -sd, | sed &#x27;s/^/[/;s/$/]/&#x27;</span></span><br><span class="line"><span class="string">EOF</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="六、告警配置"><a href="#六、告警配置" class="headerlink" title="六、告警配置"></a>六、告警配置</h2><h3 id="6-1-触发器表达式"><a href="#6-1-触发器表达式" class="headerlink" title="6.1 触发器表达式"></a>6.1 触发器表达式</h3><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>表达式</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CPU 持续高负载</td>
+<td><code>avg(/Host/system.cpu.util,5m)&gt;80</code></td>
+</tr>
+<tr>
+<td>内存不足</td>
+<td><code>avail(/Host/vm.memory.size,available)&lt;1G</code></td>
+</tr>
+<tr>
+<td>磁盘空间告警</td>
+<td><code>last(/Host/vfs.fs.size[/,pused])&gt;85</code></td>
+</tr>
+<tr>
+<td>服务宕机</td>
+<td><code>last(/Host/system.service.info[myapp])=0</code></td>
+</tr>
+<tr>
+<td>网络延迟高</td>
+<td><code>avg(/Host/net.tcp.ping[,],5m)&gt;100</code></td>
+</tr>
+</tbody></table>
+<h3 id="6-2-告警动作配置"><a href="#6-2-告警动作配置" class="headerlink" title="6.2 告警动作配置"></a>6.2 告警动作配置</h3><ol>
+<li><strong>介质类型</strong>: 邮件、钉钉、企业微信、Webhook</li>
+<li><strong>用户</strong>: 创建接收告警的用户</li>
+<li><strong>动作</strong>: 定义触发条件和发送内容</li>
+</ol>
+<h3 id="6-3-告警分级"><a href="#6-3-告警分级" class="headerlink" title="6.3 告警分级"></a>6.3 告警分级</h3><table>
+<thead>
+<tr>
+<th>级别</th>
+<th>颜色</th>
+<th>响应时间</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>灾难</td>
+<td>深红</td>
+<td>立即</td>
+<td>服务宕机、主库故障</td>
+</tr>
+<tr>
+<td>严重</td>
+<td>红色</td>
+<td>15 分钟</td>
+<td>CPU&gt;95%、磁盘&gt;95%</td>
+</tr>
+<tr>
+<td>一般</td>
+<td>橙色</td>
+<td>1 小时</td>
+<td>CPU&gt;80%、内存&gt;85%</td>
+</tr>
+<tr>
+<td>警告</td>
+<td>黄色</td>
+<td>4 小时</td>
+<td>磁盘&gt;80%、连接数高</td>
+</tr>
+<tr>
+<td>信息</td>
+<td>蓝色</td>
+<td>工作日</td>
+<td>配置变更、备份完成</td>
+</tr>
+</tbody></table>
+<h2 id="七、性能优化"><a href="#七、性能优化" class="headerlink" title="七、性能优化"></a>七、性能优化</h2><h3 id="7-1-Server-参数调优"><a href="#7-1-Server-参数调优" class="headerlink" title="7.1 Server 参数调优"></a>7.1 Server 参数调优</h3><figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># /etc/zabbix/zabbix_server.conf</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 最大并发进程</span></span><br><span class="line"><span class="attr">StartPollers</span>=<span class="number">50</span></span><br><span class="line"><span class="attr">StartTrappers</span>=<span class="number">20</span></span><br><span class="line"><span class="attr">StartPingers</span>=<span class="number">10</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 历史数据缓存</span></span><br><span class="line"><span class="attr">HistoryCacheSize</span>=<span class="number">128</span>M</span><br><span class="line"><span class="attr">TrendCacheSize</span>=<span class="number">32</span>M</span><br><span class="line"></span><br><span class="line"><span class="comment"># 配置缓存</span></span><br><span class="line"><span class="attr">ConfigCacheSize</span>=<span class="number">256</span>M</span><br><span class="line"></span><br><span class="line"><span class="comment"># 超时设置（防止慢查询阻塞）</span></span><br><span class="line"><span class="attr">Timeout</span>=<span class="number">10</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 启用房屋值缓存（大幅提升性能）</span></span><br><span class="line"><span class="attr">ValueCacheSize</span>=<span class="number">512</span>M</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-2-数据库优化"><a href="#7-2-数据库优化" class="headerlink" title="7.2 数据库优化"></a>7.2 数据库优化</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- MySQL 优化</span></span><br><span class="line"><span class="keyword">ALTER TABLE</span> history ENGINE<span class="operator">=</span>InnoDB;</span><br><span class="line"><span class="keyword">ALTER TABLE</span> trends ENGINE<span class="operator">=</span>InnoDB;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 定期清理（Zabbix 内置）</span></span><br><span class="line"># 在界面配置数据保留策略</span><br><span class="line"># 历史数据：<span class="number">7</span><span class="number">-30</span> 天</span><br><span class="line"># 趋势数据：<span class="number">365</span> 天</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-3-使用-Proxy-分担负载"><a href="#7-3-使用-Proxy-分担负载" class="headerlink" title="7.3 使用 Proxy 分担负载"></a>7.3 使用 Proxy 分担负载</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 安装 Proxy</span></span><br><span class="line">apt install zabbix-proxy-mysql</span><br><span class="line"></span><br><span class="line"><span class="comment"># 配置 Proxy</span></span><br><span class="line"><span class="built_in">cat</span> &gt; /etc/zabbix/zabbix_proxy.conf &lt;&lt;<span class="string">EOF</span></span><br><span class="line"><span class="string">Server=192.168.1.100</span></span><br><span class="line"><span class="string">Hostname=Zabbix-Proxy-01</span></span><br><span class="line"><span class="string">DBHost=localhost</span></span><br><span class="line"><span class="string">DBName=zabbix_proxy</span></span><br><span class="line"><span class="string">DBUser=zabbix</span></span><br><span class="line"><span class="string">DBPassword=Zabbix@2026!</span></span><br><span class="line"><span class="string">StartPollers=20</span></span><br><span class="line"><span class="string">CacheSize=128M</span></span><br><span class="line"><span class="string">EOF</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="八、高可用方案"><a href="#八、高可用方案" class="headerlink" title="八、高可用方案"></a>八、高可用方案</h2><h3 id="8-1-双机热备架构"><a href="#8-1-双机热备架构" class="headerlink" title="8.1 双机热备架构"></a>8.1 双机热备架构</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">              ┌──────────────┐</span><br><span class="line">              │  虚拟 IP     │</span><br><span class="line">              │  (Keepalived)│</span><br><span class="line">              └──────┬───────┘</span><br><span class="line">                     │</span><br><span class="line">        ┌────────────┴────────────┐</span><br><span class="line">        │                         │</span><br><span class="line">┌───────▼───────┐         ┌───────▼───────┐</span><br><span class="line">│ Zabbix Server │         │ Zabbix Server │</span><br><span class="line">│    (Active)   │         │   (Standby)   │</span><br><span class="line">└───────┬───────┘         └───────┬───────┘</span><br><span class="line">        │                         │</span><br><span class="line">        └────────────┬────────────┘</span><br><span class="line">                     │</span><br><span class="line">              ┌──────▼──────┐</span><br><span class="line">              │  共享存储    │</span><br><span class="line">              │  (MySQL MGR) │</span><br><span class="line">              └─────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="8-2-Keepalived-配置"><a href="#8-2-Keepalived-配置" class="headerlink" title="8.2 Keepalived 配置"></a>8.2 Keepalived 配置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># /etc/keepalived/keepalived.conf</span></span><br><span class="line">vrrp_script chk_zabbix &#123;</span><br><span class="line">    script <span class="string">&quot;/usr/bin/pgrep -x zabbix_server&quot;</span></span><br><span class="line">    interval 5</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">vrrp_instance VI_1 &#123;</span><br><span class="line">    state MASTER</span><br><span class="line">    interface eth0</span><br><span class="line">    virtual_router_id 51</span><br><span class="line">    priority 100</span><br><span class="line">    advert_int 1</span><br><span class="line">    </span><br><span class="line">    authentication &#123;</span><br><span class="line">        auth_type PASS</span><br><span class="line">        auth_pass ZabbixHA</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    virtual_ipaddress &#123;</span><br><span class="line">        192.168.1.200</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    track_script &#123;</span><br><span class="line">        chk_zabbix</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="九、日常运维"><a href="#九、日常运维" class="headerlink" title="九、日常运维"></a>九、日常运维</h2><h3 id="9-1-健康检查"><a href="#9-1-健康检查" class="headerlink" title="9.1 健康检查"></a>9.1 健康检查</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 检查服务状态</span></span><br><span class="line">systemctl status zabbix-server</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看队列（积压的监控项）</span></span><br><span class="line"><span class="comment"># Web 界面：监控 → 队列</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查数据库大小</span></span><br><span class="line">mysql -e <span class="string">&quot;SELECT table_schema, SUM(data_length+index_length)/1024/1024 AS &#x27;Size(MB)&#x27; FROM information_schema.tables WHERE table_schema=&#x27;zabbix&#x27; GROUP BY table_schema;&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看每秒处理值数</span></span><br><span class="line"><span class="comment"># Web 界面：报表 → Zabbix 服务器性能</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="9-2-备份策略"><a href="#9-2-备份策略" class="headerlink" title="9.2 备份策略"></a>9.2 备份策略</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"><span class="comment"># /opt/scripts/zabbix_backup.sh</span></span><br><span class="line"></span><br><span class="line">BACKUP_DIR=<span class="string">&quot;/backup/zabbix&quot;</span></span><br><span class="line">DATE=$(<span class="built_in">date</span> +%Y%m%d_%H%M%S)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 备份数据库</span></span><br><span class="line">mysqldump -uzabbix -pZabbix@2026! zabbix | gzip &gt; <span class="variable">$&#123;BACKUP_DIR&#125;</span>/zabbix_db_<span class="variable">$&#123;DATE&#125;</span>.sql.gz</span><br><span class="line"></span><br><span class="line"><span class="comment"># 备份配置文件</span></span><br><span class="line">tar -czf <span class="variable">$&#123;BACKUP_DIR&#125;</span>/zabbix_config_<span class="variable">$&#123;DATE&#125;</span>.tar.gz /etc/zabbix/</span><br><span class="line"></span><br><span class="line"><span class="comment"># 删除 30 天前的备份</span></span><br><span class="line">find <span class="variable">$&#123;BACKUP_DIR&#125;</span> -name <span class="string">&quot;*.gz&quot;</span> -mtime +30 -delete</span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;Zabbix backup completed: <span class="variable">$&#123;DATE&#125;</span>&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="9-3-升级流程"><a href="#9-3-升级流程" class="headerlink" title="9.3 升级流程"></a>9.3 升级流程</h3><ol>
+<li>备份数据库和配置</li>
+<li>停止 Zabbix 服务</li>
+<li>更新软件包</li>
+<li>执行数据库升级脚本</li>
+<li>启动服务并验证</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">systemctl stop zabbix-server</span><br><span class="line">apt update &amp;&amp; apt install --only-upgrade zabbix-server-mysql zabbix-frontend-php</span><br><span class="line">zcat /usr/share/zabbix-sql-scripts/mysql/proxy.sql.gz | mysql -uzabbix -p zabbix</span><br><span class="line">systemctl start zabbix-server</span><br></pre></td></tr></table></figure>
+
+<h2 id="十、常见问题排查"><a href="#十、常见问题排查" class="headerlink" title="十、常见问题排查"></a>十、常见问题排查</h2><h3 id="10-1-Agent-无法连接"><a href="#10-1-Agent-无法连接" class="headerlink" title="10.1 Agent 无法连接"></a>10.1 Agent 无法连接</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 检查网络连通性</span></span><br><span class="line">telnet &lt;agent-ip&gt; 10050</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查 Agent 状态</span></span><br><span class="line">systemctl status zabbix-agent2</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看 Agent 日志</span></span><br><span class="line"><span class="built_in">tail</span> -f /var/log/zabbix/zabbix_agent2.<span class="built_in">log</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查 Server 配置（Agent 端）</span></span><br><span class="line">grep -E <span class="string">&quot;^Server=&quot;</span> /etc/zabbix/zabbix_agent2.conf</span><br></pre></td></tr></table></figure>
+
+<h3 id="10-2-监控项不更新"><a href="#10-2-监控项不更新" class="headerlink" title="10.2 监控项不更新"></a>10.2 监控项不更新</h3><ol>
+<li>检查主机是否启用</li>
+<li>检查模板是否正确关联</li>
+<li>查看触发器是否处于维护模式</li>
+<li>检查 Server 日志：<code>tail -f /var/log/zabbix/zabbix_server.log</code></li>
+</ol>
+<h3 id="10-3-数据库性能问题"><a href="#10-3-数据库性能问题" class="headerlink" title="10.3 数据库性能问题"></a>10.3 数据库性能问题</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看慢查询</span></span><br><span class="line"><span class="keyword">SHOW</span> PROCESSLIST;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 分析表</span></span><br><span class="line">ANALYZE <span class="keyword">TABLE</span> history;</span><br><span class="line">ANALYZE <span class="keyword">TABLE</span> trends;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 优化表</span></span><br><span class="line">OPTIMIZE <span class="keyword">TABLE</span> history_uint;</span><br></pre></td></tr></table></figure>
+
+<h2 id="十一、最佳实践总结"><a href="#十一、最佳实践总结" class="headerlink" title="十一、最佳实践总结"></a>十一、最佳实践总结</h2><ol>
+<li><strong>合理规划监控粒度</strong>: 不要过度监控，每个主机 50-100 个监控项为宜</li>
+<li><strong>使用 Agent2</strong>: 支持更多插件，性能更好</li>
+<li><strong>部署 Proxy</strong>: 超过 500 台主机建议使用 Proxy 架构</li>
+<li><strong>定期清理数据</strong>: 设置合理的数据保留策略</li>
+<li><strong>告警分级</strong>: 避免告警疲劳，只通知真正需要处理的问题</li>
+<li><strong>文档化</strong>: 记录所有自定义监控项和触发器逻辑</li>
+<li><strong>测试告警</strong>: 定期验证告警通道是否正常工作</li>
+<li><strong>监控 Zabbix 自身</strong>: 确保监控系统本身健康</li>
+</ol>
+<h2 id="十二、参考资源"><a href="#十二、参考资源" class="headerlink" title="十二、参考资源"></a>十二、参考资源</h2><ul>
+<li>Zabbix 官方文档：<a target="_blank" rel="noopener" href="https://www.zabbix.com/documentation">https://www.zabbix.com/documentation</a></li>
+<li>Zabbix 模板库：<a target="_blank" rel="noopener" href="https://git.zabbix.com/projects/ZBX/repos/templates">https://git.zabbix.com/projects/ZBX/repos/templates</a></li>
+<li>社区论坛：<a target="_blank" rel="noopener" href="https://www.zabbix.com/forum">https://www.zabbix.com/forum</a></li>
+</ul>
+<hr>
+<p><em>文档版本：1.0</em><br><em>最后更新：2026-03-11</em></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io">PCLTXSYWZ</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io/2026/03/11/Zabbix%20%E4%BC%81%E4%B8%9A%E7%BA%A7%E7%9B%91%E6%8E%A7%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E4%B8%8E%E9%85%8D%E7%BD%AE%E5%AE%9E%E6%88%98/">https://pcltxs.github.io/2026/03/11/Zabbix%20%E4%BC%81%E4%B8%9A%E7%BA%A7%E7%9B%91%E6%8E%A7%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E4%B8%8E%E9%85%8D%E7%BD%AE%E5%AE%9E%E6%88%98/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://pcltxs.github.io" target="_blank">体系所运维知识库</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Zabbix/">Zabbix</a><a class="post-meta__tags" href="/tags/%E7%9B%91%E6%8E%A7/">监控</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/03/11/Kubernetes%20%E7%BD%91%E7%BB%9C%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/" title="Kubernetes 网络故障排查实战指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Kubernetes 网络故障排查实战指南</div></div><div class="info-2"><div class="info-item-1">Kubernetes 网络故障排查实战指南一、概述Kubernetes 网络是容器化架构中最复杂也最容易出问题的部分。本文档基于实际运维经验，总结常见网络故障现象、排查方法和解决方案。 1.1 K8s 网络模型要求 所有 Pod 可以在不 NAT 的情况下相互通信 所有节点可以在不 NAT 的情况下与所有 Pod 通信 Pod 看到的自身 IP 与实际通信 IP 一致  1.2 常见 CNI 插件对比   CNI 特点 适用场景    Calico BGP 路由，性能好，支持 NetworkPolicy 生产环境首选   Flannel 简单，VXLAN  Overlay 测试&#x2F;小规模   Cilium eBPF 高性能，可观测性强 高级用户   Weave 加密通信，简单易用 多集群互联   二、故障分类与排查流程2.1 排查流程图123456789101112131415161718192021222324252627故障现象    │    ▼┌───────────────────┐│ Pod 内网络是否正常？│└─────────┬─────────┘    ...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">PCLTXSYWZ</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">58</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">50</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">7</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/pcltxs"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">广泛收集运维相关文档资料,欢迎大家投稿分享,文档请发送至邮箱tuwj@pcl.ac.cn。网站建设相关问题和建议请联系邮箱tuwj@pcl.ac.cn。体系所办公区设备分布情况请访问http://device.opendns4.cn,工单系统请访问http://ticket.opendns4.cn,体系所公有云资源使用情况请访问http://mcloud.dns4test.com/</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Zabbix-%E4%BC%81%E4%B8%9A%E7%BA%A7%E7%9B%91%E6%8E%A7%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E4%B8%8E%E9%85%8D%E7%BD%AE%E5%AE%9E%E6%88%98"><span class="toc-number">1.</span> <span class="toc-text">Zabbix 企业级监控系统部署与配置实战</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">一、概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.2.</span> <span class="toc-text">二、架构设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E6%A0%B8%E5%BF%83%E7%BB%84%E4%BB%B6"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 核心组件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%8E%A8%E8%8D%90%E6%9E%B6%E6%9E%84"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 推荐架构</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E7%8E%AF%E5%A2%83%E5%87%86%E5%A4%87"><span class="toc-number">1.3.</span> <span class="toc-text">三、环境准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E7%B3%BB%E7%BB%9F%E8%A6%81%E6%B1%82"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 系统要求</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%95%B0%E6%8D%AE%E5%BA%93%E9%80%89%E6%8B%A9"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 数据库选择</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E9%83%A8%E7%BD%B2%E6%AD%A5%E9%AA%A4"><span class="toc-number">1.4.</span> <span class="toc-text">四、部署步骤</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%AE%89%E8%A3%85-Zabbix-Server%EF%BC%88Ubuntu-22-04-%E7%A4%BA%E4%BE%8B%EF%BC%89"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 安装 Zabbix Server（Ubuntu 22.04 示例）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%AE%89%E8%A3%85-Zabbix-Agent2%EF%BC%88%E6%8E%A8%E8%8D%90%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 安装 Zabbix Agent2（推荐）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E9%85%8D%E7%BD%AE%E9%98%B2%E7%81%AB%E5%A2%99"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 配置防火墙</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%A0%B8%E5%BF%83%E9%85%8D%E7%BD%AE"><span class="toc-number">1.5.</span> <span class="toc-text">五、核心配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%B7%BB%E5%8A%A0%E4%B8%BB%E6%9C%BA"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 添加主机</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%85%B3%E8%81%94%E6%A8%A1%E6%9D%BF"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 关联模板</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E8%87%AA%E5%AE%9A%E4%B9%89%E7%9B%91%E6%8E%A7%E9%A1%B9"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 自定义监控项</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E8%87%AA%E5%8A%A8%E5%8F%91%E7%8E%B0%E8%A7%84%E5%88%99"><span class="toc-number">1.5.4.</span> <span class="toc-text">5.4 自动发现规则</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E5%91%8A%E8%AD%A6%E9%85%8D%E7%BD%AE"><span class="toc-number">1.6.</span> <span class="toc-text">六、告警配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E8%A7%A6%E5%8F%91%E5%99%A8%E8%A1%A8%E8%BE%BE%E5%BC%8F"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 触发器表达式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%91%8A%E8%AD%A6%E5%8A%A8%E4%BD%9C%E9%85%8D%E7%BD%AE"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 告警动作配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E5%91%8A%E8%AD%A6%E5%88%86%E7%BA%A7"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 告警分级</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96"><span class="toc-number">1.7.</span> <span class="toc-text">七、性能优化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-Server-%E5%8F%82%E6%95%B0%E8%B0%83%E4%BC%98"><span class="toc-number">1.7.1.</span> <span class="toc-text">7.1 Server 参数调优</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E6%95%B0%E6%8D%AE%E5%BA%93%E4%BC%98%E5%8C%96"><span class="toc-number">1.7.2.</span> <span class="toc-text">7.2 数据库优化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E4%BD%BF%E7%94%A8-Proxy-%E5%88%86%E6%8B%85%E8%B4%9F%E8%BD%BD"><span class="toc-number">1.7.3.</span> <span class="toc-text">7.3 使用 Proxy 分担负载</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E9%AB%98%E5%8F%AF%E7%94%A8%E6%96%B9%E6%A1%88"><span class="toc-number">1.8.</span> <span class="toc-text">八、高可用方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-%E5%8F%8C%E6%9C%BA%E7%83%AD%E5%A4%87%E6%9E%B6%E6%9E%84"><span class="toc-number">1.8.1.</span> <span class="toc-text">8.1 双机热备架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-Keepalived-%E9%85%8D%E7%BD%AE"><span class="toc-number">1.8.2.</span> <span class="toc-text">8.2 Keepalived 配置</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9D%E3%80%81%E6%97%A5%E5%B8%B8%E8%BF%90%E7%BB%B4"><span class="toc-number">1.9.</span> <span class="toc-text">九、日常运维</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#9-1-%E5%81%A5%E5%BA%B7%E6%A3%80%E6%9F%A5"><span class="toc-number">1.9.1.</span> <span class="toc-text">9.1 健康检查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-2-%E5%A4%87%E4%BB%BD%E7%AD%96%E7%95%A5"><span class="toc-number">1.9.2.</span> <span class="toc-text">9.2 备份策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-3-%E5%8D%87%E7%BA%A7%E6%B5%81%E7%A8%8B"><span class="toc-number">1.9.3.</span> <span class="toc-text">9.3 升级流程</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E3%80%81%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="toc-number">1.10.</span> <span class="toc-text">十、常见问题排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#10-1-Agent-%E6%97%A0%E6%B3%95%E8%BF%9E%E6%8E%A5"><span class="toc-number">1.10.1.</span> <span class="toc-text">10.1 Agent 无法连接</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-2-%E7%9B%91%E6%8E%A7%E9%A1%B9%E4%B8%8D%E6%9B%B4%E6%96%B0"><span class="toc-number">1.10.2.</span> <span class="toc-text">10.2 监控项不更新</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-3-%E6%95%B0%E6%8D%AE%E5%BA%93%E6%80%A7%E8%83%BD%E9%97%AE%E9%A2%98"><span class="toc-number">1.10.3.</span> <span class="toc-text">10.3 数据库性能问题</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E4%B8%80%E3%80%81%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5%E6%80%BB%E7%BB%93"><span class="toc-number">1.11.</span> <span class="toc-text">十一、最佳实践总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E4%BA%8C%E3%80%81%E5%8F%82%E8%80%83%E8%B5%84%E6%BA%90"><span class="toc-number">1.12.</span> <span class="toc-text">十二、参考资源</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/11/Kubernetes%20%E7%BD%91%E7%BB%9C%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/" title="Kubernetes 网络故障排查实战指南">Kubernetes 网络故障排查实战指南</a><time datetime="2026-03-11T03:00:00.000Z" title="发表于 2026-03-11 11:00:00">2026-03-11</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/11/Zabbix%20%E4%BC%81%E4%B8%9A%E7%BA%A7%E7%9B%91%E6%8E%A7%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E4%B8%8E%E9%85%8D%E7%BD%AE%E5%AE%9E%E6%88%98/" title="Zabbix 企业级监控系统部署与配置实战">Zabbix 企业级监控系统部署与配置实战</a><time datetime="2026-03-11T03:00:00.000Z" title="发表于 2026-03-11 11:00:00">2026-03-11</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/11/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB%20-2026-03-11/" title="每日科技要闻 -2026-03-11">每日科技要闻 -2026-03-11</a><time datetime="2026-03-11T00:00:00.000Z" title="发表于 2026-03-11 08:00:00">2026-03-11</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/10/Harbor%20%E7%A7%81%E6%9C%89%E9%95%9C%E5%83%8F%E4%BB%93%E5%BA%93%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E7%BB%B4/" title="Harbor 私有镜像仓库部署与运维">Harbor 私有镜像仓库部署与运维</a><time datetime="2026-03-10T08:00:00.000Z" title="发表于 2026-03-10 16:00:00">2026-03-10</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/10/Linux%20%E5%86%85%E6%A0%B8%E5%8F%82%E6%95%B0%E8%B0%83%E4%BC%98%E6%8C%87%E5%8D%97/" title="Linux 内核参数调优指南">Linux 内核参数调优指南</a><time datetime="2026-03-10T08:00:00.000Z" title="发表于 2026-03-10 16:00:00">2026-03-10</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By PCLTXSYWZ</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.4</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>
