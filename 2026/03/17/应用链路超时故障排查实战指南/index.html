@@ -1,0 +1,819 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>应用链路超时故障排查实战指南 | 体系所运维知识库</title><meta name="author" content="PCLTXSYWZ"><meta name="copyright" content="PCLTXSYWZ"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="应用链路超时故障排查实战指南一、概述在分布式系统中，应用链路超时是最常见且最复杂的故障类型之一。一次简单的用户请求可能涉及多个服务、数据库、缓存和外部 API 的调用，任何一个环节的延迟都可能导致整个链路超时。 超时故障的特点 隐蔽性强：偶发性超时难以复现 传播性广：单点超时可能引发雪崩效应 定位困难：涉及多个系统组件 影响面大：直接影响用户体验和业务指标  本文目标 建立系统化的超时排查方法论">
+<meta property="og:type" content="article">
+<meta property="og:title" content="应用链路超时故障排查实战指南">
+<meta property="og:url" content="https://pcltxs.github.io/2026/03/17/%E5%BA%94%E7%94%A8%E9%93%BE%E8%B7%AF%E8%B6%85%E6%97%B6%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/index.html">
+<meta property="og:site_name" content="体系所运维知识库">
+<meta property="og:description" content="应用链路超时故障排查实战指南一、概述在分布式系统中，应用链路超时是最常见且最复杂的故障类型之一。一次简单的用户请求可能涉及多个服务、数据库、缓存和外部 API 的调用，任何一个环节的延迟都可能导致整个链路超时。 超时故障的特点 隐蔽性强：偶发性超时难以复现 传播性广：单点超时可能引发雪崩效应 定位困难：涉及多个系统组件 影响面大：直接影响用户体验和业务指标  本文目标 建立系统化的超时排查方法论">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://pcltxs.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-03-17T08:00:00.000Z">
+<meta property="article:modified_time" content="2026-03-17T08:42:38.576Z">
+<meta property="article:author" content="PCLTXSYWZ">
+<meta property="article:tag" content="超时，故障排查">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pcltxs.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "应用链路超时故障排查实战指南",
+  "url": "https://pcltxs.github.io/2026/03/17/%E5%BA%94%E7%94%A8%E9%93%BE%E8%B7%AF%E8%B6%85%E6%97%B6%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/",
+  "image": "https://pcltxs.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-03-17T08:00:00.000Z",
+  "dateModified": "2026-03-17T08:42:38.576Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "PCLTXSYWZ",
+      "url": "https://pcltxs.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://pcltxs.github.io/2026/03/17/%E5%BA%94%E7%94%A8%E9%93%BE%E8%B7%AF%E8%B6%85%E6%97%B6%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '应用链路超时故障排查实战指南',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.1"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">体系所运维知识库</span></a><a class="nav-page-title" href="/"><span class="site-name">应用链路超时故障排查实战指南</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div></div></nav><div id="post-info"><h1 class="post-title">应用链路超时故障排查实战指南</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-03-17T08:00:00.000Z" title="发表于 2026-03-17 16:00:00">2026-03-17</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-03-17T08:42:38.576Z" title="更新于 2026-03-17 16:42:38">2026-03-17</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E6%95%85%E9%9A%9C%E5%A4%84%E7%90%86%E4%B8%8E%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5/">故障处理与问题排查</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="应用链路超时故障排查实战指南"><a href="#应用链路超时故障排查实战指南" class="headerlink" title="应用链路超时故障排查实战指南"></a>应用链路超时故障排查实战指南</h1><h2 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h2><p>在分布式系统中，应用链路超时是最常见且最复杂的故障类型之一。一次简单的用户请求可能涉及多个服务、数据库、缓存和外部 API 的调用，任何一个环节的延迟都可能导致整个链路超时。</p>
+<h3 id="超时故障的特点"><a href="#超时故障的特点" class="headerlink" title="超时故障的特点"></a>超时故障的特点</h3><ul>
+<li><strong>隐蔽性强</strong>：偶发性超时难以复现</li>
+<li><strong>传播性广</strong>：单点超时可能引发雪崩效应</li>
+<li><strong>定位困难</strong>：涉及多个系统组件</li>
+<li><strong>影响面大</strong>：直接影响用户体验和业务指标</li>
+</ul>
+<h3 id="本文目标"><a href="#本文目标" class="headerlink" title="本文目标"></a>本文目标</h3><ul>
+<li>建立系统化的超时排查方法论</li>
+<li>掌握各层级超时的诊断工具</li>
+<li>学会设计和实施超时优化策略</li>
+<li>构建预防性的监控告警体系</li>
+</ul>
+<h2 id="二、超时故障分类"><a href="#二、超时故障分类" class="headerlink" title="二、超时故障分类"></a>二、超时故障分类</h2><h3 id="2-1-按发生层级分类"><a href="#2-1-按发生层级分类" class="headerlink" title="2.1 按发生层级分类"></a>2.1 按发生层级分类</h3><table>
+<thead>
+<tr>
+<th>层级</th>
+<th>典型场景</th>
+<th>排查重点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>客户端</td>
+<td>浏览器&#x2F;APP 请求超时</td>
+<td>网络质量、CDN、DNS</td>
+</tr>
+<tr>
+<td>负载均衡</td>
+<td>L4&#x2F;L7 负载均衡超时</td>
+<td>连接池、健康检查</td>
+</tr>
+<tr>
+<td>应用服务</td>
+<td>业务逻辑处理超时</td>
+<td>代码性能、资源竞争</td>
+</tr>
+<tr>
+<td>数据库</td>
+<td>SQL 执行超时</td>
+<td>慢查询、锁等待</td>
+</tr>
+<tr>
+<td>缓存</td>
+<td>Redis&#x2F;Memcached 超时</td>
+<td>连接数、大 key</td>
+</tr>
+<tr>
+<td>消息队列</td>
+<td>消息消费超时</td>
+<td>积压、消费者性能</td>
+</tr>
+<tr>
+<td>外部 API</td>
+<td>第三方服务超时</td>
+<td>限流、熔断策略</td>
+</tr>
+</tbody></table>
+<h3 id="2-2-按超时类型分类"><a href="#2-2-按超时类型分类" class="headerlink" title="2.2 按超时类型分类"></a>2.2 按超时类型分类</h3><table>
+<thead>
+<tr>
+<th>类型</th>
+<th>说明</th>
+<th>典型表现</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>连接超时 (Connect Timeout)</td>
+<td>建立 TCP 连接失败</td>
+<td>无法连接到目标服务</td>
+</tr>
+<tr>
+<td>读取超时 (Read Timeout)</td>
+<td>等待响应数据超时</td>
+<td>连接成功但无响应</td>
+</tr>
+<tr>
+<td>写入超时 (Write Timeout)</td>
+<td>发送请求数据超时</td>
+<td>请求无法完整发送</td>
+</tr>
+<tr>
+<td>整体超时 (Total Timeout)</td>
+<td>整个请求处理超时</td>
+<td>包含所有阶段的时间</td>
+</tr>
+<tr>
+<td>空闲超时 (Idle Timeout)</td>
+<td>空闲连接被回收</td>
+<td>长连接被意外关闭</td>
+</tr>
+</tbody></table>
+<h3 id="2-3-按影响范围分类"><a href="#2-3-按影响范围分类" class="headerlink" title="2.3 按影响范围分类"></a>2.3 按影响范围分类</h3><ul>
+<li><strong>单用户超时</strong>：个别用户遇到，可能是客户端网络问题</li>
+<li><strong>局部超时</strong>：特定服务或区域，可能是服务实例问题</li>
+<li><strong>全局超时</strong>：所有用户都遇到，可能是基础设施故障</li>
+</ul>
+<h2 id="三、排查方法论"><a href="#三、排查方法论" class="headerlink" title="三、排查方法论"></a>三、排查方法论</h2><h3 id="3-1-黄金排查流程"><a href="#3-1-黄金排查流程" class="headerlink" title="3.1 黄金排查流程"></a>3.1 黄金排查流程</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">1. 确认现象 → 2. 定位范围 → 3. 收集证据 → 4. 分析根因 → 5. 实施修复 → 6. 验证效果</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-信息收集清单"><a href="#3-2-信息收集清单" class="headerlink" title="3.2 信息收集清单"></a>3.2 信息收集清单</h3><table>
+<thead>
+<tr>
+<th>信息类型</th>
+<th>具体内容</th>
+<th>获取方式</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>时间信息</td>
+<td>故障开始时间、持续时间、频率</td>
+<td>监控图表、日志</td>
+</tr>
+<tr>
+<td>范围信息</td>
+<td>影响的用户、服务、地域</td>
+<td>告警、用户反馈</td>
+</tr>
+<tr>
+<td>性能指标</td>
+<td>响应时间、错误率、吞吐量</td>
+<td>APM、监控系统</td>
+</tr>
+<tr>
+<td>变更历史</td>
+<td>最近的发布、配置变更</td>
+<td>发布记录、变更日志</td>
+</tr>
+<tr>
+<td>依赖状态</td>
+<td>上下游服务健康状态</td>
+<td>服务网格、健康检查</td>
+</tr>
+</tbody></table>
+<h3 id="3-3-故障定级标准"><a href="#3-3-故障定级标准" class="headerlink" title="3.3 故障定级标准"></a>3.3 故障定级标准</h3><table>
+<thead>
+<tr>
+<th>级别</th>
+<th>影响范围</th>
+<th>响应时间</th>
+<th>升级路径</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>P0</td>
+<td>全站不可用</td>
+<td>5 分钟内响应</td>
+<td>立即升级至技术负责人</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>核心功能受损</td>
+<td>15 分钟内响应</td>
+<td>升级至团队负责人</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>部分功能异常</td>
+<td>1 小时内响应</td>
+<td>团队内部处理</td>
+</tr>
+<tr>
+<td>P3</td>
+<td>轻微影响</td>
+<td>24 小时内响应</td>
+<td>常规工单处理</td>
+</tr>
+</tbody></table>
+<h2 id="四、客户端超时排查"><a href="#四、客户端超时排查" class="headerlink" title="四、客户端超时排查"></a>四、客户端超时排查</h2><h3 id="4-1-浏览器端排查"><a href="#4-1-浏览器端排查" class="headerlink" title="4.1 浏览器端排查"></a>4.1 浏览器端排查</h3><p><strong>使用开发者工具分析：</strong></p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Chrome DevTools Network 面板</span></span><br><span class="line"><span class="comment">// 查看各个阶段耗时：</span></span><br><span class="line"><span class="comment">// - DNS Lookup</span></span><br><span class="line"><span class="comment">// - Initial Connection</span></span><br><span class="line"><span class="comment">// - SSL/TLS Handshake</span></span><br><span class="line"><span class="comment">// - Time to First Byte (TTFB)</span></span><br><span class="line"><span class="comment">// - Content Download</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// Performance API 获取详细 timing</span></span><br><span class="line">performance.<span class="title function_">getEntriesByType</span>(<span class="string">&#x27;navigation&#x27;</span>)[<span class="number">0</span>]</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键指标分析：</strong></p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>正常值</th>
+<th>异常处理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>DNS Lookup</td>
+<td>&lt; 50ms</td>
+<td>检查 DNS 服务器、本地缓存</td>
+</tr>
+<tr>
+<td>TCP Connection</td>
+<td>&lt; 100ms</td>
+<td>检查网络路由、防火墙</td>
+</tr>
+<tr>
+<td>TTFB</td>
+<td>&lt; 500ms</td>
+<td>检查服务端处理时间</td>
+</tr>
+<tr>
+<td>Content Download</td>
+<td>视内容大小</td>
+<td>检查带宽、压缩</td>
+</tr>
+</tbody></table>
+<h3 id="4-2-移动端排查"><a href="#4-2-移动端排查" class="headerlink" title="4.2 移动端排查"></a>4.2 移动端排查</h3><p><strong>iOS (Network Framework):</strong></p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 使用 NWConnection 监控</span></span><br><span class="line"><span class="keyword">let</span> parameters <span class="operator">=</span> <span class="type">NWParameters</span>.tcp()</span><br><span class="line">parameters.connectionTimeout <span class="operator">=</span> .after(<span class="number">5</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">// 监控连接状态</span></span><br><span class="line">connection.stateUpdateHandler <span class="operator">=</span> &#123; state <span class="keyword">in</span></span><br><span class="line">    <span class="keyword">switch</span> state &#123;</span><br><span class="line">    <span class="keyword">case</span> .waiting(<span class="keyword">let</span> error):</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&quot;连接等待：<span class="subst">\(error)</span>&quot;</span>)</span><br><span class="line">    <span class="keyword">case</span> .failed(<span class="keyword">let</span> error):</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&quot;连接失败：<span class="subst">\(error)</span>&quot;</span>)</span><br><span class="line">    <span class="keyword">default</span>:</span><br><span class="line">        <span class="keyword">break</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>Android (OkHttp):</strong></p>
+<figure class="highlight kotlin"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> client = OkHttpClient.Builder()</span><br><span class="line">    .connectTimeout(<span class="number">5</span>, TimeUnit.SECONDS)</span><br><span class="line">    .readTimeout(<span class="number">10</span>, TimeUnit.SECONDS)</span><br><span class="line">    .writeTimeout(<span class="number">10</span>, TimeUnit.SECONDS)</span><br><span class="line">    .build()</span><br><span class="line"></span><br><span class="line"><span class="comment">// 添加事件监听器</span></span><br><span class="line">client.eventListenerFactory &#123; call -&gt;</span><br><span class="line">    <span class="keyword">object</span> : EventListener() &#123;</span><br><span class="line">        <span class="keyword">override</span> <span class="function"><span class="keyword">fun</span> <span class="title">connectStart</span><span class="params">(call: <span class="type">Call</span>, inetSocketAddress: <span class="type">InetSocketAddress</span>, proxy: <span class="type">Proxy</span>)</span></span> &#123;</span><br><span class="line">            <span class="comment">// 记录连接开始时间</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">override</span> <span class="function"><span class="keyword">fun</span> <span class="title">connectFailed</span><span class="params">(call: <span class="type">Call</span>, inetSocketAddress: <span class="type">InetSocketAddress</span>, proxy: <span class="type">Proxy</span>, socketAddress: <span class="type">SocketAddress</span>, exception: <span class="type">IOException</span>)</span></span> &#123;</span><br><span class="line">            <span class="comment">// 记录连接失败</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-DNS-问题排查"><a href="#4-3-DNS-问题排查" class="headerlink" title="4.3 DNS 问题排查"></a>4.3 DNS 问题排查</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 检查 DNS 解析时间</span></span><br><span class="line"><span class="keyword">time</span> dig @8.8.8.8 api.example.com</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查 DNS 缓存</span></span><br><span class="line"><span class="built_in">sudo</span> systemd-resolve --flush-caches  <span class="comment"># Linux</span></span><br><span class="line"><span class="built_in">sudo</span> dscacheutil -flushcache         <span class="comment"># macOS</span></span><br><span class="line">ipconfig /flushdns                   <span class="comment"># Windows</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查 DNS 服务器响应</span></span><br><span class="line">nslookup api.example.com</span><br><span class="line">dig +trace api.example.com</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检测 DNS 污染</span></span><br><span class="line">dig @1.1.1.1 api.example.com</span><br><span class="line">dig @8.8.8.8 api.example.com</span><br></pre></td></tr></table></figure>
+
+<h2 id="五、网络层超时排查"><a href="#五、网络层超时排查" class="headerlink" title="五、网络层超时排查"></a>五、网络层超时排查</h2><h3 id="5-1-TCP-连接问题"><a href="#5-1-TCP-连接问题" class="headerlink" title="5.1 TCP 连接问题"></a>5.1 TCP 连接问题</h3><p><strong>连接超时诊断：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 测试 TCP 连接建立时间</span></span><br><span class="line"><span class="keyword">time</span> nc -vz api.example.com 443</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查 TCP 握手过程</span></span><br><span class="line">tcpdump -i any -n host api.example.com and port 443 -w tcp_handshake.pcap</span><br><span class="line"></span><br><span class="line"><span class="comment"># 分析 TCP 重传</span></span><br><span class="line">netstat -s | grep -i retrans</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查 SYN 队列</span></span><br><span class="line">netstat -s | grep -i <span class="string">&quot;listen queue&quot;</span></span><br><span class="line">ss -s</span><br></pre></td></tr></table></figure>
+
+<p><strong>常见 TCP 问题：</strong></p>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>症状</th>
+<th>解决方案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SYN Flood</td>
+<td>连接建立失败</td>
+<td>启用 SYN Cookie、增加队列</td>
+</tr>
+<tr>
+<td>TCP 重传高</td>
+<td>延迟增加、超时</td>
+<td>检查网络质量、调整重传参数</td>
+</tr>
+<tr>
+<td>TIME_WAIT 过多</td>
+<td>端口耗尽</td>
+<td>调整 tcp_tw_reuse</td>
+</tr>
+<tr>
+<td>连接重置</td>
+<td>RST 包</td>
+<td>检查防火墙、服务状态</td>
+</tr>
+</tbody></table>
+<h3 id="5-2-网络延迟分析"><a href="#5-2-网络延迟分析" class="headerlink" title="5.2 网络延迟分析"></a>5.2 网络延迟分析</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 逐跳延迟检测</span></span><br><span class="line">mtr -rwc 10 api.example.com</span><br><span class="line"></span><br><span class="line"><span class="comment"># 路径跟踪</span></span><br><span class="line">traceroute -I api.example.com</span><br><span class="line"></span><br><span class="line"><span class="comment"># 带宽测试</span></span><br><span class="line">iperf3 -c server.example.com -t 30</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查网络丢包</span></span><br><span class="line">ping -c 100 api.example.com</span><br></pre></td></tr></table></figure>
+
+<p><strong>MTR 输出分析：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Host              Loss%   Snt   Last   Avg  Best  Wrst StDev</span><br><span class="line">1. 192.168.1.1     0.0%   100    1.2   1.5   0.8   5.2   0.6</span><br><span class="line">2. 10.0.0.1        0.0%   100    5.3   6.1   4.9  15.3   2.1</span><br><span class="line">3. 172.16.0.1     15.0%   100   45.2  52.3  38.1 120.5  18.7  ← 问题点</span><br><span class="line">4. api.example.com 0.0%   100   55.1  58.2  50.3  85.2   8.9</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-防火墙和安全组"><a href="#5-3-防火墙和安全组" class="headerlink" title="5.3 防火墙和安全组"></a>5.3 防火墙和安全组</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 检查 iptables 规则</span></span><br><span class="line">iptables -L -n -v | grep -i drop</span><br><span class="line">iptables -L -n -v | grep -i reject</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查连接跟踪</span></span><br><span class="line"><span class="built_in">cat</span> /proc/sys/net/netfilter/nf_conntrack_count</span><br><span class="line"><span class="built_in">cat</span> /proc/sys/net/netfilter/nf_conntrack_max</span><br><span class="line"></span><br><span class="line"><span class="comment"># 云服务商安全组检查</span></span><br><span class="line"><span class="comment"># AWS: aws ec2 describe-security-groups</span></span><br><span class="line"><span class="comment"># 阿里云：aliyun ecs DescribeSecurityGroupAttribute</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="六、应用层超时排查"><a href="#六、应用层超时排查" class="headerlink" title="六、应用层超时排查"></a>六、应用层超时排查</h2><h3 id="6-1-Java-应用排查"><a href="#6-1-Java-应用排查" class="headerlink" title="6.1 Java 应用排查"></a>6.1 Java 应用排查</h3><p><strong>线程堆栈分析：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 获取线程堆栈</span></span><br><span class="line">jstack -l &lt;pid&gt; &gt; thread_dump.txt</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查找阻塞线程</span></span><br><span class="line">grep -A 30 <span class="string">&quot;BLOCKED&quot;</span> thread_dump.txt</span><br><span class="line">grep -A 30 <span class="string">&quot;WAITING&quot;</span> thread_dump.txt</span><br><span class="line"></span><br><span class="line"><span class="comment"># 使用 async-profiler 生成火焰图</span></span><br><span class="line">./profiler.sh -d 30 -f flame.svg &lt;pid&gt;</span><br></pre></td></tr></table></figure>
+
+<p><strong>JVM 监控：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看 GC 情况</span></span><br><span class="line">jstat -gcutil &lt;pid&gt; 1000</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看堆内存</span></span><br><span class="line">jmap -heap &lt;pid&gt;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 实时 GC 日志分析</span></span><br><span class="line"><span class="comment"># JVM 参数：-Xlog:gc*:file=gc.log:time,uptime:filecount=5,filesize=10M</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>常见 Java 超时原因：</strong></p>
+<table>
+<thead>
+<tr>
+<th>原因</th>
+<th>特征</th>
+<th>排查方法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>GC 停顿</td>
+<td>周期性超时</td>
+<td>分析 GC 日志、堆 dump</td>
+</tr>
+<tr>
+<td>线程池耗尽</td>
+<td>请求排队</td>
+<td>检查线程池指标</td>
+</tr>
+<tr>
+<td>锁竞争</td>
+<td>线程 BLOCKED</td>
+<td>分析 thread dump</td>
+</tr>
+<tr>
+<td>外部调用慢</td>
+<td>特定接口慢</td>
+<td>APM 链路追踪</td>
+</tr>
+</tbody></table>
+<h3 id="6-2-Go-应用排查"><a href="#6-2-Go-应用排查" class="headerlink" title="6.2 Go 应用排查"></a>6.2 Go 应用排查</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 获取 goroutine 堆栈</span></span><br><span class="line"><span class="built_in">kill</span> -SIGQUIT &lt;pid&gt;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 或使用 go tool pprof</span></span><br><span class="line">go tool pprof http://localhost:6060/debug/pprof/goroutine?debug=1</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看阻塞情况</span></span><br><span class="line">go tool pprof -top http://localhost:6060/debug/pprof/block</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看锁竞争</span></span><br><span class="line">go tool pprof -top http://localhost:6060/debug/pprof/mutex</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-3-Python-应用排查"><a href="#6-3-Python-应用排查" class="headerlink" title="6.3 Python 应用排查"></a>6.3 Python 应用排查</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 使用 py-spy 采样</span></span><br><span class="line">py-spy record -o profile.svg --pid &lt;pid&gt;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看线程状态</span></span><br><span class="line">py-spy dump --pid &lt;pid&gt;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 使用 cProfile 分析</span></span><br><span class="line">python -m cProfile -o output.prof script.py</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-4-应用日志分析"><a href="#6-4-应用日志分析" class="headerlink" title="6.4 应用日志分析"></a>6.4 应用日志分析</h3><p><strong>关键日志模式：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 搜索超时相关日志</span></span><br><span class="line">grep -i <span class="string">&quot;timeout&quot;</span> application.log</span><br><span class="line">grep -i <span class="string">&quot;read timed out&quot;</span> application.log</span><br><span class="line">grep -i <span class="string">&quot;connect timed out&quot;</span> application.log</span><br><span class="line">grep -i <span class="string">&quot;deadline exceeded&quot;</span> application.log</span><br><span class="line"></span><br><span class="line"><span class="comment"># 统计超时频率</span></span><br><span class="line">grep -c <span class="string">&quot;timeout&quot;</span> application.log</span><br><span class="line"></span><br><span class="line"><span class="comment"># 分析超时时间分布</span></span><br><span class="line">grep <span class="string">&quot;timeout&quot;</span> application.log | awk <span class="string">&#x27;&#123;print $NF&#125;&#x27;</span> | <span class="built_in">sort</span> -n | <span class="built_in">uniq</span> -c</span><br></pre></td></tr></table></figure>
+
+<p><strong>日志增强建议：</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 添加请求 ID 追踪</span></span><br><span class="line">MDC.put(<span class="string">&quot;requestId&quot;</span>, UUID.randomUUID().toString());</span><br><span class="line">log.info(<span class="string">&quot;Starting request&quot;</span>, kv(<span class="string">&quot;endpoint&quot;</span>, <span class="string">&quot;/api/users&quot;</span>));</span><br><span class="line"></span><br><span class="line"><span class="comment">// 记录耗时</span></span><br><span class="line"><span class="type">long</span> <span class="variable">start</span> <span class="operator">=</span> System.currentTimeMillis();</span><br><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="comment">// 业务逻辑</span></span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">    <span class="type">long</span> <span class="variable">duration</span> <span class="operator">=</span> System.currentTimeMillis() - start;</span><br><span class="line">    log.info(<span class="string">&quot;Request completed&quot;</span>, </span><br><span class="line">        kv(<span class="string">&quot;requestId&quot;</span>, MDC.get(<span class="string">&quot;requestId&quot;</span>)),</span><br><span class="line">        kv(<span class="string">&quot;duration_ms&quot;</span>, duration));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="七、数据库超时排查"><a href="#七、数据库超时排查" class="headerlink" title="七、数据库超时排查"></a>七、数据库超时排查</h2><h3 id="7-1-MySQL-超时排查"><a href="#7-1-MySQL-超时排查" class="headerlink" title="7.1 MySQL 超时排查"></a>7.1 MySQL 超时排查</h3><p><strong>检查慢查询：</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 开启慢查询日志</span></span><br><span class="line"><span class="keyword">SET</span> <span class="keyword">GLOBAL</span> slow_query_log <span class="operator">=</span> <span class="string">&#x27;ON&#x27;</span>;</span><br><span class="line"><span class="keyword">SET</span> <span class="keyword">GLOBAL</span> long_query_time <span class="operator">=</span> <span class="number">1</span>;</span><br><span class="line"><span class="keyword">SET</span> <span class="keyword">GLOBAL</span> slow_query_log_file <span class="operator">=</span> <span class="string">&#x27;/var/log/mysql/slow.log&#x27;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 查看当前慢查询配置</span></span><br><span class="line"><span class="keyword">SHOW</span> VARIABLES <span class="keyword">LIKE</span> <span class="string">&#x27;slow_query%&#x27;</span>;</span><br><span class="line"><span class="keyword">SHOW</span> VARIABLES <span class="keyword">LIKE</span> <span class="string">&#x27;long_query_time&#x27;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 分析慢查询</span></span><br><span class="line">mysqldumpslow <span class="operator">-</span>s t <span class="operator">-</span>t <span class="number">10</span> <span class="operator">/</span>var<span class="operator">/</span>log<span class="operator">/</span>mysql<span class="operator">/</span>slow.log</span><br></pre></td></tr></table></figure>
+
+<p><strong>检查锁等待：</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看当前锁等待</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> information_schema.INNODB_LOCK_WAITS;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 查看正在运行的事务</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> information_schema.INNODB_TRX;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 查看锁信息</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> performance_schema.data_locks;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 查找阻塞源</span></span><br><span class="line"><span class="keyword">SELECT</span> blocking_trx.trx_id <span class="keyword">AS</span> blocking_trx_id,</span><br><span class="line">       blocking_trx.trx_mysql_thread_id <span class="keyword">AS</span> blocking_thread,</span><br><span class="line">       blocked_trx.trx_id <span class="keyword">AS</span> blocked_trx_id,</span><br><span class="line">       blocked_trx.trx_mysql_thread_id <span class="keyword">AS</span> blocked_thread,</span><br><span class="line">       blocked_trx.trx_query <span class="keyword">AS</span> blocked_query</span><br><span class="line"><span class="keyword">FROM</span> information_schema.INNODB_LOCK_WAITS</span><br><span class="line"><span class="keyword">JOIN</span> information_schema.INNODB_TRX blocking_trx </span><br><span class="line">    <span class="keyword">ON</span> INNODB_LOCK_WAITS.blocking_engine_transaction_id <span class="operator">=</span> blocking_trx.trx_id</span><br><span class="line"><span class="keyword">JOIN</span> information_schema.INNODB_TRX blocked_trx </span><br><span class="line">    <span class="keyword">ON</span> INNODB_LOCK_WAITS.requesting_engine_transaction_id <span class="operator">=</span> blocked_trx.trx_id;</span><br></pre></td></tr></table></figure>
+
+<p><strong>连接超时配置：</strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看超时配置</span></span><br><span class="line"><span class="keyword">SHOW</span> VARIABLES <span class="keyword">LIKE</span> <span class="string">&#x27;%timeout%&#x27;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 关键参数：</span></span><br><span class="line"><span class="comment">-- connect_timeout: 连接超时 (默认 10s)</span></span><br><span class="line"><span class="comment">-- net_read_timeout: 读取超时 (默认 30s)</span></span><br><span class="line"><span class="comment">-- net_write_timeout: 写入超时 (默认 60s)</span></span><br><span class="line"><span class="comment">-- wait_timeout: 空闲连接超时 (默认 28800s)</span></span><br><span class="line"><span class="comment">-- lock_wait_timeout: 锁等待超时 (默认 31536000s)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- 临时调整</span></span><br><span class="line"><span class="keyword">SET</span> SESSION net_read_timeout <span class="operator">=</span> <span class="number">60</span>;</span><br><span class="line"><span class="keyword">SET</span> <span class="keyword">GLOBAL</span> net_read_timeout <span class="operator">=</span> <span class="number">60</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-2-PostgreSQL-超时排查"><a href="#7-2-PostgreSQL-超时排查" class="headerlink" title="7.2 PostgreSQL 超时排查"></a>7.2 PostgreSQL 超时排查</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看慢查询</span></span><br><span class="line"><span class="keyword">SELECT</span> query, calls, total_exec_time, mean_exec_time</span><br><span class="line"><span class="keyword">FROM</span> pg_stat_statements</span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> mean_exec_time <span class="keyword">DESC</span></span><br><span class="line">LIMIT <span class="number">10</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 查看当前锁</span></span><br><span class="line"><span class="keyword">SELECT</span> blocked_locks.pid <span class="keyword">AS</span> blocked_pid,</span><br><span class="line">       blocked_activity.usename <span class="keyword">AS</span> blocked_user,</span><br><span class="line">       blocking_locks.pid <span class="keyword">AS</span> blocking_pid,</span><br><span class="line">       blocking_activity.usename <span class="keyword">AS</span> blocking_user,</span><br><span class="line">       blocked_activity.query <span class="keyword">AS</span> blocked_query</span><br><span class="line"><span class="keyword">FROM</span> pg_catalog.pg_locks blocked_locks</span><br><span class="line"><span class="keyword">JOIN</span> pg_catalog.pg_stat_activity blocked_activity <span class="keyword">ON</span> blocked_activity.pid <span class="operator">=</span> blocked_locks.pid</span><br><span class="line"><span class="keyword">JOIN</span> pg_catalog.pg_locks blocking_locks </span><br><span class="line">    <span class="keyword">ON</span> blocking_locks.locktype <span class="operator">=</span> blocked_locks.locktype</span><br><span class="line">    <span class="keyword">AND</span> blocking_locks.database <span class="keyword">IS</span> <span class="keyword">NOT</span> <span class="keyword">DISTINCT</span> <span class="keyword">FROM</span> blocked_locks.database</span><br><span class="line">    <span class="keyword">AND</span> blocking_locks.relation <span class="keyword">IS</span> <span class="keyword">NOT</span> <span class="keyword">DISTINCT</span> <span class="keyword">FROM</span> blocked_locks.relation</span><br><span class="line">    <span class="keyword">AND</span> blocking_locks.page <span class="keyword">IS</span> <span class="keyword">NOT</span> <span class="keyword">DISTINCT</span> <span class="keyword">FROM</span> blocked_locks.page</span><br><span class="line">    <span class="keyword">AND</span> blocking_locks.tuple <span class="keyword">IS</span> <span class="keyword">NOT</span> <span class="keyword">DISTINCT</span> <span class="keyword">FROM</span> blocked_locks.tuple</span><br><span class="line">    <span class="keyword">AND</span> blocking_locks.virtualxid <span class="keyword">IS</span> <span class="keyword">NOT</span> <span class="keyword">DISTINCT</span> <span class="keyword">FROM</span> blocked_locks.virtualxid</span><br><span class="line">    <span class="keyword">AND</span> blocking_locks.transactionid <span class="keyword">IS</span> <span class="keyword">NOT</span> <span class="keyword">DISTINCT</span> <span class="keyword">FROM</span> blocked_locks.transactionid</span><br><span class="line">    <span class="keyword">AND</span> blocking_locks.classid <span class="keyword">IS</span> <span class="keyword">NOT</span> <span class="keyword">DISTINCT</span> <span class="keyword">FROM</span> blocked_locks.classid</span><br><span class="line">    <span class="keyword">AND</span> blocking_locks.objid <span class="keyword">IS</span> <span class="keyword">NOT</span> <span class="keyword">DISTINCT</span> <span class="keyword">FROM</span> blocked_locks.objid</span><br><span class="line">    <span class="keyword">AND</span> blocking_locks.objsubid <span class="keyword">IS</span> <span class="keyword">NOT</span> <span class="keyword">DISTINCT</span> <span class="keyword">FROM</span> blocked_locks.objsubid</span><br><span class="line">    <span class="keyword">AND</span> blocking_locks.pid <span class="operator">!=</span> blocked_locks.pid</span><br><span class="line"><span class="keyword">JOIN</span> pg_catalog.pg_stat_activity blocking_activity <span class="keyword">ON</span> blocking_activity.pid <span class="operator">=</span> blocking_locks.pid</span><br><span class="line"><span class="keyword">WHERE</span> <span class="keyword">NOT</span> blocked_locks.granted;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 查看超时配置</span></span><br><span class="line"><span class="keyword">SHOW</span> statement_timeout;</span><br><span class="line"><span class="keyword">SHOW</span> lock_timeout;</span><br><span class="line"><span class="keyword">SHOW</span> idle_in_transaction_session_timeout;</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-3-连接池超时"><a href="#7-3-连接池超时" class="headerlink" title="7.3 连接池超时"></a>7.3 连接池超时</h3><p><strong>HikariCP 配置：</strong></p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">datasource:</span></span><br><span class="line">    <span class="attr">hikari:</span></span><br><span class="line">      <span class="attr">connection-timeout:</span> <span class="number">30000</span>        <span class="comment"># 连接获取超时</span></span><br><span class="line">      <span class="attr">validation-timeout:</span> <span class="number">5000</span>         <span class="comment"># 连接验证超时</span></span><br><span class="line">      <span class="attr">idle-timeout:</span> <span class="number">600000</span>             <span class="comment"># 空闲连接超时</span></span><br><span class="line">      <span class="attr">max-lifetime:</span> <span class="number">1800000</span>            <span class="comment"># 连接最大生命周期</span></span><br><span class="line">      <span class="attr">maximum-pool-size:</span> <span class="number">20</span>            <span class="comment"># 最大连接数</span></span><br><span class="line">      <span class="attr">minimum-idle:</span> <span class="number">10</span>                 <span class="comment"># 最小空闲连接</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>连接池监控指标：</strong></p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>正常值</th>
+<th>告警阈值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>活跃连接数</td>
+<td>&lt; 最大池大小 80%</td>
+<td>&gt; 90%</td>
+</tr>
+<tr>
+<td>等待获取连接时间</td>
+<td>&lt; 100ms</td>
+<td>&gt; 1s</td>
+</tr>
+<tr>
+<td>连接超时次数</td>
+<td>0</td>
+<td>&gt; 1&#x2F;min</td>
+</tr>
+<tr>
+<td>连接创建速率</td>
+<td>稳定</td>
+<td>持续增长</td>
+</tr>
+</tbody></table>
+<h2 id="八、缓存超时排查"><a href="#八、缓存超时排查" class="headerlink" title="八、缓存超时排查"></a>八、缓存超时排查</h2><h3 id="8-1-Redis-超时排查"><a href="#8-1-Redis-超时排查" class="headerlink" title="8.1 Redis 超时排查"></a>8.1 Redis 超时排查</h3><p><strong>性能监控：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看 Redis 延迟</span></span><br><span class="line">redis-cli --latency</span><br><span class="line">redis-cli --latency-history</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看慢查询</span></span><br><span class="line">redis-cli config <span class="built_in">set</span> slowlog-log-slower-than 10000  <span class="comment"># 10ms</span></span><br><span class="line">redis-cli slowlog get 10</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看连接信息</span></span><br><span class="line">redis-cli client list</span><br><span class="line">redis-cli info clients</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看内存和大 key</span></span><br><span class="line">redis-cli --bigkeys</span><br><span class="line">redis-cli memory stats</span><br></pre></td></tr></table></figure>
+
+<p><strong>常见问题：</strong></p>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>症状</th>
+<th>解决方案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>大 key 操作</td>
+<td>单命令延迟高</td>
+<td>拆分大 key、使用 SCAN</td>
+</tr>
+<tr>
+<td>热 key</td>
+<td>单分片负载高</td>
+<td>本地缓存、key 分散</td>
+</tr>
+<tr>
+<td>内存不足</td>
+<td>写入失败、驱逐</td>
+<td>扩容、优化数据结构</td>
+</tr>
+<tr>
+<td>持久化阻塞</td>
+<td>周期性延迟</td>
+<td>调整 RDB&#x2F;AOF 策略</td>
+</tr>
+<tr>
+<td>连接数过多</td>
+<td>新连接失败</td>
+<td>连接池优化、增加 maxclients</td>
+</tr>
+</tbody></table>
+<h3 id="8-2-连接池配置"><a href="#8-2-连接池配置" class="headerlink" title="8.2 连接池配置"></a>8.2 连接池配置</h3><p><strong>Lettuce (Spring Boot):</strong></p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">redis:</span></span><br><span class="line">    <span class="attr">lettuce:</span></span><br><span class="line">      <span class="attr">pool:</span></span><br><span class="line">        <span class="attr">max-active:</span> <span class="number">20</span></span><br><span class="line">        <span class="attr">max-idle:</span> <span class="number">10</span></span><br><span class="line">        <span class="attr">min-idle:</span> <span class="number">5</span></span><br><span class="line">        <span class="attr">max-wait:</span> <span class="string">3000ms</span>  <span class="comment"># 连接获取等待超时</span></span><br><span class="line">      <span class="attr">shutdown-timeout:</span> <span class="string">100ms</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Jedis:</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">JedisPoolConfig</span> <span class="variable">config</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">JedisPoolConfig</span>();</span><br><span class="line">config.setMaxTotal(<span class="number">20</span>);</span><br><span class="line">config.setMaxIdle(<span class="number">10</span>);</span><br><span class="line">config.setMinIdle(<span class="number">5</span>);</span><br><span class="line">config.setMaxWaitMillis(<span class="number">3000</span>);</span><br><span class="line">config.setTestOnBorrow(<span class="literal">true</span>);</span><br></pre></td></tr></table></figure>
+
+<h2 id="九、消息队列超时排查"><a href="#九、消息队列超时排查" class="headerlink" title="九、消息队列超时排查"></a>九、消息队列超时排查</h2><h3 id="9-1-Kafka-超时排查"><a href="#9-1-Kafka-超时排查" class="headerlink" title="9.1 Kafka 超时排查"></a>9.1 Kafka 超时排查</h3><p><strong>消费者超时：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看消费者组延迟</span></span><br><span class="line">kafka-consumer-groups.sh --bootstrap-server localhost:9092 \</span><br><span class="line">    --describe --group my-consumer-group</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看分区分配</span></span><br><span class="line">kafka-consumer-groups.sh --bootstrap-server localhost:9092 \</span><br><span class="line">    --describe --group my-consumer-group --members --verbose</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键配置：</strong></p>
+<figure class="highlight properties"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 消费者配置</span></span><br><span class="line"><span class="attr">consumer.max.poll.interval.ms</span>=<span class="string">300000      # 最大轮询间隔</span></span><br><span class="line"><span class="attr">consumer.session.timeout.ms</span>=<span class="string">45000         # 会话超时</span></span><br><span class="line"><span class="attr">consumer.heartbeat.interval.ms</span>=<span class="string">15000      # 心跳间隔</span></span><br><span class="line"><span class="attr">consumer.max.poll.records</span>=<span class="string">500             # 单次拉取数量</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment"># 生产者配置</span></span><br><span class="line"><span class="attr">producer.request.timeout.ms</span>=<span class="string">30000         # 请求超时</span></span><br><span class="line"><span class="attr">producer.delivery.timeout.ms</span>=<span class="string">120000       # 投递超时</span></span><br><span class="line"><span class="attr">producer.acks</span>=<span class="string">all                         # 确认级别</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="9-2-RabbitMQ-超时排查"><a href="#9-2-RabbitMQ-超时排查" class="headerlink" title="9.2 RabbitMQ 超时排查"></a>9.2 RabbitMQ 超时排查</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看队列状态</span></span><br><span class="line">rabbitmqctl list_queues name messages consumers</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看连接</span></span><br><span class="line">rabbitmqctl list_connections name state</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看通道</span></span><br><span class="line">rabbitmqctl list_channels name state</span><br><span class="line"></span><br><span class="line"><span class="comment"># 监控队列积压</span></span><br><span class="line">rabbitmqctl list_queues name messages_ready messages_unacknowledged</span><br></pre></td></tr></table></figure>
+
+<p><strong>消费者超时配置：</strong></p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">rabbitmq:</span></span><br><span class="line">    <span class="attr">listener:</span></span><br><span class="line">      <span class="attr">simple:</span></span><br><span class="line">        <span class="attr">acknowledge-mode:</span> <span class="string">manual</span></span><br><span class="line">        <span class="attr">prefetch:</span> <span class="number">10</span></span><br><span class="line">        <span class="attr">retry:</span></span><br><span class="line">          <span class="attr">enabled:</span> <span class="literal">true</span></span><br><span class="line">          <span class="attr">initial-interval:</span> <span class="number">1000</span></span><br><span class="line">          <span class="attr">max-attempts:</span> <span class="number">3</span></span><br><span class="line">          <span class="attr">max-interval:</span> <span class="number">10000</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="十、外部-API-超时排查"><a href="#十、外部-API-超时排查" class="headerlink" title="十、外部 API 超时排查"></a>十、外部 API 超时排查</h2><h3 id="10-1-超时策略设计"><a href="#10-1-超时策略设计" class="headerlink" title="10.1 超时策略设计"></a>10.1 超时策略设计</h3><p><strong>分层超时配置：</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">TimeoutConfig</span> &#123;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 总超时 = 连接超时 + 读取超时 + 处理时间缓冲</span></span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> RestTemplate <span class="title function_">restTemplate</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">HttpComponentsClientHttpRequestFactory</span> <span class="variable">factory</span> <span class="operator">=</span> </span><br><span class="line">            <span class="keyword">new</span> <span class="title class_">HttpComponentsClientHttpRequestFactory</span>();</span><br><span class="line">        factory.setConnectTimeout(<span class="number">5000</span>);    <span class="comment">// 连接超时 5s</span></span><br><span class="line">        factory.setConnectionRequestTimeout(<span class="number">5000</span>); <span class="comment">// 连接请求超时 5s</span></span><br><span class="line">        factory.setReadTimeout(<span class="number">30000</span>);      <span class="comment">// 读取超时 30s</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">RestTemplate</span>(factory);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="10-2-熔断器配置"><a href="#10-2-熔断器配置" class="headerlink" title="10.2 熔断器配置"></a>10.2 熔断器配置</h3><p><strong>Resilience4j:</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Bean</span></span><br><span class="line"><span class="keyword">public</span> CircuitBreakerConfig <span class="title function_">circuitBreakerConfig</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> CircuitBreakerConfig.custom()</span><br><span class="line">        .failureRateThreshold(<span class="number">50</span>)           <span class="comment">// 失败率阈值</span></span><br><span class="line">        .waitDurationInOpenState(<span class="number">30000</span>)     <span class="comment">// 打开状态等待时间</span></span><br><span class="line">        .slidingWindowSize(<span class="number">10</span>)              <span class="comment">// 滑动窗口大小</span></span><br><span class="line">        .minimumNumberOfCalls(<span class="number">5</span>)            <span class="comment">// 最小调用数</span></span><br><span class="line">        .permittedNumberOfCallsInHalfOpenState(<span class="number">3</span>) <span class="comment">// 半开状态允许调用数</span></span><br><span class="line">        .build();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Bean</span></span><br><span class="line"><span class="keyword">public</span> TimeLimiterConfig <span class="title function_">timeLimiterConfig</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> TimeLimiterConfig.custom()</span><br><span class="line">        .timeoutDuration(Duration.ofSeconds(<span class="number">10</span>))  <span class="comment">// 超时时间</span></span><br><span class="line">        .cancelRunningFuture(<span class="literal">true</span>)                 <span class="comment">// 超时取消</span></span><br><span class="line">        .build();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="10-3-重试策略"><a href="#10-3-重试策略" class="headerlink" title="10.3 重试策略"></a>10.3 重试策略</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Bean</span></span><br><span class="line"><span class="keyword">public</span> RetryConfig <span class="title function_">retryConfig</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> RetryConfig.custom()</span><br><span class="line">        .maxAttempts(<span class="number">3</span>)</span><br><span class="line">        .waitDuration(Duration.ofMillis(<span class="number">500</span>))</span><br><span class="line">        .retryOnException(throwable -&gt; throwable <span class="keyword">instanceof</span> TimeoutException</span><br><span class="line">            || throwable <span class="keyword">instanceof</span> ConnectException</span><br><span class="line">            || throwable <span class="keyword">instanceof</span> SocketTimeoutException)</span><br><span class="line">        .build();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="十一、链路追踪与诊断"><a href="#十一、链路追踪与诊断" class="headerlink" title="十一、链路追踪与诊断"></a>十一、链路追踪与诊断</h2><h3 id="11-1-OpenTelemetry-集成"><a href="#11-1-OpenTelemetry-集成" class="headerlink" title="11.1 OpenTelemetry 集成"></a>11.1 OpenTelemetry 集成</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Spring Boot 配置</span></span><br><span class="line"><span class="comment">// 添加依赖</span></span><br><span class="line"><span class="comment">// io.opentelemetry:opentelemetry-api</span></span><br><span class="line"><span class="comment">// io.opentelemetry:opentelemetry-sdk</span></span><br><span class="line"><span class="comment">// io.opentelemetry:opentelemetry-exporter-otlp</span></span><br><span class="line"></span><br><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">ObservabilityConfig</span> &#123;</span><br><span class="line">    </span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> OpenTelemetry <span class="title function_">openTelemetry</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">Resource</span> <span class="variable">resource</span> <span class="operator">=</span> Resource.getDefault()</span><br><span class="line">            .merge(Resource.create(Attributes.of(</span><br><span class="line">                ResourceAttributes.SERVICE_NAME, <span class="string">&quot;my-service&quot;</span>,</span><br><span class="line">                ResourceAttributes.SERVICE_VERSION, <span class="string">&quot;1.0.0&quot;</span></span><br><span class="line">            )));</span><br><span class="line">        </span><br><span class="line">        <span class="type">SdkTracerProvider</span> <span class="variable">tracerProvider</span> <span class="operator">=</span> SdkTracerProvider.builder()</span><br><span class="line">            .setResource(resource)</span><br><span class="line">            .addSpanProcessor(BatchSpanProcessor.builder(</span><br><span class="line">                OtlpGrpcSpanExporter.builder()</span><br><span class="line">                    .setEndpoint(<span class="string">&quot;http://otel-collector:4317&quot;</span>)</span><br><span class="line">                    .build())</span><br><span class="line">                .build())</span><br><span class="line">            .build();</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">return</span> OpenTelemetrySdk.builder()</span><br><span class="line">            .setTracerProvider(tracerProvider)</span><br><span class="line">            .build();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="11-2-关键-Span-属性"><a href="#11-2-关键-Span-属性" class="headerlink" title="11.2 关键 Span 属性"></a>11.2 关键 Span 属性</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 记录关键 timing 信息</span></span><br><span class="line"><span class="type">Span</span> <span class="variable">span</span> <span class="operator">=</span> tracer.spanBuilder(<span class="string">&quot;database-query&quot;</span>)</span><br><span class="line">    .setAttribute(<span class="string">&quot;db.system&quot;</span>, <span class="string">&quot;mysql&quot;</span>)</span><br><span class="line">    .setAttribute(<span class="string">&quot;db.name&quot;</span>, <span class="string">&quot;mydb&quot;</span>)</span><br><span class="line">    .setAttribute(<span class="string">&quot;db.statement&quot;</span>, sanitizedQuery)</span><br><span class="line">    .startSpan();</span><br><span class="line"></span><br><span class="line"><span class="keyword">try</span> (<span class="type">Scope</span> <span class="variable">scope</span> <span class="operator">=</span> span.makeCurrent()) &#123;</span><br><span class="line">    <span class="comment">// 执行业务逻辑</span></span><br><span class="line">    span.setAttribute(<span class="string">&quot;db.query.duration_ms&quot;</span>, duration);</span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">    span.end();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="11-3-链路分析"><a href="#11-3-链路分析" class="headerlink" title="11.3 链路分析"></a>11.3 链路分析</h3><p><strong>Jaeger 查询：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查询慢调用</span></span><br><span class="line">curl <span class="string">&#x27;http://jaeger-query:16686/api/services&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查询特定服务的 traces</span></span><br><span class="line">curl <span class="string">&#x27;http://jaeger-query:16686/api/traces?service=my-service&amp;minDuration=1s&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>关键分析维度：</strong></p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>分析内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>耗时分布</td>
+<td>找出最慢的 Span</td>
+</tr>
+<tr>
+<td>错误率</td>
+<td>定位频繁失败的环节</td>
+</tr>
+<tr>
+<td>依赖关系</td>
+<td>识别关键路径</td>
+</tr>
+<tr>
+<td>时间序列</td>
+<td>发现周期性异常</td>
+</tr>
+</tbody></table>
+<h2 id="十二、监控告警设计"><a href="#十二、监控告警设计" class="headerlink" title="十二、监控告警设计"></a>十二、监控告警设计</h2><h3 id="12-1-核心监控指标"><a href="#12-1-核心监控指标" class="headerlink" title="12.1 核心监控指标"></a>12.1 核心监控指标</h3><p><strong>应用层指标：</strong></p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Prometheus 指标</span></span><br><span class="line"><span class="bullet">-</span> <span class="string">http_request_duration_seconds</span>      <span class="comment"># 请求耗时分布</span></span><br><span class="line"><span class="bullet">-</span> <span class="string">http_requests_total</span>                <span class="comment"># 请求总数</span></span><br><span class="line"><span class="bullet">-</span> <span class="string">http_request_timeout_total</span>         <span class="comment"># 超时请求数</span></span><br><span class="line"><span class="bullet">-</span> <span class="string">db_connection_pool_active</span>          <span class="comment"># 活跃连接数</span></span><br><span class="line"><span class="bullet">-</span> <span class="string">db_connection_pool_wait_seconds</span>    <span class="comment"># 连接等待时间</span></span><br><span class="line"><span class="bullet">-</span> <span class="string">cache_operation_duration_seconds</span>   <span class="comment"># 缓存操作耗时</span></span><br><span class="line"><span class="bullet">-</span> <span class="string">external_api_latency_seconds</span>       <span class="comment"># 外部 API 延迟</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="12-2-告警规则"><a href="#12-2-告警规则" class="headerlink" title="12.2 告警规则"></a>12.2 告警规则</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">groups:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">timeout-alerts</span></span><br><span class="line">    <span class="attr">rules:</span></span><br><span class="line">      <span class="comment"># 高错误率告警</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">alert:</span> <span class="string">HighTimeoutRate</span></span><br><span class="line">        <span class="attr">expr:</span> <span class="string">|</span></span><br><span class="line"><span class="string">          rate(http_request_timeout_total[5m]) </span></span><br><span class="line"><span class="string">          / rate(http_requests_total[5m]) &gt; 0.05</span></span><br><span class="line"><span class="string"></span>        <span class="attr">for:</span> <span class="string">2m</span></span><br><span class="line">        <span class="attr">labels:</span></span><br><span class="line">          <span class="attr">severity:</span> <span class="string">warning</span></span><br><span class="line">        <span class="attr">annotations:</span></span><br><span class="line">          <span class="attr">summary:</span> <span class="string">&quot;请求超时率过高&quot;</span></span><br><span class="line">          <span class="attr">description:</span> <span class="string">&quot;服务 <span class="template-variable">&#123;&#123; $labels.service &#125;&#125;</span> 超时率 <span class="template-variable">&#123;&#123; $value | humanizePercentage &#125;&#125;</span>&quot;</span></span><br><span class="line">      </span><br><span class="line">      <span class="comment"># P99 延迟告警</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">alert:</span> <span class="string">HighP99Latency</span></span><br><span class="line">        <span class="attr">expr:</span> <span class="string">|</span></span><br><span class="line"><span class="string">          histogram_quantile(0.99, </span></span><br><span class="line"><span class="string">            rate(http_request_duration_seconds_bucket[5m])) &gt; 2</span></span><br><span class="line"><span class="string"></span>        <span class="attr">for:</span> <span class="string">5m</span></span><br><span class="line">        <span class="attr">labels:</span></span><br><span class="line">          <span class="attr">severity:</span> <span class="string">warning</span></span><br><span class="line">        <span class="attr">annotations:</span></span><br><span class="line">          <span class="attr">summary:</span> <span class="string">&quot;P99 延迟过高&quot;</span></span><br><span class="line">          <span class="attr">description:</span> <span class="string">&quot;服务 <span class="template-variable">&#123;&#123; $labels.service &#125;&#125;</span> P99 延迟 <span class="template-variable">&#123;&#123; $value &#125;&#125;</span>s&quot;</span></span><br><span class="line">      </span><br><span class="line">      <span class="comment"># 连接池耗尽告警</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">alert:</span> <span class="string">ConnectionPoolExhausted</span></span><br><span class="line">        <span class="attr">expr:</span> <span class="string">|</span></span><br><span class="line"><span class="string">          db_connection_pool_active / db_connection_pool_max &gt; 0.9</span></span><br><span class="line"><span class="string"></span>        <span class="attr">for:</span> <span class="string">1m</span></span><br><span class="line">        <span class="attr">labels:</span></span><br><span class="line">          <span class="attr">severity:</span> <span class="string">critical</span></span><br><span class="line">        <span class="attr">annotations:</span></span><br><span class="line">          <span class="attr">summary:</span> <span class="string">&quot;数据库连接池即将耗尽&quot;</span></span><br><span class="line">          <span class="attr">description:</span> <span class="string">&quot;连接池使用率 <span class="template-variable">&#123;&#123; $value | humanizePercentage &#125;&#125;</span>&quot;</span></span><br><span class="line">      </span><br><span class="line">      <span class="comment"># 外部 API 超时告警</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">alert:</span> <span class="string">ExternalAPITimeout</span></span><br><span class="line">        <span class="attr">expr:</span> <span class="string">|</span></span><br><span class="line"><span class="string">          rate(external_api_timeout_total[5m]) &gt; 0</span></span><br><span class="line"><span class="string"></span>        <span class="attr">for:</span> <span class="string">1m</span></span><br><span class="line">        <span class="attr">labels:</span></span><br><span class="line">          <span class="attr">severity:</span> <span class="string">warning</span></span><br><span class="line">        <span class="attr">annotations:</span></span><br><span class="line">          <span class="attr">summary:</span> <span class="string">&quot;外部 API 调用超时&quot;</span></span><br><span class="line">          <span class="attr">description:</span> <span class="string">&quot;API <span class="template-variable">&#123;&#123; $labels.api &#125;&#125;</span> 出现超时&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="12-3-仪表盘设计"><a href="#12-3-仪表盘设计" class="headerlink" title="12.3 仪表盘设计"></a>12.3 仪表盘设计</h3><p><strong>关键面板：</strong></p>
+<ol>
+<li><p><strong>概览面板</strong></p>
+<ul>
+<li>请求总量和错误率趋势</li>
+<li>P50&#x2F;P90&#x2F;P99 延迟趋势</li>
+<li>超时请求数趋势</li>
+</ul>
+</li>
+<li><p><strong>服务依赖面板</strong></p>
+<ul>
+<li>各依赖服务调用量</li>
+<li>各依赖服务延迟分布</li>
+<li>各依赖服务错误率</li>
+</ul>
+</li>
+<li><p><strong>资源面板</strong></p>
+<ul>
+<li>连接池使用率</li>
+<li>线程池使用率</li>
+<li>缓存命中率</li>
+</ul>
+</li>
+<li><p><strong>链路分析面板</strong></p>
+<ul>
+<li>Top 慢调用链路</li>
+<li>错误链路分布</li>
+<li>关键路径分析</li>
+</ul>
+</li>
+</ol>
+<h2 id="十三、优化策略"><a href="#十三、优化策略" class="headerlink" title="十三、优化策略"></a>十三、优化策略</h2><h3 id="13-1-超时时间设置原则"><a href="#13-1-超时时间设置原则" class="headerlink" title="13.1 超时时间设置原则"></a>13.1 超时时间设置原则</h3><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>建议超时</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>内部服务调用</td>
+<td>100-500ms</td>
+<td>低延迟、高可靠</td>
+</tr>
+<tr>
+<td>数据库查询</td>
+<td>1-5s</td>
+<td>考虑复杂查询</td>
+</tr>
+<tr>
+<td>缓存操作</td>
+<td>50-200ms</td>
+<td>快速失败</td>
+</tr>
+<tr>
+<td>外部 API</td>
+<td>5-30s</td>
+<td>考虑第三方稳定性</td>
+</tr>
+<tr>
+<td>文件上传&#x2F;下载</td>
+<td>根据文件大小</td>
+<td>动态计算</td>
+</tr>
+<tr>
+<td>批处理任务</td>
+<td>根据数据量</td>
+<td>单独配置</td>
+</tr>
+</tbody></table>
+<h3 id="13-2-超时时间计算公式"><a href="#13-2-超时时间计算公式" class="headerlink" title="13.2 超时时间计算公式"></a>13.2 超时时间计算公式</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">推荐超时 = P99 延迟 × 安全系数 + 网络缓冲</span><br><span class="line"></span><br><span class="line">安全系数建议：</span><br><span class="line">- 内部服务：2-3 倍</span><br><span class="line">- 外部服务：3-5 倍</span><br><span class="line">- 关键路径：1.5-2 倍</span><br></pre></td></tr></table></figure>
+
+<h3 id="13-3-降级策略"><a href="#13-3-降级策略" class="headerlink" title="13.3 降级策略"></a>13.3 降级策略</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserService</span> &#123;</span><br><span class="line">    </span><br><span class="line">    <span class="meta">@CircuitBreaker(name = &quot;userProfile&quot;, fallbackMethod = &quot;getUserProfileFallback&quot;)</span></span><br><span class="line">    <span class="meta">@TimeLimiter(name = &quot;userProfile&quot;)</span></span><br><span class="line">    <span class="keyword">public</span> CompletableFuture&lt;UserProfile&gt; <span class="title function_">getUserProfile</span><span class="params">(String userId)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> CompletableFuture.supplyAsync(() -&gt; </span><br><span class="line">            userProfileClient.getProfile(userId));</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 降级方法</span></span><br><span class="line">    <span class="keyword">public</span> CompletableFuture&lt;UserProfile&gt; <span class="title function_">getUserProfileFallback</span><span class="params">(String userId, Throwable t)</span> &#123;</span><br><span class="line">        log.warn(<span class="string">&quot;获取用户画像失败，使用默认值&quot;</span>, t);</span><br><span class="line">        <span class="keyword">return</span> CompletableFuture.completedFuture(UserProfile.defaultProfile());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="13-4-缓存策略"><a href="#13-4-缓存策略" class="headerlink" title="13.4 缓存策略"></a>13.4 缓存策略</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Cacheable(value = &quot;userProfile&quot;, </span></span><br><span class="line"><span class="meta">    key = &quot;#userId&quot;,</span></span><br><span class="line"><span class="meta">    unless = &quot;#result == null&quot;,</span></span><br><span class="line"><span class="meta">    cacheManager = &quot;redisCacheManager&quot;)</span></span><br><span class="line"><span class="meta">@CacheConfig(cacheNames = &quot;userProfile&quot;)</span></span><br><span class="line"><span class="keyword">public</span> UserProfile <span class="title function_">getUserProfileWithCache</span><span class="params">(String userId)</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> userProfileClient.getProfile(userId);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 缓存配置</span></span><br><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="meta">@EnableCaching</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">CacheConfig</span> &#123;</span><br><span class="line">    </span><br><span class="line">    <span class="meta">@Bean</span></span><br><span class="line">    <span class="keyword">public</span> CacheManager <span class="title function_">cacheManager</span><span class="params">(RedisConnectionFactory factory)</span> &#123;</span><br><span class="line">        <span class="type">RedisCacheConfiguration</span> <span class="variable">config</span> <span class="operator">=</span> RedisCacheConfiguration.defaultCacheConfig()</span><br><span class="line">            .entryTtl(Duration.ofMinutes(<span class="number">10</span>))      <span class="comment">// 缓存过期时间</span></span><br><span class="line">            .disableCachingNullValues()             <span class="comment">// 不缓存空值</span></span><br><span class="line">            .serializeValuesWith(</span><br><span class="line">                RedisSerializationContext.SerializationPair</span><br><span class="line">                    .fromSerializer(<span class="keyword">new</span> <span class="title class_">GenericJackson2JsonRedisSerializer</span>()));</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">return</span> RedisCacheManager.builder(factory)</span><br><span class="line">            .cacheDefaults(config)</span><br><span class="line">            .build();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="十四、实战案例"><a href="#十四、实战案例" class="headerlink" title="十四、实战案例"></a>十四、实战案例</h2><h3 id="案例-1：电商下单接口超时"><a href="#案例-1：电商下单接口超时" class="headerlink" title="案例 1：电商下单接口超时"></a>案例 1：电商下单接口超时</h3><p><strong>现象：</strong></p>
+<ul>
+<li>下单接口 P99 延迟从 200ms 上升到 5s</li>
+<li>超时率从 0.1% 上升到 15%</li>
+<li>数据库连接池使用率 95%</li>
+</ul>
+<p><strong>排查过程：</strong></p>
+<ol>
+<li><strong>链路追踪定位</strong>：通过 Jaeger 发现数据库查询耗时占 80%</li>
+<li><strong>慢查询分析</strong>：发现 <code>SELECT * FROM orders WHERE user_id = ?</code> 无索引</li>
+<li><strong>锁等待检查</strong>：发现大量事务等待 <code>orders</code> 表的行锁</li>
+<li><strong>根因确认</strong>：新上线的批量导入功能导致表锁竞争</li>
+</ol>
+<p><strong>解决方案：</strong></p>
+<ol>
+<li>为 <code>user_id</code> 添加索引</li>
+<li>批量导入改为分批处理，每批 1000 条</li>
+<li>增加数据库连接池大小</li>
+<li>添加查询超时限制</li>
+</ol>
+<p><strong>效果：</strong></p>
+<ul>
+<li>P99 延迟恢复到 250ms</li>
+<li>超时率降至 0.2%</li>
+<li>连接池使用率降至 40%</li>
+</ul>
+<h3 id="案例-2：第三方支付回调超时"><a href="#案例-2：第三方支付回调超时" class="headerlink" title="案例 2：第三方支付回调超时"></a>案例 2：第三方支付回调超时</h3><p><strong>现象：</strong></p>
+<ul>
+<li>支付回调接口偶发超时</li>
+<li>超时集中在每天 10:00-11:00</li>
+<li>第三方支付平台反馈我方响应慢</li>
+</ul>
+<p><strong>排查过程：</strong></p>
+<ol>
+<li><strong>时间模式分析</strong>：超时与业务高峰时间吻合</li>
+<li><strong>资源监控</strong>：发现 GC 停顿时间与超时时段吻合</li>
+<li><strong>堆分析</strong>：发现大量临时对象导致频繁 Full GC</li>
+<li><strong>根因确认</strong>：回调处理中创建了大量未复用的对象</li>
+</ol>
+<p><strong>解决方案：</strong></p>
+<ol>
+<li>优化对象创建，使用对象池</li>
+<li>调整 JVM 堆大小和 GC 参数</li>
+<li>异步处理回调，快速响应第三方</li>
+<li>添加回调超时告警</li>
+</ol>
+<p><strong>效果：</strong></p>
+<ul>
+<li>GC 停顿时间从 500ms 降至 50ms</li>
+<li>回调超时率从 5% 降至 0.1%</li>
+</ul>
+<h3 id="案例-3：微服务雪崩"><a href="#案例-3：微服务雪崩" class="headerlink" title="案例 3：微服务雪崩"></a>案例 3：微服务雪崩</h3><p><strong>现象：</strong></p>
+<ul>
+<li>A 服务超时导致 B、C、D 服务连锁超时</li>
+<li>整个系统响应变慢</li>
+<li>部分服务实例宕机</li>
+</ul>
+<p><strong>排查过程：</strong></p>
+<ol>
+<li><strong>依赖分析</strong>：发现 B、C、D 服务都同步调用 A 服务</li>
+<li><strong>超时配置</strong>：发现没有设置合理的超时和熔断</li>
+<li><strong>线程池</strong>：发现调用方线程池被耗尽</li>
+<li><strong>根因确认</strong>：缺少隔离和熔断机制</li>
+</ol>
+<p><strong>解决方案：</strong></p>
+<ol>
+<li>为所有外部调用添加超时配置</li>
+<li>部署熔断器，失败率超过 50% 自动熔断</li>
+<li>使用线程池隔离不同依赖</li>
+<li>添加舱壁模式，限制并发调用数</li>
+</ol>
+<p><strong>效果：</strong></p>
+<ul>
+<li>故障影响范围缩小 80%</li>
+<li>系统自动恢复时间从 30 分钟降至 2 分钟</li>
+</ul>
+<h2 id="十五、预防体系"><a href="#十五、预防体系" class="headerlink" title="十五、预防体系"></a>十五、预防体系</h2><h3 id="15-1-开发规范"><a href="#15-1-开发规范" class="headerlink" title="15.1 开发规范"></a>15.1 开发规范</h3><p><strong>超时配置规范：</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 必须显式配置超时</span></span><br><span class="line"><span class="comment">// ❌ 错误示例</span></span><br><span class="line"><span class="type">RestTemplate</span> <span class="variable">restTemplate</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">RestTemplate</span>();</span><br><span class="line"></span><br><span class="line"><span class="comment">// ✅ 正确示例</span></span><br><span class="line"><span class="type">RestTemplate</span> <span class="variable">restTemplate</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">RestTemplate</span>(</span><br><span class="line">    <span class="keyword">new</span> <span class="title class_">HttpComponentsClientHttpRequestFactory</span>() &#123;&#123;</span><br><span class="line">        setConnectTimeout(<span class="number">5000</span>);</span><br><span class="line">        setReadTimeout(<span class="number">30000</span>);</span><br><span class="line">    &#125;&#125;</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<p><strong>异步调用规范：</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 避免同步阻塞调用</span></span><br><span class="line"><span class="comment">// ❌ 错误示例</span></span><br><span class="line"><span class="type">Response</span> <span class="variable">response</span> <span class="operator">=</span> client.call();  <span class="comment">// 可能永久阻塞</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// ✅ 正确示例</span></span><br><span class="line">CompletableFuture&lt;Response&gt; future = client.callAsync();</span><br><span class="line"><span class="type">Response</span> <span class="variable">response</span> <span class="operator">=</span> future.get(<span class="number">30</span>, TimeUnit.SECONDS);</span><br></pre></td></tr></table></figure>
+
+<h3 id="15-2-测试策略"><a href="#15-2-测试策略" class="headerlink" title="15.2 测试策略"></a>15.2 测试策略</h3><p><strong>超时测试用例：</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Test</span></span><br><span class="line"><span class="meta">@Timeout(value = 5, unit = TimeUnit.SECONDS)</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">testApiTimeout</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="comment">// 测试必须在 5 秒内完成</span></span><br><span class="line">    service.processRequest();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Test</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">testSlowDependency</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="comment">// Mock 慢依赖</span></span><br><span class="line">    <span class="keyword">when</span>(dependency.call()).thenAnswer(invocation -&gt; &#123;</span><br><span class="line">        Thread.sleep(<span class="number">10000</span>);</span><br><span class="line">        <span class="keyword">return</span> result;</span><br><span class="line">    &#125;);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 验证超时处理</span></span><br><span class="line">    assertThrows(TimeoutException.class, () -&gt; &#123;</span><br><span class="line">        service.withTimeout();</span><br><span class="line">    &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>混沌工程测试：</strong></p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Chaos Mesh 实验配置</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">chaos-mesh.org/v1alpha1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">NetworkChaos</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">network-delay</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">action:</span> <span class="string">delay</span></span><br><span class="line">  <span class="attr">mode:</span> <span class="string">one</span></span><br><span class="line">  <span class="attr">selector:</span></span><br><span class="line">    <span class="attr">namespaces:</span> [<span class="string">&quot;production&quot;</span>]</span><br><span class="line">  <span class="attr">delay:</span></span><br><span class="line">    <span class="attr">latency:</span> <span class="string">&quot;100ms&quot;</span></span><br><span class="line">    <span class="attr">correlation:</span> <span class="string">&quot;25&quot;</span></span><br><span class="line">    <span class="attr">jitter:</span> <span class="string">&quot;10ms&quot;</span></span><br><span class="line">  <span class="attr">duration:</span> <span class="string">&quot;5m&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="15-3-容量规划"><a href="#15-3-容量规划" class="headerlink" title="15.3 容量规划"></a>15.3 容量规划</h3><p><strong>压测指标：</strong></p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>目标值</th>
+<th>测量方法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>单实例 QPS</td>
+<td>&gt; 1000</td>
+<td>压力测试</td>
+</tr>
+<tr>
+<td>P99 延迟</td>
+<td>&lt; 500ms</td>
+<td>压测监控</td>
+</tr>
+<tr>
+<td>超时率</td>
+<td>&lt; 0.1%</td>
+<td>压测监控</td>
+</tr>
+<tr>
+<td>恢复时间</td>
+<td>&lt; 1 分钟</td>
+<td>故障注入</td>
+</tr>
+</tbody></table>
+<p><strong>容量公式：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">所需实例数 = (峰值 QPS × P99 延迟) / (单实例 QPS × 安全系数)</span><br><span class="line"></span><br><span class="line">安全系数建议：1.5-2.0</span><br></pre></td></tr></table></figure>
+
+<h2 id="十六、总结"><a href="#十六、总结" class="headerlink" title="十六、总结"></a>十六、总结</h2><p>超时故障排查是一项系统性工程，需要：</p>
+<ol>
+<li><strong>建立完整的监控体系</strong>：从客户端到服务端，从网络到应用</li>
+<li><strong>掌握各层级的诊断工具</strong>：网络、应用、数据库、缓存</li>
+<li><strong>设计合理的超时策略</strong>：分层配置、动态调整</li>
+<li><strong>实施有效的防护措施</strong>：熔断、降级、限流</li>
+<li><strong>建立预防性机制</strong>：规范、测试、混沌工程</li>
+</ol>
+<p>关键要点：</p>
+<ul>
+<li>超时配置必须显式设置，避免默认值</li>
+<li>链路追踪是定位问题的关键工具</li>
+<li>监控告警要覆盖所有关键指标</li>
+<li>定期进行故障演练和混沌测试</li>
+<li>建立完善的故障复盘机制</li>
+</ul>
+<hr>
+<p><strong>参考文档：</strong></p>
+<ul>
+<li>Google SRE Handbook: <a target="_blank" rel="noopener" href="https://sre.google/sre-book/">https://sre.google/sre-book/</a></li>
+<li>AWS Well-Architected Framework</li>
+<li>各语言官方超时配置文档</li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io">PCLTXSYWZ</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io/2026/03/17/%E5%BA%94%E7%94%A8%E9%93%BE%E8%B7%AF%E8%B6%85%E6%97%B6%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/">https://pcltxs.github.io/2026/03/17/%E5%BA%94%E7%94%A8%E9%93%BE%E8%B7%AF%E8%B6%85%E6%97%B6%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://pcltxs.github.io" target="_blank">体系所运维知识库</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E8%B6%85%E6%97%B6%EF%BC%8C%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5/">超时，故障排查</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/03/17/Consul%20%E6%9C%8D%E5%8A%A1%E5%8F%91%E7%8E%B0%E4%B8%8E%E9%85%8D%E7%BD%AE%E4%B8%AD%E5%BF%83%E9%9B%86%E7%BE%A4%E9%83%A8%E7%BD%B2%E5%AE%9E%E6%88%98/" title="Consul 服务发现与配置中心集群部署实战"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Consul 服务发现与配置中心集群部署实战</div></div><div class="info-2"><div class="info-item-1">Consul 服务发现与配置中心集群部署实战一、概述Consul 是 HashiCorp 公司推出的一款开源工具，主要用于解决分布式系统中的服务发现、配置管理和健康检查问题。在现代微服务架构中，Consul 已成为服务网格基础设施的核心组件之一。 核心特性 服务发现：支持 DNS 和 HTTP 两种方式的服务注册与发现 健康检查：自动检测服务健康状态，实现故障转移 键值存储：提供分布式 KV 存储，用于配置管理 多数据中心：支持跨数据中心的服务发现和数据同步 服务网格：内置 Connect 功能，提供服务间安全通信  适用场景 微服务架构中的服务注册与发现 动态配置管理与分发 服务健康监控与自动故障转移 多数据中心服务路由  二、架构设计2.1 核心组件   组件 说明    Server 存储集群状态，参与 Raft 共识，建议 3 或 5 节点奇数部署   Client 转发请求到 Server，参与服务注册和健康检查   Agent 运行在每台主机上的守护进程，可以是 Server 或 Client 模式   2.2 推荐架构123456789101112131415161...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">PCLTXSYWZ</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">89</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">84</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">7</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/pcltxs"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">广泛收集运维相关文档资料,欢迎大家投稿分享,文档请发送至邮箱tuwj@pcl.ac.cn。网站建设相关问题和建议请联系邮箱tuwj@pcl.ac.cn。体系所办公区设备分布情况请访问http://device.opendns4.cn,工单系统请访问http://ticket.opendns4.cn,体系所公有云资源使用情况请访问http://mcloud.dns4test.com/</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%BA%94%E7%94%A8%E9%93%BE%E8%B7%AF%E8%B6%85%E6%97%B6%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97"><span class="toc-number">1.</span> <span class="toc-text">应用链路超时故障排查实战指南</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">一、概述</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B6%85%E6%97%B6%E6%95%85%E9%9A%9C%E7%9A%84%E7%89%B9%E7%82%B9"><span class="toc-number">1.1.1.</span> <span class="toc-text">超时故障的特点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%AC%E6%96%87%E7%9B%AE%E6%A0%87"><span class="toc-number">1.1.2.</span> <span class="toc-text">本文目标</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%B6%85%E6%97%B6%E6%95%85%E9%9A%9C%E5%88%86%E7%B1%BB"><span class="toc-number">1.2.</span> <span class="toc-text">二、超时故障分类</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E6%8C%89%E5%8F%91%E7%94%9F%E5%B1%82%E7%BA%A7%E5%88%86%E7%B1%BB"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 按发生层级分类</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%8C%89%E8%B6%85%E6%97%B6%E7%B1%BB%E5%9E%8B%E5%88%86%E7%B1%BB"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 按超时类型分类</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E6%8C%89%E5%BD%B1%E5%93%8D%E8%8C%83%E5%9B%B4%E5%88%86%E7%B1%BB"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 按影响范围分类</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%8E%92%E6%9F%A5%E6%96%B9%E6%B3%95%E8%AE%BA"><span class="toc-number">1.3.</span> <span class="toc-text">三、排查方法论</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E9%BB%84%E9%87%91%E6%8E%92%E6%9F%A5%E6%B5%81%E7%A8%8B"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 黄金排查流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E4%BF%A1%E6%81%AF%E6%94%B6%E9%9B%86%E6%B8%85%E5%8D%95"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 信息收集清单</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E6%95%85%E9%9A%9C%E5%AE%9A%E7%BA%A7%E6%A0%87%E5%87%86"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 故障定级标准</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%B6%85%E6%97%B6%E6%8E%92%E6%9F%A5"><span class="toc-number">1.4.</span> <span class="toc-text">四、客户端超时排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E6%B5%8F%E8%A7%88%E5%99%A8%E7%AB%AF%E6%8E%92%E6%9F%A5"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 浏览器端排查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E7%A7%BB%E5%8A%A8%E7%AB%AF%E6%8E%92%E6%9F%A5"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 移动端排查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-DNS-%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 DNS 问题排查</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E7%BD%91%E7%BB%9C%E5%B1%82%E8%B6%85%E6%97%B6%E6%8E%92%E6%9F%A5"><span class="toc-number">1.5.</span> <span class="toc-text">五、网络层超时排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-TCP-%E8%BF%9E%E6%8E%A5%E9%97%AE%E9%A2%98"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 TCP 连接问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E7%BD%91%E7%BB%9C%E5%BB%B6%E8%BF%9F%E5%88%86%E6%9E%90"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 网络延迟分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E9%98%B2%E7%81%AB%E5%A2%99%E5%92%8C%E5%AE%89%E5%85%A8%E7%BB%84"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 防火墙和安全组</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E5%BA%94%E7%94%A8%E5%B1%82%E8%B6%85%E6%97%B6%E6%8E%92%E6%9F%A5"><span class="toc-number">1.6.</span> <span class="toc-text">六、应用层超时排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-Java-%E5%BA%94%E7%94%A8%E6%8E%92%E6%9F%A5"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 Java 应用排查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-Go-%E5%BA%94%E7%94%A8%E6%8E%92%E6%9F%A5"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 Go 应用排查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-Python-%E5%BA%94%E7%94%A8%E6%8E%92%E6%9F%A5"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 Python 应用排查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-4-%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97%E5%88%86%E6%9E%90"><span class="toc-number">1.6.4.</span> <span class="toc-text">6.4 应用日志分析</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E6%95%B0%E6%8D%AE%E5%BA%93%E8%B6%85%E6%97%B6%E6%8E%92%E6%9F%A5"><span class="toc-number">1.7.</span> <span class="toc-text">七、数据库超时排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-MySQL-%E8%B6%85%E6%97%B6%E6%8E%92%E6%9F%A5"><span class="toc-number">1.7.1.</span> <span class="toc-text">7.1 MySQL 超时排查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-PostgreSQL-%E8%B6%85%E6%97%B6%E6%8E%92%E6%9F%A5"><span class="toc-number">1.7.2.</span> <span class="toc-text">7.2 PostgreSQL 超时排查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E8%BF%9E%E6%8E%A5%E6%B1%A0%E8%B6%85%E6%97%B6"><span class="toc-number">1.7.3.</span> <span class="toc-text">7.3 连接池超时</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E7%BC%93%E5%AD%98%E8%B6%85%E6%97%B6%E6%8E%92%E6%9F%A5"><span class="toc-number">1.8.</span> <span class="toc-text">八、缓存超时排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-Redis-%E8%B6%85%E6%97%B6%E6%8E%92%E6%9F%A5"><span class="toc-number">1.8.1.</span> <span class="toc-text">8.1 Redis 超时排查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-%E8%BF%9E%E6%8E%A5%E6%B1%A0%E9%85%8D%E7%BD%AE"><span class="toc-number">1.8.2.</span> <span class="toc-text">8.2 连接池配置</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9D%E3%80%81%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E8%B6%85%E6%97%B6%E6%8E%92%E6%9F%A5"><span class="toc-number">1.9.</span> <span class="toc-text">九、消息队列超时排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#9-1-Kafka-%E8%B6%85%E6%97%B6%E6%8E%92%E6%9F%A5"><span class="toc-number">1.9.1.</span> <span class="toc-text">9.1 Kafka 超时排查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-2-RabbitMQ-%E8%B6%85%E6%97%B6%E6%8E%92%E6%9F%A5"><span class="toc-number">1.9.2.</span> <span class="toc-text">9.2 RabbitMQ 超时排查</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E3%80%81%E5%A4%96%E9%83%A8-API-%E8%B6%85%E6%97%B6%E6%8E%92%E6%9F%A5"><span class="toc-number">1.10.</span> <span class="toc-text">十、外部 API 超时排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#10-1-%E8%B6%85%E6%97%B6%E7%AD%96%E7%95%A5%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.10.1.</span> <span class="toc-text">10.1 超时策略设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-2-%E7%86%94%E6%96%AD%E5%99%A8%E9%85%8D%E7%BD%AE"><span class="toc-number">1.10.2.</span> <span class="toc-text">10.2 熔断器配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#10-3-%E9%87%8D%E8%AF%95%E7%AD%96%E7%95%A5"><span class="toc-number">1.10.3.</span> <span class="toc-text">10.3 重试策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E4%B8%80%E3%80%81%E9%93%BE%E8%B7%AF%E8%BF%BD%E8%B8%AA%E4%B8%8E%E8%AF%8A%E6%96%AD"><span class="toc-number">1.11.</span> <span class="toc-text">十一、链路追踪与诊断</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#11-1-OpenTelemetry-%E9%9B%86%E6%88%90"><span class="toc-number">1.11.1.</span> <span class="toc-text">11.1 OpenTelemetry 集成</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#11-2-%E5%85%B3%E9%94%AE-Span-%E5%B1%9E%E6%80%A7"><span class="toc-number">1.11.2.</span> <span class="toc-text">11.2 关键 Span 属性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#11-3-%E9%93%BE%E8%B7%AF%E5%88%86%E6%9E%90"><span class="toc-number">1.11.3.</span> <span class="toc-text">11.3 链路分析</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E4%BA%8C%E3%80%81%E7%9B%91%E6%8E%A7%E5%91%8A%E8%AD%A6%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.12.</span> <span class="toc-text">十二、监控告警设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#12-1-%E6%A0%B8%E5%BF%83%E7%9B%91%E6%8E%A7%E6%8C%87%E6%A0%87"><span class="toc-number">1.12.1.</span> <span class="toc-text">12.1 核心监控指标</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#12-2-%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99"><span class="toc-number">1.12.2.</span> <span class="toc-text">12.2 告警规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#12-3-%E4%BB%AA%E8%A1%A8%E7%9B%98%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.12.3.</span> <span class="toc-text">12.3 仪表盘设计</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E4%B8%89%E3%80%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.13.</span> <span class="toc-text">十三、优化策略</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#13-1-%E8%B6%85%E6%97%B6%E6%97%B6%E9%97%B4%E8%AE%BE%E7%BD%AE%E5%8E%9F%E5%88%99"><span class="toc-number">1.13.1.</span> <span class="toc-text">13.1 超时时间设置原则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#13-2-%E8%B6%85%E6%97%B6%E6%97%B6%E9%97%B4%E8%AE%A1%E7%AE%97%E5%85%AC%E5%BC%8F"><span class="toc-number">1.13.2.</span> <span class="toc-text">13.2 超时时间计算公式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#13-3-%E9%99%8D%E7%BA%A7%E7%AD%96%E7%95%A5"><span class="toc-number">1.13.3.</span> <span class="toc-text">13.3 降级策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#13-4-%E7%BC%93%E5%AD%98%E7%AD%96%E7%95%A5"><span class="toc-number">1.13.4.</span> <span class="toc-text">13.4 缓存策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E5%9B%9B%E3%80%81%E5%AE%9E%E6%88%98%E6%A1%88%E4%BE%8B"><span class="toc-number">1.14.</span> <span class="toc-text">十四、实战案例</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A1%88%E4%BE%8B-1%EF%BC%9A%E7%94%B5%E5%95%86%E4%B8%8B%E5%8D%95%E6%8E%A5%E5%8F%A3%E8%B6%85%E6%97%B6"><span class="toc-number">1.14.1.</span> <span class="toc-text">案例 1：电商下单接口超时</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A1%88%E4%BE%8B-2%EF%BC%9A%E7%AC%AC%E4%B8%89%E6%96%B9%E6%94%AF%E4%BB%98%E5%9B%9E%E8%B0%83%E8%B6%85%E6%97%B6"><span class="toc-number">1.14.2.</span> <span class="toc-text">案例 2：第三方支付回调超时</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A1%88%E4%BE%8B-3%EF%BC%9A%E5%BE%AE%E6%9C%8D%E5%8A%A1%E9%9B%AA%E5%B4%A9"><span class="toc-number">1.14.3.</span> <span class="toc-text">案例 3：微服务雪崩</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E4%BA%94%E3%80%81%E9%A2%84%E9%98%B2%E4%BD%93%E7%B3%BB"><span class="toc-number">1.15.</span> <span class="toc-text">十五、预防体系</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#15-1-%E5%BC%80%E5%8F%91%E8%A7%84%E8%8C%83"><span class="toc-number">1.15.1.</span> <span class="toc-text">15.1 开发规范</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#15-2-%E6%B5%8B%E8%AF%95%E7%AD%96%E7%95%A5"><span class="toc-number">1.15.2.</span> <span class="toc-text">15.2 测试策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#15-3-%E5%AE%B9%E9%87%8F%E8%A7%84%E5%88%92"><span class="toc-number">1.15.3.</span> <span class="toc-text">15.3 容量规划</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E5%85%AD%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">1.16.</span> <span class="toc-text">十六、总结</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/17/Consul%20%E6%9C%8D%E5%8A%A1%E5%8F%91%E7%8E%B0%E4%B8%8E%E9%85%8D%E7%BD%AE%E4%B8%AD%E5%BF%83%E9%9B%86%E7%BE%A4%E9%83%A8%E7%BD%B2%E5%AE%9E%E6%88%98/" title="Consul 服务发现与配置中心集群部署实战">Consul 服务发现与配置中心集群部署实战</a><time datetime="2026-03-17T08:00:00.000Z" title="发表于 2026-03-17 16:00:00">2026-03-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/17/%E5%BA%94%E7%94%A8%E9%93%BE%E8%B7%AF%E8%B6%85%E6%97%B6%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/" title="应用链路超时故障排查实战指南">应用链路超时故障排查实战指南</a><time datetime="2026-03-17T08:00:00.000Z" title="发表于 2026-03-17 16:00:00">2026-03-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/17/GPU%20%E6%9C%8D%E5%8A%A1%E5%99%A8%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E7%BB%B4%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/" title="GPU 服务器部署与运维实战指南">GPU 服务器部署与运维实战指南</a><time datetime="2026-03-17T03:00:00.000Z" title="发表于 2026-03-17 11:00:00">2026-03-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/17/Linux%20%E5%86%85%E6%A0%B8%E6%81%90%E6%85%8C-Kernel-Panic-%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98/" title="Linux 内核恐慌-Kernel-Panic-故障排查实战">Linux 内核恐慌-Kernel-Panic-故障排查实战</a><time datetime="2026-03-17T03:00:00.000Z" title="发表于 2026-03-17 11:00:00">2026-03-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/17/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB%20-2026-03-17/" title="每日科技要闻 -2026-03-17">每日科技要闻 -2026-03-17</a><time datetime="2026-03-17T00:00:00.000Z" title="发表于 2026-03-17 08:00:00">2026-03-17</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By PCLTXSYWZ</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.4</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>
