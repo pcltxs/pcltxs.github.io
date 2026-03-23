@@ -1,0 +1,329 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>SSL-TLS 证书故障排查实战指南 | 体系所运维知识库</title><meta name="author" content="PCLTXSYWZ"><meta name="copyright" content="PCLTXSYWZ"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="SSL&#x2F;TLS 证书故障排查实战指南一、概述SSL&#x2F;TLS 证书是现代互联网服务的基石，证书故障会导致服务不可用、浏览器告警、API 调用失败等严重问题。本文档总结常见的 SSL&#x2F;TLS 证书故障场景及排查方法。 二、常见故障现象2.1 浏览器告警 ERR_CERT_DATE_INVALID - 证书过期或尚未生效 ERR_CERT_AUTHORITY_INVALID">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SSL-TLS 证书故障排查实战指南">
+<meta property="og:url" content="https://pcltxs.github.io/2026/03/21/SSL-TLS%20%E8%AF%81%E4%B9%A6%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/index.html">
+<meta property="og:site_name" content="体系所运维知识库">
+<meta property="og:description" content="SSL&#x2F;TLS 证书故障排查实战指南一、概述SSL&#x2F;TLS 证书是现代互联网服务的基石，证书故障会导致服务不可用、浏览器告警、API 调用失败等严重问题。本文档总结常见的 SSL&#x2F;TLS 证书故障场景及排查方法。 二、常见故障现象2.1 浏览器告警 ERR_CERT_DATE_INVALID - 证书过期或尚未生效 ERR_CERT_AUTHORITY_INVALID">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://pcltxs.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-03-21T03:00:36.000Z">
+<meta property="article:modified_time" content="2026-03-23T01:16:14.821Z">
+<meta property="article:author" content="PCLTXSYWZ">
+<meta property="article:tag" content="SSL">
+<meta property="article:tag" content="故障排查">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pcltxs.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "SSL-TLS 证书故障排查实战指南",
+  "url": "https://pcltxs.github.io/2026/03/21/SSL-TLS%20%E8%AF%81%E4%B9%A6%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/",
+  "image": "https://pcltxs.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-03-21T03:00:36.000Z",
+  "dateModified": "2026-03-23T01:16:14.821Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "PCLTXSYWZ",
+      "url": "https://pcltxs.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://pcltxs.github.io/2026/03/21/SSL-TLS%20%E8%AF%81%E4%B9%A6%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'SSL-TLS 证书故障排查实战指南',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.1"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">体系所运维知识库</span></a><a class="nav-page-title" href="/"><span class="site-name">SSL-TLS 证书故障排查实战指南</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div></div></nav><div id="post-info"><h1 class="post-title">SSL-TLS 证书故障排查实战指南</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-03-21T03:00:36.000Z" title="发表于 2026-03-21 11:00:36">2026-03-21</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-03-23T01:16:14.821Z" title="更新于 2026-03-23 09:16:14">2026-03-23</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E6%95%85%E9%9A%9C%E5%A4%84%E7%90%86%E4%B8%8E%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5/">故障处理与问题排查</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="SSL-TLS-证书故障排查实战指南"><a href="#SSL-TLS-证书故障排查实战指南" class="headerlink" title="SSL&#x2F;TLS 证书故障排查实战指南"></a>SSL&#x2F;TLS 证书故障排查实战指南</h1><h2 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h2><p>SSL&#x2F;TLS 证书是现代互联网服务的基石，证书故障会导致服务不可用、浏览器告警、API 调用失败等严重问题。本文档总结常见的 SSL&#x2F;TLS 证书故障场景及排查方法。</p>
+<h2 id="二、常见故障现象"><a href="#二、常见故障现象" class="headerlink" title="二、常见故障现象"></a>二、常见故障现象</h2><h3 id="2-1-浏览器告警"><a href="#2-1-浏览器告警" class="headerlink" title="2.1 浏览器告警"></a>2.1 浏览器告警</h3><ul>
+<li><code>ERR_CERT_DATE_INVALID</code> - 证书过期或尚未生效</li>
+<li><code>ERR_CERT_AUTHORITY_INVALID</code> - 证书颁发机构不受信任</li>
+<li><code>ERR_CERT_COMMON_NAME_INVALID</code> - 域名不匹配</li>
+<li><code>ERR_CERT_REVOKED</code> - 证书已被吊销</li>
+</ul>
+<h3 id="2-2-命令行工具报错"><a href="#2-2-命令行工具报错" class="headerlink" title="2.2 命令行工具报错"></a>2.2 命令行工具报错</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># curl 报错</span></span><br><span class="line">curl: (60) SSL certificate problem: certificate has expired</span><br><span class="line">curl: (60) SSL certificate problem: unable to get <span class="built_in">local</span> issuer certificate</span><br><span class="line"></span><br><span class="line"><span class="comment"># openssl 报错</span></span><br><span class="line">openssl s_client: certificate verify error:num=20:unable to get <span class="built_in">local</span> issuer certificate</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-应用层报错"><a href="#2-3-应用层报错" class="headerlink" title="2.3 应用层报错"></a>2.3 应用层报错</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">javax.net.ssl.SSLHandshakeException: sun.security.validator.ValidatorException: PKIX path building failed</span><br><span class="line">Python requests.exceptions.SSLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、排查流程"><a href="#三、排查流程" class="headerlink" title="三、排查流程"></a>三、排查流程</h2><h3 id="3-1-第一步：检查证书基本信息"><a href="#3-1-第一步：检查证书基本信息" class="headerlink" title="3.1 第一步：检查证书基本信息"></a>3.1 第一步：检查证书基本信息</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看证书详细信息</span></span><br><span class="line">openssl s_client -connect example.com:443 -servername example.com &lt;/dev/null 2&gt;/dev/null | openssl x509 -noout -text</span><br><span class="line"></span><br><span class="line"><span class="comment"># 快速查看证书有效期</span></span><br><span class="line">openssl s_client -connect example.com:443 -servername example.com &lt;/dev/null 2&gt;/dev/null | openssl x509 -noout -dates</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看证书主题和颁发者</span></span><br><span class="line">openssl s_client -connect example.com:443 -servername example.com &lt;/dev/null 2&gt;/dev/null | openssl x509 -noout -subject -issuer</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键检查点：</strong></p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Not Before</td>
+<td>证书生效时间，早于当前时间才有效</td>
+</tr>
+<tr>
+<td>Not After</td>
+<td>证书过期时间，晚于当前时间才有效</td>
+</tr>
+<tr>
+<td>Subject CN</td>
+<td>证书绑定的域名</td>
+</tr>
+<tr>
+<td>Subject Alternative Name</td>
+<td>证书支持的所有域名</td>
+</tr>
+<tr>
+<td>Issuer</td>
+<td>证书颁发机构</td>
+</tr>
+</tbody></table>
+<h3 id="3-2-第二步：验证证书链完整性"><a href="#3-2-第二步：验证证书链完整性" class="headerlink" title="3.2 第二步：验证证书链完整性"></a>3.2 第二步：验证证书链完整性</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看完整证书链</span></span><br><span class="line">openssl s_client -connect example.com:443 -servername example.com -showcerts &lt;/dev/null 2&gt;/dev/null</span><br><span class="line"></span><br><span class="line"><span class="comment"># 验证证书链（需要 CA 根证书）</span></span><br><span class="line">openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt server.crt</span><br></pre></td></tr></table></figure>
+
+<p><strong>常见问题：</strong></p>
+<ol>
+<li><strong>中间证书缺失</strong> - 服务器只配置了叶子证书，缺少中间 CA 证书</li>
+<li><strong>证书链顺序错误</strong> - 证书文件中的顺序应为：叶子证书 → 中间证书 → 根证书</li>
+<li><strong>自签名证书</strong> - 内部服务使用自签名证书，客户端不信任</li>
+</ol>
+<h3 id="3-3-第三步：检查域名匹配"><a href="#3-3-第三步：检查域名匹配" class="headerlink" title="3.3 第三步：检查域名匹配"></a>3.3 第三步：检查域名匹配</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 提取证书中的所有域名</span></span><br><span class="line">openssl s_client -connect example.com:443 -servername example.com &lt;/dev/null 2&gt;/dev/null | openssl x509 -noout -ext subjectAltName</span><br></pre></td></tr></table></figure>
+
+<p><strong>匹配规则：</strong></p>
+<ul>
+<li>精确匹配：<code>www.example.com</code> 匹配 <code>www.example.com</code></li>
+<li>通配符匹配：<code>*.example.com</code> 匹配 <code>api.example.com</code> 但不匹配 <code>example.com</code></li>
+<li>多域名证书：SAN 字段包含多个域名</li>
+</ul>
+<h3 id="3-4-第四步：检查证书吊销状态"><a href="#3-4-第四步：检查证书吊销状态" class="headerlink" title="3.4 第四步：检查证书吊销状态"></a>3.4 第四步：检查证书吊销状态</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 获取 CRL 分发点</span></span><br><span class="line">openssl x509 -<span class="keyword">in</span> server.crt -noout -text | grep -A1 <span class="string">&quot;CRL Distribution&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 获取 OCSP 响应</span></span><br><span class="line">openssl ocsp -issuer intermediate.crt -cert server.crt -url http://ocsp.example.com -resp_text</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、典型故障场景与解决方案"><a href="#四、典型故障场景与解决方案" class="headerlink" title="四、典型故障场景与解决方案"></a>四、典型故障场景与解决方案</h2><h3 id="场景-1：证书过期"><a href="#场景-1：证书过期" class="headerlink" title="场景 1：证书过期"></a>场景 1：证书过期</h3><p><strong>现象：</strong> 浏览器显示”您的连接不是私密连接”</p>
+<p><strong>排查：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openssl s_client -connect example.com:443 &lt;/dev/null 2&gt;/dev/null | openssl x509 -noout -dates</span><br></pre></td></tr></table></figure>
+
+<p><strong>解决方案：</strong></p>
+<ol>
+<li>立即联系证书颁发机构续期</li>
+<li>临时方案：更新证书后重启服务</li>
+<li>预防措施：设置证书过期监控告警（建议提前 30 天告警）</li>
+</ol>
+<h3 id="场景-2：证书链不完整"><a href="#场景-2：证书链不完整" class="headerlink" title="场景 2：证书链不完整"></a>场景 2：证书链不完整</h3><p><strong>现象：</strong> 桌面浏览器正常，但移动端或某些客户端报错</p>
+<p><strong>排查：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 检查服务器返回的证书数量</span></span><br><span class="line">openssl s_client -connect example.com:443 -showcerts &lt;/dev/null 2&gt;/dev/null | grep -c <span class="string">&quot;BEGIN CERTIFICATE&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>解决方案：</strong></p>
+<ol>
+<li>获取完整的证书链文件（包含中间证书）</li>
+<li>Nginx 配置示例：</li>
+</ol>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">ssl_certificate</span> /etc/nginx/ssl/fullchain.pem;  <span class="comment"># 包含叶子 + 中间证书</span></span><br><span class="line"><span class="attribute">ssl_certificate_key</span> /etc/nginx/ssl/privkey.pem;</span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li>Apache 配置示例：</li>
+</ol>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">SSLCertificateFile</span> /etc/apache2/ssl/server.crt</span><br><span class="line"><span class="attribute">SSLCertificateChainFile</span> /etc/apache2/ssl/intermediate.crt</span><br><span class="line"><span class="attribute">SSLCertificateKeyFile</span> /etc/apache2/ssl/privkey.pem</span><br></pre></td></tr></table></figure>
+
+<h3 id="场景-3：域名不匹配"><a href="#场景-3：域名不匹配" class="headerlink" title="场景 3：域名不匹配"></a>场景 3：域名不匹配</h3><p><strong>现象：</strong> 访问 <code>www.example.com</code> 但证书只包含 <code>example.com</code></p>
+<p><strong>排查：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openssl s_client -connect www.example.com:443 &lt;/dev/null 2&gt;/dev/null | openssl x509 -noout -ext subjectAltName</span><br></pre></td></tr></table></figure>
+
+<p><strong>解决方案：</strong></p>
+<ol>
+<li>申请包含所有域名的多域名证书（SAN 证书）</li>
+<li>或使用通配符证书 <code>*.example.com</code></li>
+<li>确保访问域名与证书 SAN 列表匹配</li>
+</ol>
+<h3 id="场景-4：自签名证书不受信任"><a href="#场景-4：自签名证书不受信任" class="headerlink" title="场景 4：自签名证书不受信任"></a>场景 4：自签名证书不受信任</h3><p><strong>现象：</strong> 内部服务使用自签名证书，客户端报错</p>
+<p><strong>解决方案：</strong></p>
+<ol>
+<li><strong>推荐方案</strong>：使用内部 CA 签发证书</li>
+<li><strong>临时方案</strong>：将自签名证书添加到客户端信任库</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Linux 系统添加信任</span></span><br><span class="line"><span class="built_in">sudo</span> <span class="built_in">cp</span> internal-ca.crt /usr/local/share/ca-certificates/</span><br><span class="line"><span class="built_in">sudo</span> update-ca-certificates</span><br><span class="line"></span><br><span class="line"><span class="comment"># Java 应用添加信任</span></span><br><span class="line">keytool -importcert -file internal-ca.crt -keystore <span class="variable">$JAVA_HOME</span>/lib/security/cacerts -<span class="built_in">alias</span> internal-ca</span><br></pre></td></tr></table></figure>
+
+<h3 id="场景-5：TLS-版本或加密套件不兼容"><a href="#场景-5：TLS-版本或加密套件不兼容" class="headerlink" title="场景 5：TLS 版本或加密套件不兼容"></a>场景 5：TLS 版本或加密套件不兼容</h3><p><strong>现象：</strong> <code>SSL_ERROR_NO_CYPHER_OVERLAP</code></p>
+<p><strong>排查：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 检查服务器支持的 TLS 版本</span></span><br><span class="line">nmap --script ssl-enum-ciphers -p 443 example.com</span><br><span class="line"></span><br><span class="line"><span class="comment"># 测试特定 TLS 版本</span></span><br><span class="line">openssl s_client -connect example.com:443 -tls1_2</span><br><span class="line">openssl s_client -connect example.com:443 -tls1_3</span><br></pre></td></tr></table></figure>
+
+<p><strong>解决方案：</strong></p>
+<ol>
+<li>更新客户端支持更新的 TLS 版本</li>
+<li>服务器端调整加密套件配置（在安全允许范围内）</li>
+</ol>
+<h2 id="五、监控与预防"><a href="#五、监控与预防" class="headerlink" title="五、监控与预防"></a>五、监控与预防</h2><h3 id="5-1-证书过期监控脚本"><a href="#5-1-证书过期监控脚本" class="headerlink" title="5.1 证书过期监控脚本"></a>5.1 证书过期监控脚本</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"><span class="comment"># check_cert_expiry.sh</span></span><br><span class="line"></span><br><span class="line">DOMAIN=<span class="variable">$1</span></span><br><span class="line">WARN_DAYS=30</span><br><span class="line"></span><br><span class="line">EXPIRY=$(<span class="built_in">echo</span> | openssl s_client -connect <span class="variable">$DOMAIN</span>:443 -servername <span class="variable">$DOMAIN</span> 2&gt;/dev/null | openssl x509 -noout -enddate | <span class="built_in">cut</span> -d= -f2)</span><br><span class="line">EXPIRY_EPOCH=$(<span class="built_in">date</span> -d <span class="string">&quot;<span class="variable">$EXPIRY</span>&quot;</span> +%s)</span><br><span class="line">NOW_EPOCH=$(<span class="built_in">date</span> +%s)</span><br><span class="line">DAYS_LEFT=$(( (EXPIRY_EPOCH - NOW_EPOCH) / <span class="number">86400</span> ))</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> [ <span class="variable">$DAYS_LEFT</span> -lt <span class="variable">$WARN_DAYS</span> ]; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;WARNING: Certificate for <span class="variable">$DOMAIN</span> expires in <span class="variable">$DAYS_LEFT</span> days&quot;</span></span><br><span class="line">    <span class="built_in">exit</span> 1</span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">&quot;OK: Certificate for <span class="variable">$DOMAIN</span> valid for <span class="variable">$DAYS_LEFT</span> days&quot;</span></span><br><span class="line">    <span class="built_in">exit</span> 0</span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-Prometheus-监控指标"><a href="#5-2-Prometheus-监控指标" class="headerlink" title="5.2 Prometheus 监控指标"></a>5.2 Prometheus 监控指标</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># prometheus.yml 配置</span></span><br><span class="line"><span class="attr">scrape_configs:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">job_name:</span> <span class="string">&#x27;ssl_expiry&#x27;</span></span><br><span class="line">    <span class="attr">static_configs:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">targets:</span> [<span class="string">&#x27;example.com:443&#x27;</span>]</span><br><span class="line">    <span class="attr">metrics_path:</span> <span class="string">/probe</span></span><br><span class="line">    <span class="attr">module:</span> [<span class="string">ssl_cert</span>]</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-自动化续期（Let’s-Encrypt）"><a href="#5-3-自动化续期（Let’s-Encrypt）" class="headerlink" title="5.3 自动化续期（Let’s Encrypt）"></a>5.3 自动化续期（Let’s Encrypt）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 使用 certbot 自动续期</span></span><br><span class="line">certbot renew --quiet --post-hook <span class="string">&quot;systemctl reload nginx&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 添加定时任务</span></span><br><span class="line">crontab -e</span><br><span class="line"><span class="comment"># 0 3 * * * certbot renew --quiet --post-hook &quot;systemctl reload nginx&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="六、常用工具汇总"><a href="#六、常用工具汇总" class="headerlink" title="六、常用工具汇总"></a>六、常用工具汇总</h2><table>
+<thead>
+<tr>
+<th>工具</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>openssl s_client</code></td>
+<td>连接测试、证书查看</td>
+</tr>
+<tr>
+<td><code>openssl x509</code></td>
+<td>证书解析</td>
+</tr>
+<tr>
+<td><code>curl -vI</code></td>
+<td>HTTP 请求测试</td>
+</tr>
+<tr>
+<td><code>nmap ssl-enum-ciphers</code></td>
+<td>加密套件扫描</td>
+</tr>
+<tr>
+<td><code>sslscan</code></td>
+<td>SSL&#x2F;TLS 安全扫描</td>
+</tr>
+<tr>
+<td><code>testssl.sh</code></td>
+<td>综合 SSL 安全测试</td>
+</tr>
+<tr>
+<td>浏览器开发者工具</td>
+<td>快速查看证书信息</td>
+</tr>
+</tbody></table>
+<h2 id="七、故障排查清单"><a href="#七、故障排查清单" class="headerlink" title="七、故障排查清单"></a>七、故障排查清单</h2><ul>
+<li><input disabled="" type="checkbox"> 证书是否在有效期内</li>
+<li><input disabled="" type="checkbox"> 证书链是否完整</li>
+<li><input disabled="" type="checkbox"> 域名是否匹配（CN 和 SAN）</li>
+<li><input disabled="" type="checkbox"> 证书是否被吊销</li>
+<li><input disabled="" type="checkbox"> TLS 版本是否兼容</li>
+<li><input disabled="" type="checkbox"> 加密套件是否支持</li>
+<li><input disabled="" type="checkbox"> 客户端是否信任 CA</li>
+<li><input disabled="" type="checkbox"> 服务器配置是否正确</li>
+</ul>
+<h2 id="八、总结"><a href="#八、总结" class="headerlink" title="八、总结"></a>八、总结</h2><p>SSL&#x2F;TLS 证书故障排查的核心是：<strong>验证有效性 → 检查完整性 → 确认匹配性 → 排查兼容性</strong>。建议建立证书台账，实施自动化监控，避免证书过期导致的生产事故。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io">PCLTXSYWZ</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io/2026/03/21/SSL-TLS%20%E8%AF%81%E4%B9%A6%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/">https://pcltxs.github.io/2026/03/21/SSL-TLS%20%E8%AF%81%E4%B9%A6%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://pcltxs.github.io" target="_blank">体系所运维知识库</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5/">故障排查</a><a class="post-meta__tags" href="/tags/SSL/">SSL</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/03/21/BGP%20%E7%BD%91%E7%BB%9C%E5%8D%8F%E8%AE%AE%E5%9C%A8%E4%BC%81%E4%B8%9A%E8%BF%90%E7%BB%B4%E4%B8%AD%E7%9A%84%E9%83%A8%E7%BD%B2%E5%AE%9E%E6%88%98/" title="BGP 网络协议在企业运维中的部署实战"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">BGP 网络协议在企业运维中的部署实战</div></div><div class="info-2"><div class="info-item-1">BGP 网络协议在企业运维中的部署实战一、引言边界网关协议（Border Gateway Protocol，BGP）是互联网的核心路由协议，负责在不同自治系统（AS）之间交换路由信息。随着企业网络规模的扩大和多数据中心架构的普及，BGP 已从运营商网络走向企业级应用。本文详细介绍 BGP 在企业运维环境中的部署方案、配置实践和故障排查方法。 1.1 为什么企业需要 BGP传统企业网络多采用 OSPF、EIGRP 等内部网关协议（IGP），但在以下场景中，BGP 成为必需选择：  多数据中心互联：跨地域数据中心需要统一的路由策略 多 ISP 接入：通过不同运营商实现网络冗余和负载均衡 混合云架构：连接公有云（AWS Direct Connect、Azure ExpressRoute、阿里云专线） 网络虚拟化：SDN 和 Overlay 网络中的路由控制 大规模网络：超过数百台路由器的大型园区网  1.2 BGP 协议特点   特性 说明    路径矢量协议 记录完整 AS 路径，避免环路   策略驱动 基于属性进行精细的路由控制   增量更新 仅发送变化的路由信息   支持 CID...</div></div></div></a><a class="pagination-related" href="/2026/03/21/HashiCorp-Nomad%20%E9%9B%86%E7%BE%A4%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E7%BB%B4%E5%AE%9E%E6%88%98/" title="HashiCorp-Nomad 集群部署与运维实战"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">HashiCorp-Nomad 集群部署与运维实战</div></div><div class="info-2"><div class="info-item-1">HashiCorp Nomad 集群部署与运维实战一、概述HashiCorp Nomad 是一个简单、灵活的编排器，用于部署和管理任何类型的应用程序（容器、传统应用、微服务）。与 Kubernetes 相比，Nomad 更轻量、更易用，适合中小规模集群和混合工作负载场景。 1.1 核心特性 简单：单二进制文件，无需外部依赖 灵活：支持 Docker、Java、Python、Go 等多种驱动 可扩展：支持从单节点到全球多区域部署 高可用：内置 Raft 共识算法，支持集群高可用  1.2 架构组件12345678910111213141516┌─────────────────────────────────────────────────────────┐│                      Nomad Cluster                       │├─────────────────────────────────────────────────────────┤│  ┌─────────────┐  ┌─────────────┐  ┌────────...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/03/02/Linux%20%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/" title="Linux 内存泄漏排查指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-02</div><div class="info-item-2">Linux 内存泄漏排查指南</div></div><div class="info-2"><div class="info-item-1">Linux 内存泄漏排查指南问题现象服务器运行一段时间后，可用内存持续下降，最终导致 OOM Killer 触发或服务崩溃。 排查步骤1. 确认内存使用情况12345678# 查看整体内存使用free -h# 查看各进程内存占用ps aux --sort=-%mem | head -20# 查看内存详细分布cat /proc/meminfo  2. 定位可疑进程12345# 持续监控进程内存变化watch -n 5 &#x27;ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%mem | head -20&#x27;# 查看进程详细内存信息cat /proc/&lt;PID&gt;/status | grep -E &quot;VmSize|VmRSS|VmData&quot;  3. 分析内存泄漏类型 用户态泄漏：应用程序分配后未释放 内核态泄漏：内核模块或驱动问题 缓存堆积：Page Cache 未及时回收  12345# 查看 slab 缓存slabtop -o# 查看内核内存cat /proc/slabinfo | head -30  4. 使...</div></div></div></a><a class="pagination-related" href="/2026/03/15/%E5%AE%B9%E5%99%A8%E5%BA%94%E7%94%A8%E5%90%AF%E5%8A%A8%E5%A4%B1%E8%B4%A5%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/" title="容器应用启动失败故障排查实战指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-15</div><div class="info-item-2">容器应用启动失败故障排查实战指南</div></div><div class="info-2"><div class="info-item-1">容器应用启动失败故障排查实战指南一、问题概述容器应用启动失败是 Kubernetes 和 Docker 环境中最常见的运维问题之一。本文系统梳理容器启动失败的各类场景，提供完整的排查思路和解决方案。 二、常见故障现象2.1 容器状态异常12345678910# 查看容器状态kubectl get pods -n &lt;namespace&gt;docker ps -a# 典型异常状态：# - CrashLoopBackOff: 容器反复重启# - Error: 容器启动失败# - ImagePullBackOff: 镜像拉取失败# - CreateContainerConfigError: 容器配置错误# - ContainerCreating: 长时间卡在创建中  2.2 关键诊断命令1234567891011# 查看容器详细信息kubectl describe pod &lt;pod-name&gt; -n &lt;namespace&gt;docker inspect &lt;container-id&gt;# 查看容器日志kubectl logs &lt;pod-nam...</div></div></div></a><a class="pagination-related" href="/2026/03/12/Nginx-502-504%20%E9%94%99%E8%AF%AF%E6%8E%92%E6%9F%A5%E4%B8%8E%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/" title="Nginx 502&#x2F;504 错误排查与解决方案"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-12</div><div class="info-item-2">Nginx 502&#x2F;504 错误排查与解决方案</div></div><div class="info-2"><div class="info-item-1">Nginx 502&#x2F;504 错误排查与解决方案一、错误概述502 Bad Gateway表示 Nginx 作为反向代理时，上游服务器（如 PHP-FPM、Node.js、Java 应用等）返回了无效响应或连接被拒绝。 504 Gateway Timeout表示 Nginx 作为反向代理时，上游服务器在指定时间内未能返回响应，导致超时。 二、常见原因分析502 错误常见原因   原因 说明    上游服务未启动 PHP-FPM、Gunicorn、uWSGI 等服务进程未运行   端口&#x2F;Socket 配置错误 Nginx 配置的上游地址与实际监听地址不匹配   权限问题 Nginx 用户无权访问 Unix Socket 文件   上游服务崩溃 应用进程因错误退出或重启中   防火墙拦截 本地防火墙阻止了 Nginx 与上游服务的通信   504 错误常见原因   原因 说明    上游处理过慢 应用执行复杂查询或计算，超过 proxy_read_timeout   数据库锁等待 后端数据库存在锁竞争，响应延迟   资源耗尽 上游服务器 CPU&#x2F;内存不足，...</div></div></div></a><a class="pagination-related" href="/2026/03/16/Linux%20%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%20inode%20%E8%80%97%E5%B0%BD%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98/" title="Linux 文件系统 inode 耗尽故障排查实战"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-16</div><div class="info-item-2">Linux 文件系统 inode 耗尽故障排查实战</div></div><div class="info-2"><div class="info-item-1">Linux 文件系统 inode 耗尽故障排查实战故障现象某生产服务器出现无法创建新文件的情况，具体表现为： 12345678# 尝试创建文件失败$ touch test.txttouch: cannot touch &#x27;test.txt&#x27;: No space left on device# 但磁盘空间显示充足$ df -hFilesystem      Size  Used Avail Use% Mounted on/dev/sda1       100G   20G   80G  20% /  磁盘使用率仅 20%，但系统提示”No space left on device”，这通常意味着 inode 耗尽而非磁盘空间不足。 故障诊断1. 确认 inode 使用情况12345# 查看各分区 inode 使用率$ df -iFilesystem      Inodes   IUsed    IFree IUse% Mounted on/dev/sda1      6553600  6553500      100  100% //dev/sdb1     13...</div></div></div></a><a class="pagination-related" href="/2026/03/17/Linux%20%E5%86%85%E6%A0%B8%E6%81%90%E6%85%8C-Kernel-Panic-%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98/" title="Linux 内核恐慌-Kernel-Panic-故障排查实战"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-17</div><div class="info-item-2">Linux 内核恐慌-Kernel-Panic-故障排查实战</div></div><div class="info-2"><div class="info-item-1">Linux 内核恐慌 (Kernel Panic) 故障排查实战一、什么是 Kernel PanicKernel Panic（内核恐慌）是 Linux 系统在遇到无法恢复的错误时触发的保护机制。当内核检测到严重错误且无法安全继续运行时，会停止所有操作以防止数据损坏。 常见触发原因 硬件故障：内存损坏、CPU 错误、硬盘坏道 内核 Bug：内核代码缺陷、驱动兼容性问题 文件系统损坏：关键系统文件丢失或损坏 资源耗尽：内存不足、进程表满 内核模块冲突：第三方驱动与内核不兼容 启动配置错误：initramfs 损坏、内核参数错误  二、Kernel Panic 症状识别典型表现12345678910Kernel panic - not syncing: Fatal exceptionOops: 0000 [#1] SMPCPU: 0 PID: 1 Comm: systemd Not tainted 5.15.0-genericRIP: 0010:native_queued_spin_lock_slowpath+0x1e2/0x1f0Call Trace: &lt;TASK&gt; _r...</div></div></div></a><a class="pagination-related" href="/2026/03/11/DNS%20%E8%A7%A3%E6%9E%90%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/" title="DNS 解析故障排查实战指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-11</div><div class="info-item-2">DNS 解析故障排查实战指南</div></div><div class="info-2"><div class="info-item-1">DNS 解析故障排查实战指南一、概述DNS（Domain Name System）是互联网的基础设施，负责将域名解析为 IP 地址。DNS 故障会导致服务不可访问、应用连接失败等问题。本文介绍 DNS 解析故障的排查方法和解决方案。 DNS 解析流程1客户端 → 本地缓存 → hosts 文件 → 本地 DNS 服务器 → 根服务器 → TLD 服务器 → 权威服务器  常见故障现象   现象 可能原因    域名无法解析 DNS 服务器故障、域名过期、配置错误   解析结果错误 DNS 缓存污染、劫持、配置错误   解析速度慢 DNS 服务器响应慢、网络延迟   间歇性解析失败 DNS 服务器负载高、网络不稳定   二、排查工具2.1 nslookup1234567891011121314# 基本查询nslookup www.example.com# 指定 DNS 服务器查询nslookup www.example.com 8.8.8.8# 查询特定记录类型nslookup -type=MX example.comnslookup -type=NS example.comnsl...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">PCLTXSYWZ</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">112</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">109</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">9</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/pcltxs"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">广泛收集运维相关文档资料,欢迎大家投稿分享,文档请发送至邮箱tuwj@pcl.ac.cn。网站建设相关问题和建议请联系邮箱tuwj@pcl.ac.cn。体系所办公区设备分布情况请访问http://device.opendns4.cn,工单系统请访问http://ticket.opendns4.cn,体系所公有云资源使用情况请访问http://mcloud.dns4test.com/</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#SSL-TLS-%E8%AF%81%E4%B9%A6%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97"><span class="toc-number">1.</span> <span class="toc-text">SSL&#x2F;TLS 证书故障排查实战指南</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">一、概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E5%B8%B8%E8%A7%81%E6%95%85%E9%9A%9C%E7%8E%B0%E8%B1%A1"><span class="toc-number">1.2.</span> <span class="toc-text">二、常见故障现象</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E6%B5%8F%E8%A7%88%E5%99%A8%E5%91%8A%E8%AD%A6"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 浏览器告警</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E5%91%BD%E4%BB%A4%E8%A1%8C%E5%B7%A5%E5%85%B7%E6%8A%A5%E9%94%99"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 命令行工具报错</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E5%BA%94%E7%94%A8%E5%B1%82%E6%8A%A5%E9%94%99"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 应用层报错</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%8E%92%E6%9F%A5%E6%B5%81%E7%A8%8B"><span class="toc-number">1.3.</span> <span class="toc-text">三、排查流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E7%AC%AC%E4%B8%80%E6%AD%A5%EF%BC%9A%E6%A3%80%E6%9F%A5%E8%AF%81%E4%B9%A6%E5%9F%BA%E6%9C%AC%E4%BF%A1%E6%81%AF"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 第一步：检查证书基本信息</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E7%AC%AC%E4%BA%8C%E6%AD%A5%EF%BC%9A%E9%AA%8C%E8%AF%81%E8%AF%81%E4%B9%A6%E9%93%BE%E5%AE%8C%E6%95%B4%E6%80%A7"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 第二步：验证证书链完整性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E7%AC%AC%E4%B8%89%E6%AD%A5%EF%BC%9A%E6%A3%80%E6%9F%A5%E5%9F%9F%E5%90%8D%E5%8C%B9%E9%85%8D"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 第三步：检查域名匹配</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E7%AC%AC%E5%9B%9B%E6%AD%A5%EF%BC%9A%E6%A3%80%E6%9F%A5%E8%AF%81%E4%B9%A6%E5%90%8A%E9%94%80%E7%8A%B6%E6%80%81"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 第四步：检查证书吊销状态</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%85%B8%E5%9E%8B%E6%95%85%E9%9A%9C%E5%9C%BA%E6%99%AF%E4%B8%8E%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="toc-number">1.4.</span> <span class="toc-text">四、典型故障场景与解决方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9C%BA%E6%99%AF-1%EF%BC%9A%E8%AF%81%E4%B9%A6%E8%BF%87%E6%9C%9F"><span class="toc-number">1.4.1.</span> <span class="toc-text">场景 1：证书过期</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9C%BA%E6%99%AF-2%EF%BC%9A%E8%AF%81%E4%B9%A6%E9%93%BE%E4%B8%8D%E5%AE%8C%E6%95%B4"><span class="toc-number">1.4.2.</span> <span class="toc-text">场景 2：证书链不完整</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9C%BA%E6%99%AF-3%EF%BC%9A%E5%9F%9F%E5%90%8D%E4%B8%8D%E5%8C%B9%E9%85%8D"><span class="toc-number">1.4.3.</span> <span class="toc-text">场景 3：域名不匹配</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9C%BA%E6%99%AF-4%EF%BC%9A%E8%87%AA%E7%AD%BE%E5%90%8D%E8%AF%81%E4%B9%A6%E4%B8%8D%E5%8F%97%E4%BF%A1%E4%BB%BB"><span class="toc-number">1.4.4.</span> <span class="toc-text">场景 4：自签名证书不受信任</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9C%BA%E6%99%AF-5%EF%BC%9ATLS-%E7%89%88%E6%9C%AC%E6%88%96%E5%8A%A0%E5%AF%86%E5%A5%97%E4%BB%B6%E4%B8%8D%E5%85%BC%E5%AE%B9"><span class="toc-number">1.4.5.</span> <span class="toc-text">场景 5：TLS 版本或加密套件不兼容</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E7%9B%91%E6%8E%A7%E4%B8%8E%E9%A2%84%E9%98%B2"><span class="toc-number">1.5.</span> <span class="toc-text">五、监控与预防</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E8%AF%81%E4%B9%A6%E8%BF%87%E6%9C%9F%E7%9B%91%E6%8E%A7%E8%84%9A%E6%9C%AC"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 证书过期监控脚本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-Prometheus-%E7%9B%91%E6%8E%A7%E6%8C%87%E6%A0%87"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 Prometheus 监控指标</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E8%87%AA%E5%8A%A8%E5%8C%96%E7%BB%AD%E6%9C%9F%EF%BC%88Let%E2%80%99s-Encrypt%EF%BC%89"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 自动化续期（Let’s Encrypt）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E5%B8%B8%E7%94%A8%E5%B7%A5%E5%85%B7%E6%B1%87%E6%80%BB"><span class="toc-number">1.6.</span> <span class="toc-text">六、常用工具汇总</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E6%B8%85%E5%8D%95"><span class="toc-number">1.7.</span> <span class="toc-text">七、故障排查清单</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">1.8.</span> <span class="toc-text">八、总结</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/23/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB%20-2026-03-23/" title="每日科技要闻 -2026-03-23">每日科技要闻 -2026-03-23</a><time datetime="2026-03-23T00:00:00.000Z" title="发表于 2026-03-23 08:00:00">2026-03-23</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/22/Helm-Kubernetes%20%E5%BA%94%E7%94%A8%E5%8C%85%E7%AE%A1%E7%90%86%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E7%BB%B4%E5%AE%9E%E6%88%98/" title="Helm Kubernetes 应用包管理部署与运维实战">Helm Kubernetes 应用包管理部署与运维实战</a><time datetime="2026-03-22T08:01:19.000Z" title="发表于 2026-03-22 16:01:19">2026-03-22</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/22/%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%94%B5%E6%BA%90%E7%AE%A1%E7%90%86%E9%85%8D%E7%BD%AE%E4%B8%8E%E8%83%BD%E8%80%97%E7%9B%91%E6%8E%A7%E5%AE%9E%E6%88%98/" title="服务器电源管理配置与能耗监控实战">服务器电源管理配置与能耗监控实战</a><time datetime="2026-03-22T08:01:19.000Z" title="发表于 2026-03-22 16:01:19">2026-03-22</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/21/BGP%20%E7%BD%91%E7%BB%9C%E5%8D%8F%E8%AE%AE%E5%9C%A8%E4%BC%81%E4%B8%9A%E8%BF%90%E7%BB%B4%E4%B8%AD%E7%9A%84%E9%83%A8%E7%BD%B2%E5%AE%9E%E6%88%98/" title="BGP 网络协议在企业运维中的部署实战">BGP 网络协议在企业运维中的部署实战</a><time datetime="2026-03-21T08:00:00.000Z" title="发表于 2026-03-21 16:00:00">2026-03-21</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/21/%E8%BF%90%E7%BB%B4%E6%88%90%E6%9C%AC%E4%BC%98%E5%8C%96%E5%AE%9E%E6%88%98%EF%BC%9A%E4%BA%91%E8%B5%84%E6%BA%90%E4%B8%8E%E7%A1%AC%E4%BB%B6%E8%B5%84%E6%BA%90%E7%B2%BE%E7%BB%86%E5%8C%96%E7%AE%A1%E7%90%86/" title="运维成本优化实战：云资源与硬件资源精细化管理">运维成本优化实战：云资源与硬件资源精细化管理</a><time datetime="2026-03-21T08:00:00.000Z" title="发表于 2026-03-21 16:00:00">2026-03-21</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By PCLTXSYWZ</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.4</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>
