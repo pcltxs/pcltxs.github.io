@@ -1,0 +1,308 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Cilium 容器网络与安全策略部署实战 | 体系所运维知识库</title><meta name="author" content="PCLTXSYWZ"><meta name="copyright" content="PCLTXSYWZ"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Cilium 容器网络与安全策略部署实战一、背景与概述1.1 为什么选择 CiliumCilium 是一款基于 eBPF 技术的开源网络和安全性解决方案，专为容器化环境设计。与传统基于 iptables 的方案相比，Cilium 具有以下优势：  高性能：利用 eBPF 在内核层面处理网络流量，绕过 iptables 链，降低延迟 可观测性：提供细粒度的网络流量可视化，支持 Hubble 进行流量">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Cilium 容器网络与安全策略部署实战">
+<meta property="og:url" content="https://pcltxs.github.io/2026/03/24/Cilium%20%E5%AE%B9%E5%99%A8%E7%BD%91%E7%BB%9C%E4%B8%8E%E5%AE%89%E5%85%A8%E7%AD%96%E7%95%A5%E9%83%A8%E7%BD%B2%E5%AE%9E%E6%88%98/index.html">
+<meta property="og:site_name" content="体系所运维知识库">
+<meta property="og:description" content="Cilium 容器网络与安全策略部署实战一、背景与概述1.1 为什么选择 CiliumCilium 是一款基于 eBPF 技术的开源网络和安全性解决方案，专为容器化环境设计。与传统基于 iptables 的方案相比，Cilium 具有以下优势：  高性能：利用 eBPF 在内核层面处理网络流量，绕过 iptables 链，降低延迟 可观测性：提供细粒度的网络流量可视化，支持 Hubble 进行流量">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://pcltxs.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-03-24T03:00:00.000Z">
+<meta property="article:modified_time" content="2026-03-24T08:52:33.431Z">
+<meta property="article:author" content="PCLTXSYWZ">
+<meta property="article:tag" content="Cilium">
+<meta property="article:tag" content="云原生">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pcltxs.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Cilium 容器网络与安全策略部署实战",
+  "url": "https://pcltxs.github.io/2026/03/24/Cilium%20%E5%AE%B9%E5%99%A8%E7%BD%91%E7%BB%9C%E4%B8%8E%E5%AE%89%E5%85%A8%E7%AD%96%E7%95%A5%E9%83%A8%E7%BD%B2%E5%AE%9E%E6%88%98/",
+  "image": "https://pcltxs.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-03-24T03:00:00.000Z",
+  "dateModified": "2026-03-24T08:52:33.431Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "PCLTXSYWZ",
+      "url": "https://pcltxs.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://pcltxs.github.io/2026/03/24/Cilium%20%E5%AE%B9%E5%99%A8%E7%BD%91%E7%BB%9C%E4%B8%8E%E5%AE%89%E5%85%A8%E7%AD%96%E7%95%A5%E9%83%A8%E7%BD%B2%E5%AE%9E%E6%88%98/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Cilium 容器网络与安全策略部署实战',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.1"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">体系所运维知识库</span></a><a class="nav-page-title" href="/"><span class="site-name">Cilium 容器网络与安全策略部署实战</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div></div></nav><div id="post-info"><h1 class="post-title">Cilium 容器网络与安全策略部署实战</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-03-24T03:00:00.000Z" title="发表于 2026-03-24 11:00:00">2026-03-24</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-03-24T08:52:33.431Z" title="更新于 2026-03-24 16:52:33">2026-03-24</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%BD%AF%E4%BB%B6%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E7%BB%B4%E7%AE%A1%E7%90%86/">软件部署与运维管理</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="Cilium-容器网络与安全策略部署实战"><a href="#Cilium-容器网络与安全策略部署实战" class="headerlink" title="Cilium 容器网络与安全策略部署实战"></a>Cilium 容器网络与安全策略部署实战</h1><h2 id="一、背景与概述"><a href="#一、背景与概述" class="headerlink" title="一、背景与概述"></a>一、背景与概述</h2><h3 id="1-1-为什么选择-Cilium"><a href="#1-1-为什么选择-Cilium" class="headerlink" title="1.1 为什么选择 Cilium"></a>1.1 为什么选择 Cilium</h3><p>Cilium 是一款基于 eBPF 技术的开源网络和安全性解决方案，专为容器化环境设计。与传统基于 iptables 的方案相比，Cilium 具有以下优势：</p>
+<ul>
+<li><strong>高性能</strong>：利用 eBPF 在内核层面处理网络流量，绕过 iptables 链，降低延迟</li>
+<li><strong>可观测性</strong>：提供细粒度的网络流量可视化，支持 Hubble 进行流量分析</li>
+<li><strong>安全性</strong>：支持基于身份（Identity）的 L3-L7 网络策略，实现零信任安全模型</li>
+<li><strong>可扩展性</strong>：支持大规模集群，单节点可处理数万 Pod</li>
+</ul>
+<h3 id="1-2-适用场景"><a href="#1-2-适用场景" class="headerlink" title="1.2 适用场景"></a>1.2 适用场景</h3><ul>
+<li>Kubernetes 集群网络插件（CNI）</li>
+<li>微服务间零信任网络安全</li>
+<li>多租户集群网络隔离</li>
+<li>需要深度网络可观测性的场景</li>
+</ul>
+<h2 id="二、环境准备"><a href="#二、环境准备" class="headerlink" title="二、环境准备"></a>二、环境准备</h2><h3 id="2-1-系统要求"><a href="#2-1-系统要求" class="headerlink" title="2.1 系统要求"></a>2.1 系统要求</h3><table>
+<thead>
+<tr>
+<th>组件</th>
+<th>版本要求</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Linux 内核</td>
+<td>≥ 4.19</td>
+<td>推荐 5.4+ 以获得完整 eBPF 支持</td>
+</tr>
+<tr>
+<td>Kubernetes</td>
+<td>≥ 1.19</td>
+<td>推荐 1.25+</td>
+</tr>
+<tr>
+<td>etcd</td>
+<td>≥ 3.4.0</td>
+<td>用于存储网络状态</td>
+</tr>
+<tr>
+<td>容器运行时</td>
+<td>containerd&#x2F;CRI-O</td>
+<td>Docker 已弃用</td>
+</tr>
+</tbody></table>
+<h3 id="2-2-内核-eBPF-支持检查"><a href="#2-2-内核-eBPF-支持检查" class="headerlink" title="2.2 内核 eBPF 支持检查"></a>2.2 内核 eBPF 支持检查</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 检查内核版本</span></span><br><span class="line"><span class="built_in">uname</span> -r</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查 eBPF 支持</span></span><br><span class="line">zgrep CONFIG_BPF /proc/config.gz</span><br><span class="line">zgrep CONFIG_BPF_SYSCALL /proc/config.gz</span><br><span class="line">zgrep CONFIG_BPF_JIT /proc/config.gz</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查必要内核功能</span></span><br><span class="line">bpftool feature list | grep -E <span class="string">&quot;prog|map&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-安装依赖"><a href="#2-3-安装依赖" class="headerlink" title="2.3 安装依赖"></a>2.3 安装依赖</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Ubuntu/Debian</span></span><br><span class="line">apt-get install -y linux-headers-$(<span class="built_in">uname</span> -r) clang llvm libelf-dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># CentOS/RHEL</span></span><br><span class="line">yum install -y kernel-devel-$(<span class="built_in">uname</span> -r) clang llvm elfutils-libelf-devel</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、Cilium-部署"><a href="#三、Cilium-部署" class="headerlink" title="三、Cilium 部署"></a>三、Cilium 部署</h2><h3 id="3-1-使用-Helm-部署（推荐）"><a href="#3-1-使用-Helm-部署（推荐）" class="headerlink" title="3.1 使用 Helm 部署（推荐）"></a>3.1 使用 Helm 部署（推荐）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 添加 Cilium Helm 仓库</span></span><br><span class="line">helm repo add cilium https://helm.cilium.io/</span><br><span class="line">helm repo update</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建命名空间</span></span><br><span class="line">kubectl create namespace cilium-system</span><br><span class="line"></span><br><span class="line"><span class="comment"># 部署 Cilium</span></span><br><span class="line">helm install cilium cilium/cilium --version 1.15.0 \</span><br><span class="line">  --namespace cilium-system \</span><br><span class="line">  --<span class="built_in">set</span> ipam.mode=kubernetes \</span><br><span class="line">  --<span class="built_in">set</span> routingMode=tunnel \</span><br><span class="line">  --<span class="built_in">set</span> tunnelProtocol=vxlan \</span><br><span class="line">  --<span class="built_in">set</span> hubble.enabled=<span class="literal">true</span> \</span><br><span class="line">  --<span class="built_in">set</span> hubble.relay.enabled=<span class="literal">true</span> \</span><br><span class="line">  --<span class="built_in">set</span> hubble.ui.enabled=<span class="literal">true</span> \</span><br><span class="line">  --<span class="built_in">set</span> operator.replicas=1</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-核心配置参数说明"><a href="#3-2-核心配置参数说明" class="headerlink" title="3.2 核心配置参数说明"></a>3.2 核心配置参数说明</h3><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>推荐值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ipam.mode</code></td>
+<td>kubernetes</td>
+<td>使用 K8s IPAM，与集群集成</td>
+</tr>
+<tr>
+<td><code>routingMode</code></td>
+<td>tunnel&#x2F;native</td>
+<td>tunnel 跨节点，native 同网段</td>
+</tr>
+<tr>
+<td><code>tunnelProtocol</code></td>
+<td>vxlan&#x2F;geneve</td>
+<td>VXLAN 兼容性更好</td>
+</tr>
+<tr>
+<td><code>hubble.enabled</code></td>
+<td>true</td>
+<td>启用可观测性</td>
+</tr>
+<tr>
+<td><code>encryption.enabled</code></td>
+<td>true</td>
+<td>启用节点间加密</td>
+</tr>
+</tbody></table>
+<h3 id="3-3-验证部署状态"><a href="#3-3-验证部署状态" class="headerlink" title="3.3 验证部署状态"></a>3.3 验证部署状态</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 检查 Pod 状态</span></span><br><span class="line">kubectl get pods -n cilium-system</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查 Cilium 节点状态</span></span><br><span class="line">kubectl get ciliumnodes</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查 Cilium 状态</span></span><br><span class="line">kubectl <span class="built_in">exec</span> -n cilium-system -t ds/cilium -- cilium status</span><br><span class="line"></span><br><span class="line"><span class="comment"># 预期输出示例：</span></span><br><span class="line"><span class="comment"># KVStore:                Ok   Disabled</span></span><br><span class="line"><span class="comment"># Kubernetes:             Ok   1.28 (v1.28.0) [linux/amd64]</span></span><br><span class="line"><span class="comment"># Kubernetes APIs:        Ok   Okay</span></span><br><span class="line"><span class="comment"># cilium-operator:        Ok</span></span><br><span class="line"><span class="comment"># Hubble:                 Ok   Current/Max Flows: 4095/4095 (100.00%)</span></span><br><span class="line"><span class="comment"># Cluster health:         3/3 reachable   (2024-01-15T10:00:00Z)</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="四、网络策略配置"><a href="#四、网络策略配置" class="headerlink" title="四、网络策略配置"></a>四、网络策略配置</h2><h3 id="4-1-CiliumNetworkPolicy-基础"><a href="#4-1-CiliumNetworkPolicy-基础" class="headerlink" title="4.1 CiliumNetworkPolicy 基础"></a>4.1 CiliumNetworkPolicy 基础</h3><p>Cilium 支持 Kubernetes 标准 NetworkPolicy，同时提供扩展的 CiliumNetworkPolicy：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">cilium.io/v2</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">CiliumNetworkPolicy</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">allow-frontend-to-backend</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">endpointSelector:</span></span><br><span class="line">    <span class="attr">matchLabels:</span></span><br><span class="line">      <span class="attr">app:</span> <span class="string">backend</span></span><br><span class="line">  <span class="attr">ingress:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">fromEndpoints:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">matchLabels:</span></span><br><span class="line">        <span class="attr">app:</span> <span class="string">frontend</span></span><br><span class="line">    <span class="attr">toPorts:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">port:</span> <span class="string">&quot;8080&quot;</span></span><br><span class="line">        <span class="attr">protocol:</span> <span class="string">TCP</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-L7-应用层策略"><a href="#4-2-L7-应用层策略" class="headerlink" title="4.2 L7 应用层策略"></a>4.2 L7 应用层策略</h3><p>Cilium 支持 HTTP&#x2F;gRPC&#x2F;Kafka 等应用层协议策略：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">cilium.io/v2</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">CiliumNetworkPolicy</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">http-policy</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">endpointSelector:</span></span><br><span class="line">    <span class="attr">matchLabels:</span></span><br><span class="line">      <span class="attr">app:</span> <span class="string">api-server</span></span><br><span class="line">  <span class="attr">ingress:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">fromEndpoints:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">matchLabels:</span></span><br><span class="line">        <span class="attr">app:</span> <span class="string">web-frontend</span></span><br><span class="line">    <span class="attr">toPorts:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">port:</span> <span class="string">&quot;80&quot;</span></span><br><span class="line">        <span class="attr">protocol:</span> <span class="string">TCP</span></span><br><span class="line">      <span class="attr">rules:</span></span><br><span class="line">        <span class="attr">http:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">method:</span> <span class="string">GET</span></span><br><span class="line">          <span class="attr">path:</span> <span class="string">&quot;/api/*&quot;</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">method:</span> <span class="string">POST</span></span><br><span class="line">          <span class="attr">path:</span> <span class="string">&quot;/api/login&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-基于身份的隔离"><a href="#4-3-基于身份的隔离" class="headerlink" title="4.3 基于身份的隔离"></a>4.3 基于身份的隔离</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">cilium.io/v2</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">CiliumClusterwideNetworkPolicy</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">deny-cross-namespace</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">description:</span> <span class="string">&quot;默认拒绝跨命名空间流量&quot;</span></span><br><span class="line">  <span class="attr">endpointSelector:</span> &#123;&#125;</span><br><span class="line">  <span class="attr">ingress:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">fromEndpoints:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">matchLabels:</span></span><br><span class="line">        <span class="attr">io.kubernetes.pod.namespace:</span> <span class="string">&quot;&quot;</span>  <span class="comment"># 仅允许同命名空间</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-4-DNS-策略"><a href="#4-4-DNS-策略" class="headerlink" title="4.4 DNS 策略"></a>4.4 DNS 策略</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">cilium.io/v2</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">CiliumNetworkPolicy</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">dns-egress-policy</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">default</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">endpointSelector:</span></span><br><span class="line">    <span class="attr">matchLabels:</span></span><br><span class="line">      <span class="attr">app:</span> <span class="string">restricted-app</span></span><br><span class="line">  <span class="attr">egress:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">toEndpoints:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">matchLabels:</span></span><br><span class="line">        <span class="attr">k8s:io.kubernetes.pod.namespace:</span> <span class="string">kube-system</span></span><br><span class="line">        <span class="attr">k8s:k8s-app:</span> <span class="string">kube-dns</span></span><br><span class="line">    <span class="attr">toPorts:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">ports:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">port:</span> <span class="string">&quot;53&quot;</span></span><br><span class="line">        <span class="attr">protocol:</span> <span class="string">UDP</span></span><br><span class="line">      <span class="attr">rules:</span></span><br><span class="line">        <span class="attr">dns:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">matchPattern:</span> <span class="string">&quot;*.internal.company.com&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="五、Hubble-可观测性"><a href="#五、Hubble-可观测性" class="headerlink" title="五、Hubble 可观测性"></a>五、Hubble 可观测性</h2><h3 id="5-1-启用-Hubble-UI"><a href="#5-1-启用-Hubble-UI" class="headerlink" title="5.1 启用 Hubble UI"></a>5.1 启用 Hubble UI</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 端口转发访问 Hubble UI</span></span><br><span class="line">kubectl port-forward -n cilium-system svc/hubble-ui 12000:80</span><br><span class="line"></span><br><span class="line"><span class="comment"># 或使用 NodePort/Ingress 暴露</span></span><br><span class="line">helm upgrade cilium cilium/cilium -n cilium-system \</span><br><span class="line">  --<span class="built_in">set</span> hubble.ui.service.type=NodePort \</span><br><span class="line">  --<span class="built_in">set</span> hubble.ui.service.nodePort=30080</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-使用-Hubble-CLI"><a href="#5-2-使用-Hubble-CLI" class="headerlink" title="5.2 使用 Hubble CLI"></a>5.2 使用 Hubble CLI</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 安装 Hubble CLI</span></span><br><span class="line">curl -L --remote-name-all \</span><br><span class="line">  https://github.com/cilium/hubble/releases/download/v1.15.0/hubble-linux-amd64.tar.gz</span><br><span class="line">tar xzvf hubble-linux-amd64.tar.gz</span><br><span class="line"><span class="built_in">sudo</span> <span class="built_in">mv</span> hubble /usr/local/bin/</span><br><span class="line"></span><br><span class="line"><span class="comment"># 配置 Hubble</span></span><br><span class="line">kubectl port-forward -n cilium-system svc/hubble-relay 4245:80</span><br><span class="line"><span class="built_in">export</span> HUBBLE_SERVER=localhost:4245</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看实时流量</span></span><br><span class="line">hubble observe --follow</span><br><span class="line"></span><br><span class="line"><span class="comment"># 过滤特定 Pod 流量</span></span><br><span class="line">hubble observe --pod frontend --follow</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看 dropped 流量</span></span><br><span class="line">hubble observe --<span class="built_in">type</span> drop --follow</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-关键监控指标"><a href="#5-3-关键监控指标" class="headerlink" title="5.3 关键监控指标"></a>5.3 关键监控指标</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Cilium 核心指标</span></span><br><span class="line">cilium_agent_ready</span><br><span class="line">cilium_policy_max_revision</span><br><span class="line">cilium_drop_count_total</span><br><span class="line">cilium_forward_count_total</span><br><span class="line"></span><br><span class="line"><span class="comment"># Hubble 流量指标</span></span><br><span class="line">hubble_flows_processed_total</span><br><span class="line">hubble_flows_dropped_total</span><br></pre></td></tr></table></figure>
+
+<h2 id="六、高级功能配置"><a href="#六、高级功能配置" class="headerlink" title="六、高级功能配置"></a>六、高级功能配置</h2><h3 id="6-1-节点间加密（WireGuard）"><a href="#6-1-节点间加密（WireGuard）" class="headerlink" title="6.1 节点间加密（WireGuard）"></a>6.1 节点间加密（WireGuard）</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Helm values</span></span><br><span class="line"><span class="attr">encryption:</span></span><br><span class="line">  <span class="attr">enabled:</span> <span class="literal">true</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">wireguard</span></span><br><span class="line">  <span class="attr">nodeEncryption:</span> <span class="literal">true</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="6-2-带宽管理"><a href="#6-2-带宽管理" class="headerlink" title="6.2 带宽管理"></a>6.2 带宽管理</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">bandwidthManager:</span></span><br><span class="line">  <span class="attr">enabled:</span> <span class="literal">true</span></span><br><span class="line">  <span class="attr">bbr:</span> <span class="literal">true</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="6-3-外部集群连接（Cluster-Mesh）"><a href="#6-3-外部集群连接（Cluster-Mesh）" class="headerlink" title="6.3 外部集群连接（Cluster Mesh）"></a>6.3 外部集群连接（Cluster Mesh）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 启用 Cluster Mesh</span></span><br><span class="line">helm upgrade cilium cilium/cilium -n cilium-system \</span><br><span class="line">  --<span class="built_in">set</span> cluster.enabled=<span class="literal">true</span> \</span><br><span class="line">  --<span class="built_in">set</span> cluster.id=1 \</span><br><span class="line">  --<span class="built_in">set</span> cluster.name=cluster-1</span><br><span class="line"></span><br><span class="line"><span class="comment"># 连接多个集群</span></span><br><span class="line">clustermeshctl connect --context cluster-1 --dest-context cluster-2</span><br></pre></td></tr></table></figure>
+
+<h2 id="七、故障排查"><a href="#七、故障排查" class="headerlink" title="七、故障排查"></a>七、故障排查</h2><h3 id="7-1-常见问题诊断"><a href="#7-1-常见问题诊断" class="headerlink" title="7.1 常见问题诊断"></a>7.1 常见问题诊断</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 检查 eBPF 程序加载</span></span><br><span class="line">cilium bpf cpus list</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查策略状态</span></span><br><span class="line">cilium policy get</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查端点状态</span></span><br><span class="line">cilium endpoint list</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查连接跟踪</span></span><br><span class="line">cilium bpf ct list global</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看代理日志</span></span><br><span class="line">kubectl logs -n cilium-system -l k8s-app=cilium --<span class="built_in">tail</span>=100</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-2-网络连通性测试"><a href="#7-2-网络连通性测试" class="headerlink" title="7.2 网络连通性测试"></a>7.2 网络连通性测试</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 生成网络策略测试报告</span></span><br><span class="line">cilium policy trace --src-identity 1234 --dst-identity 5678 --dport 80</span><br><span class="line"></span><br><span class="line"><span class="comment"># 测试 Pod 间连通性</span></span><br><span class="line">kubectl <span class="built_in">exec</span> -it frontend-pod -- curl -v http://backend-service:8080</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-3-性能问题排查"><a href="#7-3-性能问题排查" class="headerlink" title="7.3 性能问题排查"></a>7.3 性能问题排查</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 检查 eBPF 程序执行时间</span></span><br><span class="line">cilium bpf metrics list</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查丢包原因</span></span><br><span class="line">hubble observe --<span class="built_in">type</span> drop --since 5m | <span class="built_in">sort</span> | <span class="built_in">uniq</span> -c</span><br><span class="line"></span><br><span class="line"><span class="comment"># 常见丢包原因：</span></span><br><span class="line"><span class="comment"># - Policy denied: 策略拒绝</span></span><br><span class="line"><span class="comment"># - Invalid state: 连接状态异常</span></span><br><span class="line"><span class="comment"># - No route to host: 路由问题</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="八、最佳实践"><a href="#八、最佳实践" class="headerlink" title="八、最佳实践"></a>八、最佳实践</h2><h3 id="8-1-安全加固"><a href="#8-1-安全加固" class="headerlink" title="8.1 安全加固"></a>8.1 安全加固</h3><ol>
+<li><strong>默认拒绝策略</strong>：为每个命名空间配置默认拒绝策略</li>
+<li><strong>最小权限原则</strong>：仅开放必要的端口和协议</li>
+<li><strong>启用加密</strong>：生产环境必须启用节点间加密</li>
+<li><strong>定期审计</strong>：使用 Hubble 审计网络流量</li>
+</ol>
+<h3 id="8-2-性能优化"><a href="#8-2-性能优化" class="headerlink" title="8.2 性能优化"></a>8.2 性能优化</h3><ol>
+<li><strong>选择合适路由模式</strong>：同网段用 native，跨网段用 tunnel</li>
+<li><strong>调整 BPF 映射大小</strong>：根据 Pod 数量调整 CT 表大小</li>
+<li><strong>启用 XDP</strong>：高吞吐场景启用 XDP 加速</li>
+<li><strong>监控内核资源</strong>：确保 ulimit 足够</li>
+</ol>
+<h3 id="8-3-运维建议"><a href="#8-3-运维建议" class="headerlink" title="8.3 运维建议"></a>8.3 运维建议</h3><ol>
+<li><strong>版本管理</strong>：定期升级 Cilium 获取安全补丁</li>
+<li><strong>备份策略</strong>：使用 GitOps 管理网络策略</li>
+<li><strong>监控告警</strong>：配置关键指标告警</li>
+<li><strong>文档维护</strong>：记录网络拓扑和策略设计</li>
+</ol>
+<h2 id="九、总结"><a href="#九、总结" class="headerlink" title="九、总结"></a>九、总结</h2><p>Cilium 作为新一代容器网络方案，凭借 eBPF 技术提供了卓越的性能和可观测性。通过本指南，您可以：</p>
+<ul>
+<li>完成 Cilium 在 Kubernetes 集群的部署</li>
+<li>配置 L3-L7 多层网络策略</li>
+<li>利用 Hubble 实现网络流量可视化</li>
+<li>排查常见网络问题</li>
+</ul>
+<p>在生产环境中，建议先在测试环境验证策略，逐步推广到生产集群。</p>
+<hr>
+<p><strong>参考资源：</strong></p>
+<ul>
+<li>Cilium 官方文档：<a target="_blank" rel="noopener" href="https://docs.cilium.io/">https://docs.cilium.io</a></li>
+<li>Hubble 使用指南：<a target="_blank" rel="noopener" href="https://docs.cilium.io/en/stable/observability/hubble/">https://docs.cilium.io/en/stable/observability/hubble/</a></li>
+<li>eBPF 技术详解：<a target="_blank" rel="noopener" href="https://ebpf.io/">https://ebpf.io</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io">PCLTXSYWZ</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io/2026/03/24/Cilium%20%E5%AE%B9%E5%99%A8%E7%BD%91%E7%BB%9C%E4%B8%8E%E5%AE%89%E5%85%A8%E7%AD%96%E7%95%A5%E9%83%A8%E7%BD%B2%E5%AE%9E%E6%88%98/">https://pcltxs.github.io/2026/03/24/Cilium%20%E5%AE%B9%E5%99%A8%E7%BD%91%E7%BB%9C%E4%B8%8E%E5%AE%89%E5%85%A8%E7%AD%96%E7%95%A5%E9%83%A8%E7%BD%B2%E5%AE%9E%E6%88%98/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://pcltxs.github.io" target="_blank">体系所运维知识库</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Cilium/">Cilium</a><a class="post-meta__tags" href="/tags/%E4%BA%91%E5%8E%9F%E7%94%9F/">云原生</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/03/24/Prometheus%20%E8%81%94%E9%82%A6%E9%9B%86%E7%BE%A4%E6%9E%B6%E6%9E%84%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E7%BB%B4%E5%AE%9E%E6%88%98/" title="Prometheus 联邦集群架构部署与运维实战"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Prometheus 联邦集群架构部署与运维实战</div></div><div class="info-2"><div class="info-item-1">Prometheus 联邦集群架构部署与运维实战一、背景与概述1.1 为什么需要联邦集群随着监控规模扩大，单实例 Prometheus 面临以下挑战：  数据量爆炸：百万级时间序列导致内存和存储压力 查询性能下降：PromQL 查询延迟增加 单点故障风险：单实例故障导致监控盲区 多地域部署：跨地域网络延迟影响采集效率  Prometheus 联邦集群（Federation）通过分层架构解决上述问题： 12345678910111213141516┌─────────────────────────────────────────────────────────┐│                    Global Prometheus                       ││              (联邦层 - 聚合全局指标)                        │└─────────────────────────────────────────────────────────┘                          │        ┌──...</div></div></div></a><a class="pagination-related" href="/2026/03/24/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-03-24/" title="每日科技要闻-2026-03-24"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">每日科技要闻-2026-03-24</div></div><div class="info-2"><div class="info-item-1">每日科技要闻 - 2026 年 3 月 24 日📱 人工智能与硬件iPhone 17 Pro 成功运行 400B 大语言模型苹果公司最新旗舰 iPhone 17 Pro 被演示成功运行参规模达 4000 亿的大型语言模型，标志着移动端 AI 推理能力的重大突破。该演示展示了手机芯片在本地运行超大模型的能力，无需云端连接即可完成复杂 AI 任务。 Meta 开发 AI CEO 助手据《华尔街日报》报道，Meta CEO 马克·扎克伯格正在训练一个 AI 代理助手来帮助他完成日常工作。该 AI 助手目前仍处于开发阶段，已能帮助扎克伯格更快地获取信息，例如检索原本需要通过多层人员才能获取的答案。 Mozilla 推出 AI 编程代理问答平台 CqMozilla AI 发布了 Cq 平台，被称为”AI 编程代理的 Stack Overflow”。该平台专为 AI 编程代理设计，帮助开发者解决在使用 AI 辅助编程时遇到的问题。 🛰️ 航天与通信Amazon Leo 加速卫星发射计划亚马逊的卫星互联网项目 Amazon Leo（原 Project Kuiper）宣布将年发射任务增加一倍...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">PCLTXSYWZ</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">121</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">118</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">7</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/pcltxs"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">广泛收集运维相关文档资料,欢迎大家投稿分享,文档请发送至邮箱tuwj@pcl.ac.cn。网站建设相关问题和建议请联系邮箱tuwj@pcl.ac.cn。体系所办公区设备分布情况请访问http://device.opendns4.cn,工单系统请访问http://ticket.opendns4.cn,体系所公有云资源使用情况请访问http://mcloud.dns4test.com/</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Cilium-%E5%AE%B9%E5%99%A8%E7%BD%91%E7%BB%9C%E4%B8%8E%E5%AE%89%E5%85%A8%E7%AD%96%E7%95%A5%E9%83%A8%E7%BD%B2%E5%AE%9E%E6%88%98"><span class="toc-number">1.</span> <span class="toc-text">Cilium 容器网络与安全策略部署实战</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E8%83%8C%E6%99%AF%E4%B8%8E%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">一、背景与概述</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E4%B8%BA%E4%BB%80%E4%B9%88%E9%80%89%E6%8B%A9-Cilium"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 为什么选择 Cilium</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 适用场景</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E7%8E%AF%E5%A2%83%E5%87%86%E5%A4%87"><span class="toc-number">1.2.</span> <span class="toc-text">二、环境准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E7%B3%BB%E7%BB%9F%E8%A6%81%E6%B1%82"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 系统要求</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E5%86%85%E6%A0%B8-eBPF-%E6%94%AF%E6%8C%81%E6%A3%80%E6%9F%A5"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 内核 eBPF 支持检查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E5%AE%89%E8%A3%85%E4%BE%9D%E8%B5%96"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 安装依赖</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81Cilium-%E9%83%A8%E7%BD%B2"><span class="toc-number">1.3.</span> <span class="toc-text">三、Cilium 部署</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E4%BD%BF%E7%94%A8-Helm-%E9%83%A8%E7%BD%B2%EF%BC%88%E6%8E%A8%E8%8D%90%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 使用 Helm 部署（推荐）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%A0%B8%E5%BF%83%E9%85%8D%E7%BD%AE%E5%8F%82%E6%95%B0%E8%AF%B4%E6%98%8E"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 核心配置参数说明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E9%AA%8C%E8%AF%81%E9%83%A8%E7%BD%B2%E7%8A%B6%E6%80%81"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 验证部署状态</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E7%BD%91%E7%BB%9C%E7%AD%96%E7%95%A5%E9%85%8D%E7%BD%AE"><span class="toc-number">1.4.</span> <span class="toc-text">四、网络策略配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-CiliumNetworkPolicy-%E5%9F%BA%E7%A1%80"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 CiliumNetworkPolicy 基础</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-L7-%E5%BA%94%E7%94%A8%E5%B1%82%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 L7 应用层策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E5%9F%BA%E4%BA%8E%E8%BA%AB%E4%BB%BD%E7%9A%84%E9%9A%94%E7%A6%BB"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 基于身份的隔离</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-DNS-%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 DNS 策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81Hubble-%E5%8F%AF%E8%A7%82%E6%B5%8B%E6%80%A7"><span class="toc-number">1.5.</span> <span class="toc-text">五、Hubble 可观测性</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E5%90%AF%E7%94%A8-Hubble-UI"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 启用 Hubble UI</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E4%BD%BF%E7%94%A8-Hubble-CLI"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 使用 Hubble CLI</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E5%85%B3%E9%94%AE%E7%9B%91%E6%8E%A7%E6%8C%87%E6%A0%87"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 关键监控指标</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%AB%98%E7%BA%A7%E5%8A%9F%E8%83%BD%E9%85%8D%E7%BD%AE"><span class="toc-number">1.6.</span> <span class="toc-text">六、高级功能配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E8%8A%82%E7%82%B9%E9%97%B4%E5%8A%A0%E5%AF%86%EF%BC%88WireGuard%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 节点间加密（WireGuard）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%B8%A6%E5%AE%BD%E7%AE%A1%E7%90%86"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 带宽管理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E5%A4%96%E9%83%A8%E9%9B%86%E7%BE%A4%E8%BF%9E%E6%8E%A5%EF%BC%88Cluster-Mesh%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 外部集群连接（Cluster Mesh）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5"><span class="toc-number">1.7.</span> <span class="toc-text">七、故障排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#7-1-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E8%AF%8A%E6%96%AD"><span class="toc-number">1.7.1.</span> <span class="toc-text">7.1 常见问题诊断</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-2-%E7%BD%91%E7%BB%9C%E8%BF%9E%E9%80%9A%E6%80%A7%E6%B5%8B%E8%AF%95"><span class="toc-number">1.7.2.</span> <span class="toc-text">7.2 网络连通性测试</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-3-%E6%80%A7%E8%83%BD%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="toc-number">1.7.3.</span> <span class="toc-text">7.3 性能问题排查</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5"><span class="toc-number">1.8.</span> <span class="toc-text">八、最佳实践</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#8-1-%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA"><span class="toc-number">1.8.1.</span> <span class="toc-text">8.1 安全加固</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-2-%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96"><span class="toc-number">1.8.2.</span> <span class="toc-text">8.2 性能优化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-3-%E8%BF%90%E7%BB%B4%E5%BB%BA%E8%AE%AE"><span class="toc-number">1.8.3.</span> <span class="toc-text">8.3 运维建议</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9D%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">1.9.</span> <span class="toc-text">九、总结</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/24/Kubernetes-Pod-CrashLoopBackOff%20%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98/" title="Kubernetes-Pod-CrashLoopBackOff 故障排查实战">Kubernetes-Pod-CrashLoopBackOff 故障排查实战</a><time datetime="2026-03-24T08:00:00.000Z" title="发表于 2026-03-24 16:00:00">2026-03-24</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/24/Traefik%20%E4%BA%91%E5%8E%9F%E7%94%9F%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86%E4%B8%8E%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E9%83%A8%E7%BD%B2%E5%AE%9E%E6%88%98/" title="Traefik 云原生反向代理与负载均衡部署实战">Traefik 云原生反向代理与负载均衡部署实战</a><time datetime="2026-03-24T08:00:00.000Z" title="发表于 2026-03-24 16:00:00">2026-03-24</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/24/Cilium%20%E5%AE%B9%E5%99%A8%E7%BD%91%E7%BB%9C%E4%B8%8E%E5%AE%89%E5%85%A8%E7%AD%96%E7%95%A5%E9%83%A8%E7%BD%B2%E5%AE%9E%E6%88%98/" title="Cilium 容器网络与安全策略部署实战">Cilium 容器网络与安全策略部署实战</a><time datetime="2026-03-24T03:00:00.000Z" title="发表于 2026-03-24 11:00:00">2026-03-24</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/24/Prometheus%20%E8%81%94%E9%82%A6%E9%9B%86%E7%BE%A4%E6%9E%B6%E6%9E%84%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E7%BB%B4%E5%AE%9E%E6%88%98/" title="Prometheus 联邦集群架构部署与运维实战">Prometheus 联邦集群架构部署与运维实战</a><time datetime="2026-03-24T03:00:00.000Z" title="发表于 2026-03-24 11:00:00">2026-03-24</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/03/24/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-03-24/" title="每日科技要闻-2026-03-24">每日科技要闻-2026-03-24</a><time datetime="2026-03-24T00:00:00.000Z" title="发表于 2026-03-24 08:00:00">2026-03-24</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By PCLTXSYWZ</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.4</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>
