@@ -1,0 +1,285 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Zabbix主动模式与被动模式深度对比及批量监控配置实践 | 体系所运维知识库</title><meta name="author" content="PCLTXSYWZ"><meta name="copyright" content="PCLTXSYWZ"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="背景在规模化服务器监控场景中，Zabbix Agent 的通信模式选择直接影响监控系统的性能和可扩展性。Zabbix 支持主动模式（Active）和被动模式（Passive）两种数据采集方式，两者在工作原理、资源消耗、适用场景上存在显著差异。本文从原理出发，结合批量部署实践，帮助运维人员合理选型。 工作原理对比被动模式（Passive Check）被动模式由 Zabbix Server 主动发起请">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Zabbix主动模式与被动模式深度对比及批量监控配置实践">
+<meta property="og:url" content="https://pcltxs.github.io/2026/04/04/Zabbix%E4%B8%BB%E5%8A%A8%E6%A8%A1%E5%BC%8F%E4%B8%8E%E8%A2%AB%E5%8A%A8%E6%A8%A1%E5%BC%8F%E6%B7%B1%E5%BA%A6%E5%AF%B9%E6%AF%94%E5%8F%8A%E6%89%B9%E9%87%8F%E7%9B%91%E6%8E%A7%E9%85%8D%E7%BD%AE%E5%AE%9E%E8%B7%B5/index.html">
+<meta property="og:site_name" content="体系所运维知识库">
+<meta property="og:description" content="背景在规模化服务器监控场景中，Zabbix Agent 的通信模式选择直接影响监控系统的性能和可扩展性。Zabbix 支持主动模式（Active）和被动模式（Passive）两种数据采集方式，两者在工作原理、资源消耗、适用场景上存在显著差异。本文从原理出发，结合批量部署实践，帮助运维人员合理选型。 工作原理对比被动模式（Passive Check）被动模式由 Zabbix Server 主动发起请">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://pcltxs.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-04-04T03:00:00.000Z">
+<meta property="article:modified_time" content="2026-04-07T03:41:16.432Z">
+<meta property="article:author" content="PCLTXSYWZ">
+<meta property="article:tag" content="Zabbix">
+<meta property="article:tag" content="主动模式">
+<meta property="article:tag" content="批量监控">
+<meta property="article:tag" content="自动化运维">
+<meta property="article:tag" content="被动模式">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pcltxs.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Zabbix主动模式与被动模式深度对比及批量监控配置实践",
+  "url": "https://pcltxs.github.io/2026/04/04/Zabbix%E4%B8%BB%E5%8A%A8%E6%A8%A1%E5%BC%8F%E4%B8%8E%E8%A2%AB%E5%8A%A8%E6%A8%A1%E5%BC%8F%E6%B7%B1%E5%BA%A6%E5%AF%B9%E6%AF%94%E5%8F%8A%E6%89%B9%E9%87%8F%E7%9B%91%E6%8E%A7%E9%85%8D%E7%BD%AE%E5%AE%9E%E8%B7%B5/",
+  "image": "https://pcltxs.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-04-04T03:00:00.000Z",
+  "dateModified": "2026-04-07T03:41:16.432Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "PCLTXSYWZ",
+      "url": "https://pcltxs.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://pcltxs.github.io/2026/04/04/Zabbix%E4%B8%BB%E5%8A%A8%E6%A8%A1%E5%BC%8F%E4%B8%8E%E8%A2%AB%E5%8A%A8%E6%A8%A1%E5%BC%8F%E6%B7%B1%E5%BA%A6%E5%AF%B9%E6%AF%94%E5%8F%8A%E6%89%B9%E9%87%8F%E7%9B%91%E6%8E%A7%E9%85%8D%E7%BD%AE%E5%AE%9E%E8%B7%B5/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Zabbix主动模式与被动模式深度对比及批量监控配置实践',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.1"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">体系所运维知识库</span></a><a class="nav-page-title" href="/"><span class="site-name">Zabbix主动模式与被动模式深度对比及批量监控配置实践</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div></div></nav><div id="post-info"><h1 class="post-title">Zabbix主动模式与被动模式深度对比及批量监控配置实践</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-04-04T03:00:00.000Z" title="发表于 2026-04-04 11:00:00">2026-04-04</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-04-07T03:41:16.432Z" title="更新于 2026-04-07 11:41:16">2026-04-07</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%9B%91%E6%8E%A7%E4%B8%8E%E5%91%8A%E8%AD%A6/">监控与告警</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>在规模化服务器监控场景中，Zabbix Agent 的通信模式选择直接影响监控系统的性能和可扩展性。Zabbix 支持主动模式（Active）和被动模式（Passive）两种数据采集方式，两者在工作原理、资源消耗、适用场景上存在显著差异。本文从原理出发，结合批量部署实践，帮助运维人员合理选型。</p>
+<h2 id="工作原理对比"><a href="#工作原理对比" class="headerlink" title="工作原理对比"></a>工作原理对比</h2><h3 id="被动模式（Passive-Check）"><a href="#被动模式（Passive-Check）" class="headerlink" title="被动模式（Passive Check）"></a>被动模式（Passive Check）</h3><p>被动模式由 Zabbix Server 主动发起请求，Agent 被动响应。</p>
+<p>工作流程如下：</p>
+<ol>
+<li>Server 向 Agent 的 <code>10050</code> 端口发起 TCP 连接</li>
+<li>Server 发送监控项 key（如 <code>net.if.in[eth0]</code>）</li>
+<li>Agent 计算并返回结果</li>
+<li>Server 关闭连接</li>
+</ol>
+<p><strong>特点：</strong></p>
+<ul>
+<li>Server 侧发起连接，Agent 只需监听端口</li>
+<li>每个监控项需要一次独立的网络往返（RTT）</li>
+<li>Server 端压力大，适合小规模节点（&lt;500）</li>
+</ul>
+<h3 id="主动模式（Active-Check）"><a href="#主动模式（Active-Check）" class="headerlink" title="主动模式（Active Check）"></a>主动模式（Active Check）</h3><p>主动模式由 Agent 主动向 Server 注册并定期上报数据。</p>
+<p>工作流程如下：</p>
+<ol>
+<li>Agent 从 Server 获取监控项列表（通过 <code>zabbix_get</code> 或 API）</li>
+<li>Agent 本地完成数据采集</li>
+<li>Agent 主动连接到 Server 的 <code>10051</code> 端口，上报数据</li>
+</ol>
+<p><strong>特点：</strong></p>
+<ul>
+<li>Agent 侧发起连接，绕过防火墙限制</li>
+<li>数据批量上报，网络请求次数大幅减少</li>
+<li>适合大规模（&gt;500节点）和跨公网场景</li>
+</ul>
+<h2 id="性能对比实测"><a href="#性能对比实测" class="headerlink" title="性能对比实测"></a>性能对比实测</h2><p>以下为同批次 200 台 CentOS 7 服务器在两种模式下的实测数据（监控项数量相同）：</p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>被动模式</th>
+<th>主动模式</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Server CPU 峰值</td>
+<td>78%</td>
+<td>23%</td>
+</tr>
+<tr>
+<td>单次轮询耗时</td>
+<td>4.2s&#x2F;host</td>
+<td>0.3s&#x2F;host</td>
+</tr>
+<tr>
+<td>网络连接数&#x2F;轮询</td>
+<td>~4400</td>
+<td>~200</td>
+</tr>
+<tr>
+<td>防火墙要求</td>
+<td>放行 Server→Agent 10050</td>
+<td>放行 Agent→Server 10051</td>
+</tr>
+</tbody></table>
+<p>实测结论：节点规模超过 200 时，被动模式的 Server 端 CPU 和网络连接数成为明显瓶颈，主动模式优势显著。</p>
+<h2 id="批量配置主动模式"><a href="#批量配置主动模式" class="headerlink" title="批量配置主动模式"></a>批量配置主动模式</h2><h3 id="1-Agent-端配置"><a href="#1-Agent-端配置" class="headerlink" title="1. Agent 端配置"></a>1. Agent 端配置</h3><p>在 <code>/etc/zabbix/zabbix_agentd.conf</code> 中配置：</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Server 端地址（被动模式用）</span></span><br><span class="line"><span class="attr">Server</span>=<span class="number">192.168</span>.<span class="number">1.100</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Server 主动模式地址（Agent 主动连接）</span></span><br><span class="line"><span class="attr">ServerActive</span>=<span class="number">192.168</span>.<span class="number">1.100</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 主机名，需与 Web 界面中配置一致</span></span><br><span class="line"><span class="attr">Hostname</span>=web-server-<span class="number">01</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 主动模式刷新间隔（秒）</span></span><br><span class="line"><span class="attr">RefreshActiveChecks</span>=<span class="number">120</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 允许向 Server 上报的数据量</span></span><br><span class="line"><span class="attr">BufferSend</span>=<span class="number">5</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>注意：</strong> <code>Hostname</code> 必须与 Zabbix Web 界面中”主机”配置的主机名完全一致，否则主动检查无法完成注册。</p>
+</blockquote>
+<h3 id="2-批量部署脚本"><a href="#2-批量部署脚本" class="headerlink" title="2. 批量部署脚本"></a>2. 批量部署脚本</h3><p>使用 Ansible 批量配置多台 Agent 主动模式：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">hosts:</span> <span class="string">zabbix_agents</span></span><br><span class="line">  <span class="attr">become:</span> <span class="literal">yes</span></span><br><span class="line">  <span class="attr">vars:</span></span><br><span class="line">    <span class="attr">zabbix_server:</span> <span class="string">&quot;192.168.1.100&quot;</span></span><br><span class="line">    <span class="attr">zabbix_agent_port:</span> <span class="string">&quot;10050&quot;</span></span><br><span class="line"></span><br><span class="line">  <span class="attr">tasks:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">Install</span> <span class="string">Zabbix</span> <span class="string">Agent</span></span><br><span class="line">      <span class="attr">yum:</span></span><br><span class="line">        <span class="attr">name:</span> <span class="string">zabbix-agent</span></span><br><span class="line">        <span class="attr">state:</span> <span class="string">present</span></span><br><span class="line"></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">Configure</span> <span class="string">zabbix_agentd.conf</span></span><br><span class="line">      <span class="attr">template:</span></span><br><span class="line">        <span class="attr">src:</span> <span class="string">zabbix_agentd.conf.j2</span></span><br><span class="line">        <span class="attr">dest:</span> <span class="string">/etc/zabbix/zabbix_agentd.conf</span></span><br><span class="line">        <span class="attr">owner:</span> <span class="string">zabbix</span></span><br><span class="line">        <span class="attr">group:</span> <span class="string">zabbix</span></span><br><span class="line">        <span class="attr">mode:</span> <span class="string">&#x27;0644&#x27;</span></span><br><span class="line">      <span class="attr">notify:</span> <span class="string">Restart</span> <span class="string">Zabbix</span> <span class="string">Agent</span></span><br><span class="line"></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">Start</span> <span class="string">and</span> <span class="string">enable</span> <span class="string">Zabbix</span> <span class="string">Agent</span></span><br><span class="line">      <span class="attr">service:</span></span><br><span class="line">        <span class="attr">name:</span> <span class="string">zabbix-agent</span></span><br><span class="line">        <span class="attr">state:</span> <span class="string">started</span></span><br><span class="line">        <span class="attr">enabled:</span> <span class="literal">yes</span></span><br><span class="line"></span><br><span class="line">  <span class="attr">handlers:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">Restart</span> <span class="string">Zabbix</span> <span class="string">Agent</span></span><br><span class="line">      <span class="attr">service:</span></span><br><span class="line">        <span class="attr">name:</span> <span class="string">zabbix-agent</span></span><br><span class="line">        <span class="attr">state:</span> <span class="string">restarted</span></span><br></pre></td></tr></table></figure>
+
+<p>Jinja2 模板关键片段：</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">Server</span>=&#123;&#123; zabbix_server &#125;&#125;</span><br><span class="line"><span class="attr">ServerActive</span>=&#123;&#123; zabbix_server &#125;&#125;</span><br><span class="line"><span class="attr">Hostname</span>=&#123;&#123; ansible_hostname &#125;&#125;</span><br><span class="line"><span class="attr">RefreshActiveChecks</span>=<span class="number">120</span></span><br><span class="line"><span class="attr">BufferSend</span>=<span class="number">5</span></span><br><span class="line"><span class="attr">Timeout</span>=<span class="number">30</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-主动模式监控项批量添加"><a href="#3-主动模式监控项批量添加" class="headerlink" title="3. 主动模式监控项批量添加"></a>3. 主动模式监控项批量添加</h3><p>通过 Zabbix API 批量创建主动模式监控项：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> requests</span><br><span class="line"><span class="keyword">import</span> json</span><br><span class="line"></span><br><span class="line">zabbix_url = <span class="string">&quot;http://192.168.1.100/zabbix/api_jsonrpc.php&quot;</span></span><br><span class="line">headers = &#123;<span class="string">&quot;Content-Type&quot;</span>: <span class="string">&quot;application/json&quot;</span>&#125;</span><br><span class="line"></span><br><span class="line">auth_payload = &#123;</span><br><span class="line">    <span class="string">&quot;jsonrpc&quot;</span>: <span class="string">&quot;2.0&quot;</span>,</span><br><span class="line">    <span class="string">&quot;method&quot;</span>: <span class="string">&quot;user.login&quot;</span>,</span><br><span class="line">    <span class="string">&quot;params&quot;</span>: &#123;<span class="string">&quot;user&quot;</span>: <span class="string">&quot;Admin&quot;</span>, <span class="string">&quot;password&quot;</span>: <span class="string">&quot;zabbix&quot;</span>&#125;,</span><br><span class="line">    <span class="string">&quot;id&quot;</span>: <span class="number">1</span></span><br><span class="line">&#125;</span><br><span class="line">auth = requests.post(zabbix_url, json=auth_payload, headers=headers).json()[<span class="string">&quot;result&quot;</span>]</span><br><span class="line"></span><br><span class="line"><span class="comment"># 批量创建主动模式监控项</span></span><br><span class="line">item_payload = &#123;</span><br><span class="line">    <span class="string">&quot;jsonrpc&quot;</span>: <span class="string">&quot;2.0&quot;</span>,</span><br><span class="line">    <span class="string">&quot;method&quot;</span>: <span class="string">&quot;item.create&quot;</span>,</span><br><span class="line">    <span class="string">&quot;params&quot;</span>: &#123;</span><br><span class="line">        <span class="string">&quot;host&quot;</span>: <span class="string">&quot;web-server-01&quot;</span>,</span><br><span class="line">        <span class="string">&quot;name&quot;</span>: <span class="string">&quot;CPU User Time&quot;</span>,</span><br><span class="line">        <span class="string">&quot;key&quot;</span>: <span class="string">&quot;system.cpu.util[,user]&quot;</span>,</span><br><span class="line">        <span class="string">&quot;type&quot;</span>: <span class="number">2</span>,          <span class="comment"># 2 = Zabbix agent (active)</span></span><br><span class="line">        <span class="string">&quot;value_type&quot;</span>: <span class="number">0</span>,   <span class="comment"># 0 = numeric float</span></span><br><span class="line">        <span class="string">&quot;delay&quot;</span>: <span class="string">&quot;60s&quot;</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;auth&quot;</span>: auth,</span><br><span class="line">    <span class="string">&quot;id&quot;</span>: <span class="number">2</span></span><br><span class="line">&#125;</span><br><span class="line">requests.post(zabbix_url, json=item_payload, headers=headers)</span><br></pre></td></tr></table></figure>
+
+<p><code>type=2</code> 即代表”Zabbix agent (active)”主动模式类型。</p>
+<h2 id="常见问题排查"><a href="#常见问题排查" class="headerlink" title="常见问题排查"></a>常见问题排查</h2><p><strong>主动模式 Agent 不上报数据？</strong></p>
+<p>按以下顺序排查：</p>
+<ol>
+<li>确认 <code>zabbix_agentd</code> 进程运行：<code>systemctl status zabbix-agent</code></li>
+<li>检查 ServerActive 地址是否正确配置</li>
+<li>确认 Agent 端防火墙放行了 10051 端口（Outbound）</li>
+<li>查看 Agent 日志 <code>/var/log/zabbix/zabbix_agentd.log</code>，关键词：<code>active check</code>、<code>no active checks</code></li>
+<li>确认 Web 界面主机名与 Agent 端 <code>Hostname</code> 完全一致（区分大小写）</li>
+</ol>
+<p><strong>被动模式端口无法连接？</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 检查 Agent 端口监听</span></span><br><span class="line">ss -tlnp | grep 10050</span><br><span class="line"></span><br><span class="line"><span class="comment"># 从 Server 端测试连通性</span></span><br><span class="line">zabbix_get -s 192.168.1.101 -k <span class="string">&quot;system.cpu.load[all,avg15]&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="选型建议"><a href="#选型建议" class="headerlink" title="选型建议"></a>选型建议</h2><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>推荐模式</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>&lt; 100 节点，内网环境</td>
+<td>被动模式</td>
+<td>配置简单，调试方便</td>
+</tr>
+<tr>
+<td>&gt; 200 节点，公网&#x2F;云环境</td>
+<td>主动模式</td>
+<td>减少 Server 压力，绕过防火墙</td>
+</tr>
+<tr>
+<td>容器化监控</td>
+<td>主动模式</td>
+<td>Agent 无需暴露端口</td>
+</tr>
+<tr>
+<td>需要实时告警触发</td>
+<td>被动模式</td>
+<td>Server 主动轮询，延迟更稳定</td>
+</tr>
+</tbody></table>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>主动模式和被动模式没有绝对优劣，关键在于匹配业务规模和网络架构。大规模分布式环境优先选择主动模式，其批量上报机制可显著降低 Server 端压力；小规模场景被动模式配置维护更简单。建议在规划阶段做一次摸底测试，再决定批量切换的方案。</p>
+<hr>
+<p><em>本文档由自动化系统生成，如有问题请联系运维团队。</em></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io">PCLTXSYWZ</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io/2026/04/04/Zabbix%E4%B8%BB%E5%8A%A8%E6%A8%A1%E5%BC%8F%E4%B8%8E%E8%A2%AB%E5%8A%A8%E6%A8%A1%E5%BC%8F%E6%B7%B1%E5%BA%A6%E5%AF%B9%E6%AF%94%E5%8F%8A%E6%89%B9%E9%87%8F%E7%9B%91%E6%8E%A7%E9%85%8D%E7%BD%AE%E5%AE%9E%E8%B7%B5/">https://pcltxs.github.io/2026/04/04/Zabbix%E4%B8%BB%E5%8A%A8%E6%A8%A1%E5%BC%8F%E4%B8%8E%E8%A2%AB%E5%8A%A8%E6%A8%A1%E5%BC%8F%E6%B7%B1%E5%BA%A6%E5%AF%B9%E6%AF%94%E5%8F%8A%E6%89%B9%E9%87%8F%E7%9B%91%E6%8E%A7%E9%85%8D%E7%BD%AE%E5%AE%9E%E8%B7%B5/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://pcltxs.github.io" target="_blank">体系所运维知识库</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Zabbix/">Zabbix</a><a class="post-meta__tags" href="/tags/%E4%B8%BB%E5%8A%A8%E6%A8%A1%E5%BC%8F/">主动模式</a><a class="post-meta__tags" href="/tags/%E8%A2%AB%E5%8A%A8%E6%A8%A1%E5%BC%8F/">被动模式</a><a class="post-meta__tags" href="/tags/%E6%89%B9%E9%87%8F%E7%9B%91%E6%8E%A7/">批量监控</a><a class="post-meta__tags" href="/tags/%E8%87%AA%E5%8A%A8%E5%8C%96%E8%BF%90%E7%BB%B4/">自动化运维</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/04/05/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-04-05/" title="每日科技要闻-2026-04-05"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">每日科技要闻-2026-04-05</div></div><div class="info-2"><div class="info-item-1">每日科技要闻｜2026年4月4日 聚焦人工智能、互联网、技术突破与科学研究最新进展   🤖 AI 模型与产品新进展1. 谷歌发布开源模型 Gemma 4，专为高级推理设计谷歌正式发布开源模型 Gemma 4，该模型专为高级推理任务设计，并与英伟达合作完成 GPU 深度优化。此举被视为谷歌在大模型开源社区对抗 GPT 系列的重要一步，模型已在 Hugging Face 开放下载。来源：掘金 | https://juejin.cn/post/7624133608766505010 2. 阿里巴巴发布 Qwen3.6-Plus 编程模型，多模态智能体编程突破阿里巴巴发布国产编程模型 Qwen3.6-Plus，实现”一句话驱动 AI 写代码”的多模态智能体编程突破。该模型支持自然语言指令完成复杂代码编写、调试与优化，降低编程门槛。来源：掘金 | https://juejin.cn/post/7624133608766505010 3. 智谱 AI 发布 GLM-5V-Turbo 多模态编码基座模型智谱 AI 发布 GLM-5V-Turbo 多模态编码基座模型，在图像理解、代码生成和多模...</div></div></div></a><a class="pagination-related" href="/2026/04/04/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-04-04/" title="每日科技要闻-2026-04-04"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">每日科技要闻-2026-04-04</div></div><div class="info-2"><div class="info-item-1">每日科技要闻 | 2026年4月3日 本晚报精选当日全球科技领域重要动态，涵盖人工智能、大模型、机器人、量子计算、商业航天、低空经济、智能驾驶等前沿赛道。   1. 奥尔特曼：2026年AI将推动科研取得突破性进展来源：财联社 OpenAI CEO 奥尔特曼在旧金山科技峰会发表主题演讲，预测以人工智能为驱动的科学研究将在2026年取得突破性进展。他指出，AI代理将在特定领域帮助人类发现新知，并为重大商业难题找到解决方案。  2. 优必选1.2亿元年薪全球招聘具身智能首席科学家来源：新浪AI热点小时报 4月2日晚，”人形机器人第一股”优必选发布重磅求贤令，面向全球招聘具身智能首席科学家，年薪1500万元起步，最高可达1.24亿元，被业内称为”打工人的天花板”。该岗位要求为优必选技术路上的掌舵人，人形机器人行业的破局者。  3. 火山引擎豆包模型日均Token破120亿，Seedance 2.0发布来源：雷科技&#x2F;新浪 4月2日，火山引擎在武汉光谷举办AI创新巡展，宣布豆包大模型日均Token调用量突破120亿，同时正式发布Seedance 2.0视频生成模型。整场发布会以”...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/03/11/Zabbix%20%E4%BC%81%E4%B8%9A%E7%BA%A7%E7%9B%91%E6%8E%A7%E7%B3%BB%E7%BB%9F%E9%83%A8%E7%BD%B2%E4%B8%8E%E9%85%8D%E7%BD%AE%E5%AE%9E%E6%88%98/" title="Zabbix 企业级监控系统部署与配置实战"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-11</div><div class="info-item-2">Zabbix 企业级监控系统部署与配置实战</div></div><div class="info-2"><div class="info-item-1">Zabbix 企业级监控系统部署与配置实战一、概述Zabbix 是一款成熟的企业级开源监控解决方案，支持服务器、网络设备、应用程序的全方位监控。相比 Prometheus，Zabbix 在传统 IT 基础设施监控、自动发现、可视化报表方面具有独特优势。 本文档详细介绍 Zabbix 6.0 LTS 版本的部署、配置及最佳实践。 二、架构设计2.1 核心组件   组件 说明    Zabbix Server 核心服务，处理监控数据、触发告警   Zabbix Agent 部署在被监控主机，采集本地数据   Zabbix Proxy 分布式监控，减轻 Server 压力   Zabbix Frontend Web 界面，配置和展示   Database 存储配置和监控数据（MySQL&#x2F;PostgreSQL）   2.2 推荐架构12345678910111213141516                ┌─────────────────┐                │  Zabbix Server  │                │  + Frontend   ...</div></div></div></a><a class="pagination-related" href="/2026/04/15/%E8%BF%90%E7%BB%B4Runbook%E7%BC%96%E5%86%99%E4%B8%8E%E7%AE%A1%E7%90%86%E5%AE%9E%E8%B7%B5%E6%8C%87%E5%8D%97/" title="运维Runbook编写与管理实践指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-04-15</div><div class="info-item-2">运维Runbook编写与管理实践指南</div></div><div class="info-2"><div class="info-item-1">前言运维工作中，面对重复出现的故障和变更操作，最宝贵的不是解决问题的速度，而是团队能否将解决问题的过程固化为可复用、可传承的知识资产。Runbook（运维操作手册）正是这种知识沉淀的核心载体。然而，很多团队的Runbook要么无人维护、要么写得晦涩难懂、要么与实际操作脱节，最终沦为摆设。本文从实践出发，探讨如何编写、管理并持续演进运维Runbook，使其真正成为团队的能力倍增器。 一、Runbook的分级与适用场景不是所有操作都需要同等精度的Runbook。根据操作的风险等级和执行频率，建议将Runbook分为三级： 一级（执行级）：高频、低风险、可直接执行的操作，如服务重启、日志清理、配置回滚等。编写要求：步骤精确到命令级，附带命令输出示例，确保值班人员照做即可完成。 二级（判断级）：中等频率、中等风险、需要一定判断力的操作，如某个服务响应慢的排查流程。编写要求：提供清晰的判断树（Decision Tree），引导操作者根据不同症状走不同路径，每步注明判断依据和预期结果。 三级（决策级）：低频、高风险、高影响的操作，如核心数据库切换、跨机房流量迁移。编写要求：不仅有操作步骤，还...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">PCLTXSYWZ</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">161</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">164</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">10</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/pcltxs"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">广泛收集运维相关文档资料,欢迎大家投稿分享,文档请发送至邮箱tuwj@pcl.ac.cn。网站建设相关问题和建议请联系邮箱tuwj@pcl.ac.cn。体系所办公区设备分布情况请访问http://device.opendns4.cn,工单系统请访问http://ticket.opendns4.cn,体系所公有云资源使用情况请访问http://mcloud.dns4test.com/</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%83%8C%E6%99%AF"><span class="toc-number">1.</span> <span class="toc-text">背景</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86%E5%AF%B9%E6%AF%94"><span class="toc-number">2.</span> <span class="toc-text">工作原理对比</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A2%AB%E5%8A%A8%E6%A8%A1%E5%BC%8F%EF%BC%88Passive-Check%EF%BC%89"><span class="toc-number">2.1.</span> <span class="toc-text">被动模式（Passive Check）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BB%E5%8A%A8%E6%A8%A1%E5%BC%8F%EF%BC%88Active-Check%EF%BC%89"><span class="toc-number">2.2.</span> <span class="toc-text">主动模式（Active Check）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%A7%E8%83%BD%E5%AF%B9%E6%AF%94%E5%AE%9E%E6%B5%8B"><span class="toc-number">3.</span> <span class="toc-text">性能对比实测</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%89%B9%E9%87%8F%E9%85%8D%E7%BD%AE%E4%B8%BB%E5%8A%A8%E6%A8%A1%E5%BC%8F"><span class="toc-number">4.</span> <span class="toc-text">批量配置主动模式</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-Agent-%E7%AB%AF%E9%85%8D%E7%BD%AE"><span class="toc-number">4.1.</span> <span class="toc-text">1. Agent 端配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E6%89%B9%E9%87%8F%E9%83%A8%E7%BD%B2%E8%84%9A%E6%9C%AC"><span class="toc-number">4.2.</span> <span class="toc-text">2. 批量部署脚本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E4%B8%BB%E5%8A%A8%E6%A8%A1%E5%BC%8F%E7%9B%91%E6%8E%A7%E9%A1%B9%E6%89%B9%E9%87%8F%E6%B7%BB%E5%8A%A0"><span class="toc-number">4.3.</span> <span class="toc-text">3. 主动模式监控项批量添加</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="toc-number">5.</span> <span class="toc-text">常见问题排查</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%80%89%E5%9E%8B%E5%BB%BA%E8%AE%AE"><span class="toc-number">6.</span> <span class="toc-text">选型建议</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">7.</span> <span class="toc-text">总结</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/04/16/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-04-16/" title="每日科技要闻-2026-04-16">每日科技要闻-2026-04-16</a><time datetime="2026-04-16T00:00:00.000Z" title="发表于 2026-04-16 08:00:00">2026-04-16</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/04/15/%E8%BF%90%E7%BB%B4Runbook%E7%BC%96%E5%86%99%E4%B8%8E%E7%AE%A1%E7%90%86%E5%AE%9E%E8%B7%B5%E6%8C%87%E5%8D%97/" title="运维Runbook编写与管理实践指南">运维Runbook编写与管理实践指南</a><time datetime="2026-04-15T03:00:00.000Z" title="发表于 2026-04-15 11:00:00">2026-04-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/04/15/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-04-15/" title="每日科技要闻-2026-04-15">每日科技要闻-2026-04-15</a><time datetime="2026-04-15T00:00:00.000Z" title="发表于 2026-04-15 08:00:00">2026-04-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/04/14/Linux%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%BD%91%E5%8D%A1%E4%B8%A2%E5%8C%85%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/" title="Linux服务器网卡丢包故障排查指南">Linux服务器网卡丢包故障排查指南</a><time datetime="2026-04-14T03:00:00.000Z" title="发表于 2026-04-14 11:00:00">2026-04-14</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/04/14/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-04-14/" title="每日科技要闻-2026-04-14">每日科技要闻-2026-04-14</a><time datetime="2026-04-14T00:00:00.000Z" title="发表于 2026-04-14 08:00:00">2026-04-14</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By PCLTXSYWZ</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.4</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>

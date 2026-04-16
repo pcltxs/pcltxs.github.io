@@ -1,0 +1,727 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>RAG本地私有知识库构建实战指南 | 体系所运维知识库</title><meta name="author" content="PCLTXSYWZ"><meta name="copyright" content="PCLTXSYWZ"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="RAG本地私有知识库构建实战指南一、概述1.1 什么是 RAGRAG（Retrieval-Augmented Generation，检索增强生成）是一种将信息检索与大语言模型生成相结合的技术架构。其核心理念是：当用户提问时，先从私有知识库中检索出最相关的内容，再将检索结果作为上下文提供给大模型，由模型结合具体内容生成答案。 RAG 相比纯微调方案的优势在于：  成本低：无需重新训练模型 实时性强：">
+<meta property="og:type" content="article">
+<meta property="og:title" content="RAG本地私有知识库构建实战指南">
+<meta property="og:url" content="https://pcltxs.github.io/2026/04/08/RAG%E6%9C%AC%E5%9C%B0%E7%A7%81%E6%9C%89%E7%9F%A5%E8%AF%86%E5%BA%93%E6%9E%84%E5%BB%BA%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/index.html">
+<meta property="og:site_name" content="体系所运维知识库">
+<meta property="og:description" content="RAG本地私有知识库构建实战指南一、概述1.1 什么是 RAGRAG（Retrieval-Augmented Generation，检索增强生成）是一种将信息检索与大语言模型生成相结合的技术架构。其核心理念是：当用户提问时，先从私有知识库中检索出最相关的内容，再将检索结果作为上下文提供给大模型，由模型结合具体内容生成答案。 RAG 相比纯微调方案的优势在于：  成本低：无需重新训练模型 实时性强：">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://pcltxs.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-04-07T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-04-16T01:05:01.076Z">
+<meta property="article:author" content="PCLTXSYWZ">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pcltxs.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "RAG本地私有知识库构建实战指南",
+  "url": "https://pcltxs.github.io/2026/04/08/RAG%E6%9C%AC%E5%9C%B0%E7%A7%81%E6%9C%89%E7%9F%A5%E8%AF%86%E5%BA%93%E6%9E%84%E5%BB%BA%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/",
+  "image": "https://pcltxs.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-04-07T16:00:00.000Z",
+  "dateModified": "2026-04-16T01:05:01.076Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "PCLTXSYWZ",
+      "url": "https://pcltxs.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://pcltxs.github.io/2026/04/08/RAG%E6%9C%AC%E5%9C%B0%E7%A7%81%E6%9C%89%E7%9F%A5%E8%AF%86%E5%BA%93%E6%9E%84%E5%BB%BA%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'RAG本地私有知识库构建实战指南',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.1"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">体系所运维知识库</span></a><a class="nav-page-title" href="/"><span class="site-name">RAG本地私有知识库构建实战指南</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div></div></nav><div id="post-info"><h1 class="post-title">RAG本地私有知识库构建实战指南</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-04-07T16:00:00.000Z" title="发表于 2026-04-08 00:00:00">2026-04-08</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-04-16T01:05:01.076Z" title="更新于 2026-04-16 09:05:01">2026-04-16</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/AI%E4%B8%8E%E5%A4%A7%E6%A8%A1%E5%9E%8B/">AI与大模型</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/AI%E4%B8%8E%E5%A4%A7%E6%A8%A1%E5%9E%8B/RAG%E7%9F%A5%E8%AF%86%E5%BA%93/">RAG知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/AI%E4%B8%8E%E5%A4%A7%E6%A8%A1%E5%9E%8B/RAG%E7%9F%A5%E8%AF%86%E5%BA%93/%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/">技术文档</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="RAG本地私有知识库构建实战指南"><a href="#RAG本地私有知识库构建实战指南" class="headerlink" title="RAG本地私有知识库构建实战指南"></a>RAG本地私有知识库构建实战指南</h1><h2 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h2><h3 id="1-1-什么是-RAG"><a href="#1-1-什么是-RAG" class="headerlink" title="1.1 什么是 RAG"></a>1.1 什么是 RAG</h3><p>RAG（Retrieval-Augmented Generation，检索增强生成）是一种将<strong>信息检索</strong>与<strong>大语言模型生成</strong>相结合的技术架构。其核心理念是：当用户提问时，先从私有知识库中检索出最相关的内容，再将检索结果作为上下文提供给大模型，由模型结合具体内容生成答案。</p>
+<p>RAG 相比纯微调方案的优势在于：</p>
+<ul>
+<li><strong>成本低</strong>：无需重新训练模型</li>
+<li><strong>实时性强</strong>：知识库更新后立即可查询</li>
+<li><strong>可解释性</strong>：答案可溯源到具体文档</li>
+<li><strong>私有化部署</strong>：数据不出本地，安全可控</li>
+</ul>
+<h3 id="1-2-RAG-架构总览"><a href="#1-2-RAG-架构总览" class="headerlink" title="1.2 RAG 架构总览"></a>1.2 RAG 架构总览</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">用户提问</span><br><span class="line">    │</span><br><span class="line">    ▼</span><br><span class="line">┌─────────────────────┐</span><br><span class="line">│   Query Processing   │  1. 查询处理（分词、意图识别）</span><br><span class="line">└─────────┬───────────┘</span><br><span class="line">          │</span><br><span class="line">          ▼</span><br><span class="line">┌─────────────────────┐</span><br><span class="line">│   Vector Search      │  2. 向量检索（计算相似度）</span><br><span class="line">│   (Embedding + ANN) │</span><br><span class="line">└─────────┬───────────┘</span><br><span class="line">          │</span><br><span class="line">          ▼</span><br><span class="line">┌─────────────────────┐</span><br><span class="line">│   Knowledge Base     │  3. 知识库（文档集合 + 向量索引）</span><br><span class="line">│   (Documents Store)  │</span><br><span class="line">└─────────┬───────────┘</span><br><span class="line">          │</span><br><span class="line">          ▼</span><br><span class="line">┌─────────────────────┐</span><br><span class="line">│  Context Assembly   │  4. 上下文组装（Prompt 构建）</span><br><span class="line">└─────────┬───────────┘</span><br><span class="line">          │</span><br><span class="line">          ▼</span><br><span class="line">┌─────────────────────┐</span><br><span class="line">│   LLM Generation    │  5. 大模型生成答案</span><br><span class="line">└─────────┬───────────┘</span><br><span class="line">          │</span><br><span class="line">          ▼</span><br><span class="line">       最终答案（含引用来源）</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="二、技术选型"><a href="#二、技术选型" class="headerlink" title="二、技术选型"></a>二、技术选型</h2><h3 id="2-1-文档解析工具"><a href="#2-1-文档解析工具" class="headerlink" title="2.1 文档解析工具"></a>2.1 文档解析工具</h3><table>
+<thead>
+<tr>
+<th>工具</th>
+<th>适用格式</th>
+<th>优点</th>
+<th>缺点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>PyMuPDF (fitz)</strong></td>
+<td>PDF</td>
+<td>Python 原生，处理快</td>
+<td>复杂表格&#x2F;公式识别弱</td>
+</tr>
+<tr>
+<td><strong>pdfplumber</strong></td>
+<td>PDF</td>
+<td>表格提取效果好</td>
+<td>慢，复杂 PDF 内存占用高</td>
+</tr>
+<tr>
+<td><strong>pypdf</strong></td>
+<td>PDF</td>
+<td>轻量简单</td>
+<td>功能有限</td>
+</tr>
+<tr>
+<td><strong>python-docx</strong></td>
+<td>DOCX</td>
+<td>原生支持</td>
+<td>无法处理扫描件</td>
+</tr>
+<tr>
+<td><strong>python-pptx</strong></td>
+<td>PPT</td>
+<td>幻灯片解析</td>
+<td>需配合 OCR</td>
+</tr>
+<tr>
+<td><strong>Unstructured</strong></td>
+<td>通用</td>
+<td>支持多种格式，统一接口</td>
+<td>依赖多，复杂文档效果一般</td>
+</tr>
+<tr>
+<td><strong>Marker</strong></td>
+<td>PDF</td>
+<td>PDF 转 Markdown，公式&#x2F;表格优</td>
+<td>速度慢，资源消耗大</td>
+</tr>
+<tr>
+<td><strong>PaddleOCR</strong></td>
+<td>图片&#x2F;扫描件</td>
+<td>中文识别好</td>
+<td>需额外安装</td>
+</tr>
+</tbody></table>
+<h3 id="2-2-文本分块策略"><a href="#2-2-文本分块策略" class="headerlink" title="2.2 文本分块策略"></a>2.2 文本分块策略</h3><p>分块（Chunking）是将文档切成适合检索和上下文窗口的小段，是 RAG 效果的核心环节之一。</p>
+<table>
+<thead>
+<tr>
+<th>策略</th>
+<th>方法</th>
+<th>适用场景</th>
+<th>块大小</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>固定大小分块</strong></td>
+<td>按 token 数或字符数硬切</td>
+<td>通用场景，快速简单</td>
+<td>256~512 tokens</td>
+</tr>
+<tr>
+<td><strong>滑动窗口</strong></td>
+<td>重叠分块，保留上下文</td>
+<td>需要保留段落连续性</td>
+<td>512 tokens &#x2F; 64 overlap</td>
+</tr>
+<tr>
+<td><strong>语义分块</strong></td>
+<td>按句子&#x2F;段落切分</td>
+<td>保留完整语义单元</td>
+<td>自动检测</td>
+</tr>
+<tr>
+<td><strong>递归分块</strong></td>
+<td>按层级结构递归切分</td>
+<td>有明确结构的文档</td>
+<td>层级化</td>
+</tr>
+<tr>
+<td><strong>基于标题分块</strong></td>
+<td>按文档结构（标题划分）</td>
+<td>Markdown &#x2F; Word</td>
+<td>结构化</td>
+</tr>
+<tr>
+<td><strong>Agentic Chunking</strong></td>
+<td>LLM 自主判断切分点</td>
+<td>高质量需求</td>
+<td>成本较高</td>
+</tr>
+</tbody></table>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> langchain.text_splitter <span class="keyword">import</span> RecursiveCharacterTextSplitter</span><br><span class="line"></span><br><span class="line"><span class="comment"># 滑动窗口分块（推荐通用场景）</span></span><br><span class="line">text_splitter = RecursiveCharacterTextSplitter(</span><br><span class="line">    chunk_size=<span class="number">512</span>,          <span class="comment"># 块大小（token）</span></span><br><span class="line">    chunk_overlap=<span class="number">64</span>,        <span class="comment"># 重叠 token 数，保留上下文连续性</span></span><br><span class="line">    separators=[<span class="string">&quot;\n\n&quot;</span>, <span class="string">&quot;\n&quot;</span>, <span class="string">&quot;。&quot;</span>, <span class="string">&quot;！&quot;</span>, <span class="string">&quot;？&quot;</span>, <span class="string">&quot; &quot;</span>, <span class="string">&quot;&quot;</span>],</span><br><span class="line">    length_function=<span class="built_in">len</span>,      <span class="comment"># 按字符数计算</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">chunks = text_splitter.split_text(document)</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-Embedding-模型选择"><a href="#2-3-Embedding-模型选择" class="headerlink" title="2.3 Embedding 模型选择"></a>2.3 Embedding 模型选择</h3><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>维度</th>
+<th>中文支持</th>
+<th>特点</th>
+<th>部署方式</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>BGE-large-zh</strong></td>
+<td>1024</td>
+<td>优秀</td>
+<td>中英文均优，开源</td>
+<td>本地</td>
+</tr>
+<tr>
+<td><strong>BGE-base-zh</strong></td>
+<td>768</td>
+<td>优秀</td>
+<td>轻量级</td>
+<td>本地</td>
+</tr>
+<tr>
+<td><strong>m3e-large</strong></td>
+<td>1024</td>
+<td>优秀</td>
+<td>向量质量好</td>
+<td>本地</td>
+</tr>
+<tr>
+<td><strong>m3e-small</strong></td>
+<td>768</td>
+<td>优秀</td>
+<td>轻量快速</td>
+<td>本地</td>
+</tr>
+<tr>
+<td><strong>GTE-large-zh</strong></td>
+<td>1024</td>
+<td>优秀</td>
+<td>阿里开源</td>
+<td>本地</td>
+</tr>
+<tr>
+<td><strong>Jina-embeddings</strong></td>
+<td>1024</td>
+<td>好</td>
+<td>支持多语言</td>
+<td>云&#x2F;本地</td>
+</tr>
+<tr>
+<td><strong>text-embedding-ada-002</strong></td>
+<td>1536</td>
+<td>一般</td>
+<td>OpenAI API，效果好</td>
+<td>云端</td>
+</tr>
+</tbody></table>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 本地 Embedding 部署示例（使用 Sentence Transformers）</span></span><br><span class="line"><span class="keyword">from</span> sentence_transformers <span class="keyword">import</span> SentenceTransformer</span><br><span class="line"></span><br><span class="line"><span class="comment"># 轻量级（推荐 CPU 或低显存环境）</span></span><br><span class="line">model = SentenceTransformer(<span class="string">&#x27;moka-ai/m3e-small&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 高质量（推荐 GPU）</span></span><br><span class="line">model = SentenceTransformer(<span class="string">&#x27;BAAI/bge-large-zh-v1.5&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 编码文本</span></span><br><span class="line">embeddings = model.encode([<span class="string">&quot;要嵌入的文本&quot;</span>], normalize_embeddings=<span class="literal">True</span>)</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-4-向量数据库选型"><a href="#2-4-向量数据库选型" class="headerlink" title="2.4 向量数据库选型"></a>2.4 向量数据库选型</h3><table>
+<thead>
+<tr>
+<th>数据库</th>
+<th>类型</th>
+<th>优势</th>
+<th>适用规模</th>
+<th>部署难度</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Milvus</strong></td>
+<td>专用向量</td>
+<td>功能全面，性能强，国产</td>
+<td>中大型</td>
+<td>中等</td>
+</tr>
+<tr>
+<td><strong>Qdrant</strong></td>
+<td>专用向量</td>
+<td>Rust 实现，高性能，API 友好</td>
+<td>中大型</td>
+<td>简单</td>
+</tr>
+<tr>
+<td><strong>Weaviate</strong></td>
+<td>矢量+结构化</td>
+<td>混合检索，原生 GraphQL</td>
+<td>中大型</td>
+<td>简单</td>
+</tr>
+<tr>
+<td><strong>Chroma</strong></td>
+<td>矢量（嵌入式）</td>
+<td>最简单，LangChain 集成</td>
+<td>小型&#x2F;实验</td>
+<td>极简单</td>
+</tr>
+<tr>
+<td><strong>FAISS</strong></td>
+<td>矢量索引</td>
+<td>Meta 开源，免费，高效</td>
+<td>中型（单机）</td>
+<td>简单</td>
+</tr>
+<tr>
+<td><strong>pgvector</strong></td>
+<td>PostgreSQL 扩展</td>
+<td>SQL 兼容，现有 PG 可用</td>
+<td>中型</td>
+<td>简单</td>
+</tr>
+<tr>
+<td><strong>Pinecone</strong></td>
+<td>专用向量</td>
+<td>云原生，免运维</td>
+<td>大型</td>
+<td>极简单</td>
+</tr>
+<tr>
+<td><strong>Zilliz Cloud</strong></td>
+<td>专用向量（Milvus 云版）</td>
+<td>全托管</td>
+<td>大型</td>
+<td>极简单</td>
+</tr>
+</tbody></table>
+<p><strong>推荐路径：</strong></p>
+<ul>
+<li>个人&#x2F;小团队 → <strong>Chroma</strong> 或 <strong>Qdrant</strong>（docker 一键部署）</li>
+<li>企业级 → <strong>Milvus</strong> 或 <strong>Zilliz Cloud</strong></li>
+<li>已有 PostgreSQL → <strong>pgvector</strong></li>
+</ul>
+<h3 id="2-5-大语言模型选择"><a href="#2-5-大语言模型选择" class="headerlink" title="2.5 大语言模型选择"></a>2.5 大语言模型选择</h3><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>场景</th>
+<th>显存需求</th>
+<th>特点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>GPT-4o &#x2F; o1 &#x2F; o3</strong></td>
+<td>云端最强</td>
+<td>无</td>
+<td>效果最好，成本高</td>
+</tr>
+<tr>
+<td><strong>Claude 3.5 &#x2F; 3.7</strong></td>
+<td>云端最强</td>
+<td>无</td>
+<td>长上下文优秀</td>
+</tr>
+<tr>
+<td><strong>Qwen2.5-72B-Instruct</strong></td>
+<td>本地最强</td>
+<td>2× A100 80GB</td>
+<td>中文优秀</td>
+</tr>
+<tr>
+<td><strong>Qwen2.5-32B-Instruct</strong></td>
+<td>本地主力</td>
+<td>1× A100 80GB</td>
+<td>性价比高</td>
+</tr>
+<tr>
+<td><strong>Qwen2.5-14B-Instruct</strong></td>
+<td>本地入门</td>
+<td>1× A100 40GB</td>
+<td>效果好</td>
+</tr>
+<tr>
+<td><strong>Qwen2.5-7B-Instruct</strong></td>
+<td>轻量</td>
+<td>1× RTX 4090</td>
+<td>速度快</td>
+</tr>
+<tr>
+<td><strong>DeepSeek-R1-Distill</strong> 系列</td>
+<td>推理能力</td>
+<td>各异</td>
+<td>推理能力强</td>
+</tr>
+</tbody></table>
+<h3 id="2-6-RAG-框架选型"><a href="#2-6-RAG-框架选型" class="headerlink" title="2.6 RAG 框架选型"></a>2.6 RAG 框架选型</h3><table>
+<thead>
+<tr>
+<th>框架</th>
+<th>开发语言</th>
+<th>特点</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>LangChain</strong></td>
+<td>Python</td>
+<td>功能最全，生态最大</td>
+<td>复杂 RAG，学术&#x2F;生产</td>
+</tr>
+<tr>
+<td><strong>LlamaIndex</strong></td>
+<td>Python</td>
+<td>数据连接能力强</td>
+<td>结构化数据</td>
+</tr>
+<tr>
+<td><strong>RAGFlow</strong></td>
+<td>Python</td>
+<td>UI 好看，文档理解强</td>
+<td>企业级知识库</td>
+</tr>
+<tr>
+<td><strong>Dify</strong></td>
+<td>TypeScript</td>
+<td>低代码，拖拽编排</td>
+<td>快速构建应用</td>
+</tr>
+<tr>
+<td><strong>MaxKB</strong></td>
+<td>Python</td>
+<td>界面友好，支持多种 LLM</td>
+<td>企业内知识库</td>
+</tr>
+<tr>
+<td><strong>AnythingLLM</strong></td>
+<td>TypeScript</td>
+<td>界面美观，连接器多</td>
+<td>快速上手</td>
+</tr>
+<tr>
+<td><strong>FastGPT</strong></td>
+<td>Go&#x2F;TS</td>
+<td>节点编排，工作流</td>
+<td>复杂工作流</td>
+</tr>
+<tr>
+<td><strong>LangChain-Chatchat</strong></td>
+<td>Python</td>
+<td>中文友好，开箱即用</td>
+<td>中文 RAG 快速部署</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="三、构建流程"><a href="#三、构建流程" class="headerlink" title="三、构建流程"></a>三、构建流程</h2><h3 id="3-1-环境准备"><a href="#3-1-环境准备" class="headerlink" title="3.1 环境准备"></a>3.1 环境准备</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 基础环境</span></span><br><span class="line">conda create -n rag python=3.11</span><br><span class="line">conda activate rag</span><br><span class="line"></span><br><span class="line"><span class="comment"># 核心依赖</span></span><br><span class="line">pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121</span><br><span class="line">pip install langchain langchain-community langchain-huggingface</span><br><span class="line">pip install sentence-transformers</span><br><span class="line">pip install qdrant-client    <span class="comment"># Qdrant 向量数据库客户端</span></span><br><span class="line">pip install pymupdf          <span class="comment"># PDF 解析</span></span><br><span class="line">pip install python-docx       <span class="comment"># Word 文档</span></span><br><span class="line">pip install tiktoken          <span class="comment"># token 计算</span></span><br><span class="line">pip install rank-bm25         <span class="comment"># 关键词检索（可选，混合检索用）</span></span><br><span class="line">pip install fastapi uvicorn   <span class="comment"># API 服务</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-文档解析"><a href="#3-2-文档解析" class="headerlink" title="3.2 文档解析"></a>3.2 文档解析</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> fitz  <span class="comment"># PyMuPDF</span></span><br><span class="line"><span class="keyword">from</span> pathlib <span class="keyword">import</span> Path</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">PDFParser</span>:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;PDF 文档解析器&quot;&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">parse_pdf</span>(<span class="params">self, file_path: <span class="built_in">str</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">dict</span>]:</span><br><span class="line">        <span class="string">&quot;&quot;&quot;解析 PDF，返回页面列表&quot;&quot;&quot;</span></span><br><span class="line">        doc = fitz.<span class="built_in">open</span>(file_path)</span><br><span class="line">        pages = []</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> page_num, page <span class="keyword">in</span> <span class="built_in">enumerate</span>(doc):</span><br><span class="line">            text = page.get_text(<span class="string">&quot;text&quot;</span>)</span><br><span class="line">            tables = page.find_tables()</span><br><span class="line">            pages.append(&#123;</span><br><span class="line">                <span class="string">&quot;page_num&quot;</span>: page_num + <span class="number">1</span>,</span><br><span class="line">                <span class="string">&quot;text&quot;</span>: text.strip(),</span><br><span class="line">                <span class="string">&quot;tables&quot;</span>: tables.extract() <span class="keyword">if</span> tables <span class="keyword">else</span> [],</span><br><span class="line">                <span class="string">&quot;source&quot;</span>: Path(file_path).name,</span><br><span class="line">            &#125;)</span><br><span class="line">        doc.close()</span><br><span class="line">        <span class="keyword">return</span> pages</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">parse_docx</span>(<span class="params">self, file_path: <span class="built_in">str</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">dict</span>]:</span><br><span class="line">        <span class="string">&quot;&quot;&quot;解析 Word 文档&quot;&quot;&quot;</span></span><br><span class="line">        <span class="keyword">import</span> docx</span><br><span class="line">        doc = docx.Document(file_path)</span><br><span class="line">        chunks = []</span><br><span class="line">        current_chunk = []</span><br><span class="line">        current_len = <span class="number">0</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> para <span class="keyword">in</span> doc.paragraphs:</span><br><span class="line">            text = para.text.strip()</span><br><span class="line">            <span class="keyword">if</span> <span class="keyword">not</span> text:</span><br><span class="line">                <span class="keyword">continue</span></span><br><span class="line">            <span class="keyword">if</span> current_len + <span class="built_in">len</span>(text) &gt; <span class="number">1000</span>:</span><br><span class="line">                chunks.append(&#123;</span><br><span class="line">                    <span class="string">&quot;text&quot;</span>: <span class="string">&quot;\n&quot;</span>.join(current_chunk),</span><br><span class="line">                    <span class="string">&quot;source&quot;</span>: Path(file_path).name,</span><br><span class="line">                &#125;)</span><br><span class="line">                current_chunk = [text]</span><br><span class="line">                current_len = <span class="built_in">len</span>(text)</span><br><span class="line">            <span class="keyword">else</span>:</span><br><span class="line">                current_chunk.append(text)</span><br><span class="line">                current_len += <span class="built_in">len</span>(text)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> current_chunk:</span><br><span class="line">            chunks.append(&#123;</span><br><span class="line">                <span class="string">&quot;text&quot;</span>: <span class="string">&quot;\n&quot;</span>.join(current_chunk),</span><br><span class="line">                <span class="string">&quot;source&quot;</span>: Path(file_path).name,</span><br><span class="line">            &#125;)</span><br><span class="line">        <span class="keyword">return</span> chunks</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">parse_markdown</span>(<span class="params">self, file_path: <span class="built_in">str</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">dict</span>]:</span><br><span class="line">        <span class="string">&quot;&quot;&quot;解析 Markdown 文档&quot;&quot;&quot;</span></span><br><span class="line">        <span class="keyword">with</span> <span class="built_in">open</span>(file_path, <span class="string">&#x27;r&#x27;</span>, encoding=<span class="string">&#x27;utf-8&#x27;</span>) <span class="keyword">as</span> f:</span><br><span class="line">            content = f.read()</span><br><span class="line">        <span class="keyword">import</span> re</span><br><span class="line">        sections = re.split(<span class="string">r&#x27;\n(?=#+\s)&#x27;</span>, content)</span><br><span class="line">        chunks = []</span><br><span class="line">        <span class="keyword">for</span> section <span class="keyword">in</span> sections:</span><br><span class="line">            section = section.strip()</span><br><span class="line">            <span class="keyword">if</span> <span class="built_in">len</span>(section) &lt; <span class="number">50</span>:</span><br><span class="line">                <span class="keyword">continue</span></span><br><span class="line">            chunks.append(&#123;</span><br><span class="line">                <span class="string">&quot;text&quot;</span>: section,</span><br><span class="line">                <span class="string">&quot;source&quot;</span>: Path(file_path).name,</span><br><span class="line">            &#125;)</span><br><span class="line">        <span class="keyword">return</span> chunks</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">parse_batch</span>(<span class="params">self, folder_path: <span class="built_in">str</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">dict</span>]:</span><br><span class="line">        <span class="string">&quot;&quot;&quot;批量解析文件夹中的文档&quot;&quot;&quot;</span></span><br><span class="line">        all_docs = []</span><br><span class="line">        folder = Path(folder_path)</span><br><span class="line">        <span class="keyword">for</span> file_path <span class="keyword">in</span> folder.rglob(<span class="string">&#x27;*&#x27;</span>):</span><br><span class="line">            <span class="keyword">if</span> <span class="keyword">not</span> file_path.is_file():</span><br><span class="line">                <span class="keyword">continue</span></span><br><span class="line">            suffix = file_path.suffix.lower()</span><br><span class="line">            <span class="keyword">try</span>:</span><br><span class="line">                <span class="keyword">if</span> suffix == <span class="string">&#x27;.pdf&#x27;</span>:</span><br><span class="line">                    all_docs.extend(<span class="variable language_">self</span>.parse_pdf(<span class="built_in">str</span>(file_path)))</span><br><span class="line">                <span class="keyword">elif</span> suffix <span class="keyword">in</span> [<span class="string">&#x27;.docx&#x27;</span>, <span class="string">&#x27;.doc&#x27;</span>]:</span><br><span class="line">                    all_docs.extend(<span class="variable language_">self</span>.parse_docx(<span class="built_in">str</span>(file_path)))</span><br><span class="line">                <span class="keyword">elif</span> suffix <span class="keyword">in</span> [<span class="string">&#x27;.md&#x27;</span>, <span class="string">&#x27;.txt&#x27;</span>]:</span><br><span class="line">                    all_docs.extend(<span class="variable language_">self</span>.parse_markdown(<span class="built_in">str</span>(file_path)))</span><br><span class="line">            <span class="keyword">except</span> Exception <span class="keyword">as</span> e:</span><br><span class="line">                <span class="built_in">print</span>(<span class="string">f&quot;Error parsing <span class="subst">&#123;file_path&#125;</span>: <span class="subst">&#123;e&#125;</span>&quot;</span>)</span><br><span class="line">                <span class="keyword">continue</span></span><br><span class="line">        <span class="keyword">return</span> all_docs</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-文本分块"><a href="#3-3-文本分块" class="headerlink" title="3.3 文本分块"></a>3.3 文本分块</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> langchain.text_splitter <span class="keyword">import</span> RecursiveCharacterTextSplitter</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">TextChunker</span>:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;文本分块处理器&quot;&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, chunk_size=<span class="number">512</span>, chunk_overlap=<span class="number">64</span></span>):</span><br><span class="line">        <span class="variable language_">self</span>.chunk_size = chunk_size</span><br><span class="line">        <span class="variable language_">self</span>.chunk_overlap = chunk_overlap</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">chunk_documents</span>(<span class="params">self, documents: <span class="built_in">list</span>[<span class="built_in">dict</span>]</span>) -&gt; <span class="built_in">list</span>[<span class="built_in">dict</span>]:</span><br><span class="line">        <span class="string">&quot;&quot;&quot;对文档列表进行分块&quot;&quot;&quot;</span></span><br><span class="line">        text_splitter = RecursiveCharacterTextSplitter(</span><br><span class="line">            chunk_size=<span class="variable language_">self</span>.chunk_size,</span><br><span class="line">            chunk_overlap=<span class="variable language_">self</span>.chunk_overlap,</span><br><span class="line">            separators=[<span class="string">&quot;\n\n&quot;</span>, <span class="string">&quot;\n&quot;</span>, <span class="string">&quot;。&quot;</span>, <span class="string">&quot;！&quot;</span>, <span class="string">&quot;？&quot;</span>, <span class="string">&quot;. &quot;</span>, <span class="string">&quot; &quot;</span>, <span class="string">&quot;&quot;</span>],</span><br><span class="line">            length_function=<span class="variable language_">self</span>._token_len,</span><br><span class="line">        )</span><br><span class="line">        chunks = []</span><br><span class="line">        <span class="keyword">for</span> doc <span class="keyword">in</span> documents:</span><br><span class="line">            texts = text_splitter.split_text(doc[<span class="string">&#x27;text&#x27;</span>])</span><br><span class="line">            <span class="keyword">for</span> i, text <span class="keyword">in</span> <span class="built_in">enumerate</span>(texts):</span><br><span class="line">                chunks.append(&#123;</span><br><span class="line">                    <span class="string">&quot;content&quot;</span>: text,</span><br><span class="line">                    <span class="string">&quot;source&quot;</span>: doc.get(<span class="string">&#x27;source&#x27;</span>, <span class="string">&#x27;&#x27;</span>),</span><br><span class="line">                    <span class="string">&quot;chunk_id&quot;</span>: i,</span><br><span class="line">                &#125;)</span><br><span class="line">        <span class="keyword">return</span> chunks</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">_token_len</span>(<span class="params">self, text: <span class="built_in">str</span></span>) -&gt; <span class="built_in">int</span>:</span><br><span class="line">        <span class="string">&quot;&quot;&quot;估算 token 数（中文约 1.5 字符/token，英文约 4 字符/token）&quot;&quot;&quot;</span></span><br><span class="line">        <span class="keyword">import</span> re</span><br><span class="line">        chinese_chars = <span class="built_in">len</span>(re.findall(<span class="string">r&#x27;[\u4e00-\u9fff]&#x27;</span>, text))</span><br><span class="line">        other_chars = <span class="built_in">len</span>(text) - chinese_chars</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">int</span>(chinese_chars * <span class="number">1.5</span> + other_chars * <span class="number">0.25</span>)</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-向量化与存储"><a href="#3-4-向量化与存储" class="headerlink" title="3.4 向量化与存储"></a>3.4 向量化与存储</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> sentence_transformers <span class="keyword">import</span> SentenceTransformer</span><br><span class="line"><span class="keyword">from</span> qdrant_client <span class="keyword">import</span> QdrantClient</span><br><span class="line"><span class="keyword">from</span> qdrant_client.models <span class="keyword">import</span> Distance, VectorParams, PointStruct</span><br><span class="line"><span class="keyword">import</span> uuid</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">VectorStore</span>:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;向量数据库管理器&quot;&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, collection_name=<span class="string">&quot;knowledge_base&quot;</span></span>):</span><br><span class="line">        <span class="variable language_">self</span>.collection_name = collection_name</span><br><span class="line">        <span class="variable language_">self</span>.embedding_model = SentenceTransformer(<span class="string">&#x27;BAAI/bge-large-zh-v1.5&#x27;</span>)</span><br><span class="line">        <span class="variable language_">self</span>.qdrant = QdrantClient(host=<span class="string">&quot;localhost&quot;</span>, port=<span class="number">6333</span>)</span><br><span class="line">        <span class="variable language_">self</span>._create_collection()</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">_create_collection</span>(<span class="params">self</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;创建 Collection&quot;&quot;&quot;</span></span><br><span class="line">        collections = [c.name <span class="keyword">for</span> c <span class="keyword">in</span> <span class="variable language_">self</span>.qdrant.get_collections().collections]</span><br><span class="line">        <span class="keyword">if</span> <span class="variable language_">self</span>.collection_name <span class="keyword">not</span> <span class="keyword">in</span> collections:</span><br><span class="line">            <span class="variable language_">self</span>.qdrant.create_collection(</span><br><span class="line">                collection_name=<span class="variable language_">self</span>.collection_name,</span><br><span class="line">                vectors_config=VectorParams(</span><br><span class="line">                    size=<span class="number">1024</span>,  <span class="comment"># BGE-large 的维度</span></span><br><span class="line">                    distance=Distance.COSINE,</span><br><span class="line">                ),</span><br><span class="line">            )</span><br><span class="line">            <span class="built_in">print</span>(<span class="string">f&quot;Collection &#x27;<span class="subst">&#123;self.collection_name&#125;</span>&#x27; 创建成功&quot;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">embed_texts</span>(<span class="params">self, texts: <span class="built_in">list</span>[<span class="built_in">str</span>]</span>) -&gt; <span class="built_in">list</span>[<span class="built_in">list</span>[<span class="built_in">float</span>]]:</span><br><span class="line">        <span class="string">&quot;&quot;&quot;将文本列表转为向量&quot;&quot;&quot;</span></span><br><span class="line">        embeddings = <span class="variable language_">self</span>.embedding_model.encode(</span><br><span class="line">            texts,</span><br><span class="line">            normalize_embeddings=<span class="literal">True</span>,</span><br><span class="line">            show_progress_bar=<span class="literal">True</span>,</span><br><span class="line">        )</span><br><span class="line">        <span class="keyword">return</span> embeddings.tolist()</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">add_chunks</span>(<span class="params">self, chunks: <span class="built_in">list</span>[<span class="built_in">dict</span>]</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;将分块数据写入向量数据库&quot;&quot;&quot;</span></span><br><span class="line">        texts = [chunk[<span class="string">&#x27;content&#x27;</span>] <span class="keyword">for</span> chunk <span class="keyword">in</span> chunks]</span><br><span class="line">        embeddings = <span class="variable language_">self</span>.embed_texts(texts)</span><br><span class="line"></span><br><span class="line">        points = []</span><br><span class="line">        <span class="keyword">for</span> i, (chunk, embedding) <span class="keyword">in</span> <span class="built_in">enumerate</span>(<span class="built_in">zip</span>(chunks, embeddings)):</span><br><span class="line">            point = PointStruct(</span><br><span class="line">                <span class="built_in">id</span>=<span class="built_in">str</span>(uuid.uuid4()),</span><br><span class="line">                vector=embedding,</span><br><span class="line">                payload=&#123;</span><br><span class="line">                    <span class="string">&quot;content&quot;</span>: chunk[<span class="string">&#x27;content&#x27;</span>],</span><br><span class="line">                    <span class="string">&quot;source&quot;</span>: chunk.get(<span class="string">&#x27;source&#x27;</span>, <span class="string">&#x27;&#x27;</span>),</span><br><span class="line">                    <span class="string">&quot;chunk_id&quot;</span>: chunk.get(<span class="string">&#x27;chunk_id&#x27;</span>, <span class="number">0</span>),</span><br><span class="line">                &#125;</span><br><span class="line">            )</span><br><span class="line">            points.append(point)</span><br><span class="line"></span><br><span class="line">        batch_size = <span class="number">100</span></span><br><span class="line">        <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, <span class="built_in">len</span>(points), batch_size):</span><br><span class="line">            batch = points[i:i+batch_size]</span><br><span class="line">            <span class="variable language_">self</span>.qdrant.upsert(</span><br><span class="line">                collection_name=<span class="variable language_">self</span>.collection_name,</span><br><span class="line">                points=batch</span><br><span class="line">            )</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">f&quot;全部写入完成，共 <span class="subst">&#123;<span class="built_in">len</span>(points)&#125;</span> 条&quot;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">search</span>(<span class="params">self, query: <span class="built_in">str</span>, top_k=<span class="number">5</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">dict</span>]:</span><br><span class="line">        <span class="string">&quot;&quot;&quot;向量检索&quot;&quot;&quot;</span></span><br><span class="line">        query_embedding = <span class="variable language_">self</span>.embed_texts([query])[<span class="number">0</span>]</span><br><span class="line">        results = <span class="variable language_">self</span>.qdrant.search(</span><br><span class="line">            collection_name=<span class="variable language_">self</span>.collection_name,</span><br><span class="line">            query_vector=query_embedding,</span><br><span class="line">            limit=top_k,</span><br><span class="line">        )</span><br><span class="line">        <span class="keyword">return</span> [</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="string">&quot;content&quot;</span>: r.payload[<span class="string">&#x27;content&#x27;</span>],</span><br><span class="line">                <span class="string">&quot;source&quot;</span>: r.payload[<span class="string">&#x27;source&#x27;</span>],</span><br><span class="line">                <span class="string">&quot;score&quot;</span>: r.score,</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">for</span> r <span class="keyword">in</span> results</span><br><span class="line">        ]</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-5-混合检索（推荐）"><a href="#3-5-混合检索（推荐）" class="headerlink" title="3.5 混合检索（推荐）"></a>3.5 混合检索（推荐）</h3><p>单一向量检索可能遗漏关键词匹配的重要文档，混合检索（向量 + BM25 关键词）可显著提升召回率：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> rank_bm25 <span class="keyword">import</span> BM25Okapi</span><br><span class="line"><span class="keyword">import</span> jieba</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">HybridRetriever</span>:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;混合检索器（向量 + BM25）&quot;&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, vector_store: VectorStore</span>):</span><br><span class="line">        <span class="variable language_">self</span>.vector_store = vector_store</span><br><span class="line">        <span class="variable language_">self</span>.bm25_index = <span class="literal">None</span></span><br><span class="line">        <span class="variable language_">self</span>.corpus = []</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">build_bm25_index</span>(<span class="params">self, chunks: <span class="built_in">list</span>[<span class="built_in">dict</span>]</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;构建 BM25 索引&quot;&quot;&quot;</span></span><br><span class="line">        tokenized_corpus = [<span class="built_in">list</span>(jieba.cut(chunk[<span class="string">&#x27;content&#x27;</span>])) <span class="keyword">for</span> chunk <span class="keyword">in</span> chunks]</span><br><span class="line">        <span class="variable language_">self</span>.bm25_index = BM25Okapi(tokenized_corpus)</span><br><span class="line">        <span class="variable language_">self</span>.corpus = chunks</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">retrieve</span>(<span class="params">self, query: <span class="built_in">str</span>, top_k=<span class="number">5</span>, vector_weight=<span class="number">0.7</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">dict</span>]:</span><br><span class="line">        <span class="string">&quot;&quot;&quot;混合检索（RRF 融合）&quot;&quot;&quot;</span></span><br><span class="line">        <span class="comment"># 1. 向量检索</span></span><br><span class="line">        vector_results = <span class="variable language_">self</span>.vector_store.search(query, top_k=top_k * <span class="number">2</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 2. BM25 检索</span></span><br><span class="line">        tokenized_query = <span class="built_in">list</span>(jieba.cut(query))</span><br><span class="line">        bm25_scores = <span class="variable language_">self</span>.bm25_index.get_scores(tokenized_query)</span><br><span class="line">        top_indices = <span class="built_in">sorted</span>(<span class="built_in">range</span>(<span class="built_in">len</span>(bm25_scores)), key=<span class="keyword">lambda</span> i: bm25_scores[i], reverse=<span class="literal">True</span>)[:top_k * <span class="number">2</span>]</span><br><span class="line">        bm25_results = [<span class="variable language_">self</span>.corpus[i] <span class="keyword">for</span> i <span class="keyword">in</span> top_indices]</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 3. RRF 融合（Reciprocal Rank Fusion）</span></span><br><span class="line">        k = <span class="number">60</span></span><br><span class="line">        rrf_scores = &#123;&#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> rank, result <span class="keyword">in</span> <span class="built_in">enumerate</span>(vector_results):</span><br><span class="line">            key = result[<span class="string">&#x27;content&#x27;</span>]</span><br><span class="line">            rrf_scores[key] = result[<span class="string">&#x27;score&#x27;</span>]  <span class="comment"># 保留向量分数</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> rank, result <span class="keyword">in</span> <span class="built_in">enumerate</span>(bm25_results):</span><br><span class="line">            key = result[<span class="string">&#x27;content&#x27;</span>]</span><br><span class="line">            <span class="keyword">if</span> key <span class="keyword">not</span> <span class="keyword">in</span> rrf_scores:</span><br><span class="line">                rrf_scores[key] = (<span class="number">1</span> / (k + rank + <span class="number">1</span>)) * <span class="number">0.001</span>  <span class="comment"># 用归一化的 BM25 score</span></span><br><span class="line">            <span class="keyword">else</span>:</span><br><span class="line">                rrf_scores[key] += (<span class="number">1</span> / (k + rank + <span class="number">1</span>))</span><br><span class="line"></span><br><span class="line">        fused_results = <span class="built_in">sorted</span>(rrf_scores.items(), key=<span class="keyword">lambda</span> x: x[<span class="number">1</span>], reverse=<span class="literal">True</span>)[:top_k]</span><br><span class="line">        content_to_meta = &#123;r[<span class="string">&#x27;content&#x27;</span>]: r <span class="keyword">for</span> r <span class="keyword">in</span> vector_results + bm25_results&#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> [</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="string">&quot;content&quot;</span>: content,</span><br><span class="line">                <span class="string">&quot;source&quot;</span>: content_to_meta.get(content, &#123;&#125;).get(<span class="string">&#x27;source&#x27;</span>, <span class="string">&#x27;&#x27;</span>),</span><br><span class="line">                <span class="string">&quot;score&quot;</span>: score,</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">for</span> content, score <span class="keyword">in</span> fused_results</span><br><span class="line">        ]</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-6-RAG-查询与生成"><a href="#3-6-RAG-查询与生成" class="headerlink" title="3.6 RAG 查询与生成"></a>3.6 RAG 查询与生成</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> AutoModelForCausalLM, AutoTokenizer</span><br><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">RAGSystem</span>:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;RAG 检索增强生成系统&quot;&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, vector_store: VectorStore, llm_model_name: <span class="built_in">str</span> = <span class="string">&quot;Qwen/Qwen2.5-14B-Instruct&quot;</span></span>):</span><br><span class="line">        <span class="variable language_">self</span>.vector_store = vector_store</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">f&quot;加载 LLM: <span class="subst">&#123;llm_model_name&#125;</span>&quot;</span>)</span><br><span class="line">        <span class="variable language_">self</span>.tokenizer = AutoTokenizer.from_pretrained(llm_model_name, trust_remote_code=<span class="literal">True</span>)</span><br><span class="line">        <span class="variable language_">self</span>.tokenizer.pad_token = <span class="variable language_">self</span>.tokenizer.eos_token</span><br><span class="line">        <span class="variable language_">self</span>.model = AutoModelForCausalLM.from_pretrained(</span><br><span class="line">            llm_model_name,</span><br><span class="line">            torch_dtype=torch.bfloat16,</span><br><span class="line">            device_map=<span class="string">&quot;auto&quot;</span>,</span><br><span class="line">            trust_remote_code=<span class="literal">True</span>,</span><br><span class="line">        )</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">build_prompt</span>(<span class="params">self, query: <span class="built_in">str</span>, retrieved_docs: <span class="built_in">list</span>[<span class="built_in">dict</span>], max_ctx_tokens=<span class="number">3000</span></span>) -&gt; <span class="built_in">str</span>:</span><br><span class="line">        <span class="string">&quot;&quot;&quot;构建 Prompt&quot;&quot;&quot;</span></span><br><span class="line">        context_parts = []</span><br><span class="line">        total_len = <span class="number">0</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> i, doc <span class="keyword">in</span> <span class="built_in">enumerate</span>(retrieved_docs):</span><br><span class="line">            doc_text = <span class="string">f&quot;[文档<span class="subst">&#123;i+<span class="number">1</span>&#125;</span>] 来源：<span class="subst">&#123;doc.get(<span class="string">&#x27;source&#x27;</span>, <span class="string">&#x27;未知&#x27;</span>)&#125;</span>\n<span class="subst">&#123;doc[<span class="string">&#x27;content&#x27;</span>]&#125;</span>&quot;</span></span><br><span class="line">            doc_len = <span class="built_in">len</span>(doc_text)</span><br><span class="line">            <span class="keyword">if</span> total_len + doc_len &gt; max_ctx_tokens * <span class="number">1.5</span>:</span><br><span class="line">                <span class="keyword">break</span></span><br><span class="line">            context_parts.append(doc_text)</span><br><span class="line">            total_len += doc_len</span><br><span class="line"></span><br><span class="line">        context = <span class="string">&quot;\n\n&quot;</span>.join(context_parts)</span><br><span class="line"></span><br><span class="line">        prompt = <span class="string">f&quot;&quot;&quot;你是一个专业的问答助手。请根据以下参考文档回答用户的问题。</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">**要求：**</span></span><br><span class="line"><span class="string">1. 仅根据参考文档回答，不要编造信息</span></span><br><span class="line"><span class="string">2. 如果参考文档中没有相关信息，请明确说明</span></span><br><span class="line"><span class="string">3. 在回答中引用参考文档的来源</span></span><br><span class="line"><span class="string">4. 回答要准确、完整、有条理</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">**参考文档：**</span></span><br><span class="line"><span class="string"><span class="subst">&#123;context&#125;</span></span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">**用户问题：**</span></span><br><span class="line"><span class="string"><span class="subst">&#123;query&#125;</span></span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">**回答：**&quot;&quot;&quot;</span></span><br><span class="line">        <span class="keyword">return</span> prompt</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">generate</span>(<span class="params">self, query: <span class="built_in">str</span>, top_k=<span class="number">5</span>, max_new_tokens=<span class="number">512</span></span>) -&gt; <span class="built_in">tuple</span>[<span class="built_in">str</span>, <span class="built_in">list</span>[<span class="built_in">dict</span>]]:</span><br><span class="line">        <span class="string">&quot;&quot;&quot;检索 + 生成&quot;&quot;&quot;</span></span><br><span class="line">        retrieved_docs = <span class="variable language_">self</span>.vector_store.search(query, top_k=top_k)</span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> retrieved_docs:</span><br><span class="line">            <span class="keyword">return</span> <span class="string">&quot;抱歉，未在知识库中找到相关信息。&quot;</span>, []</span><br><span class="line"></span><br><span class="line">        prompt = <span class="variable language_">self</span>.build_prompt(query, retrieved_docs)</span><br><span class="line">        inputs = <span class="variable language_">self</span>.tokenizer(prompt, return_tensors=<span class="string">&quot;pt&quot;</span>).to(<span class="variable language_">self</span>.model.device)</span><br><span class="line"></span><br><span class="line">        outputs = <span class="variable language_">self</span>.model.generate(</span><br><span class="line">            **inputs,</span><br><span class="line">            max_new_tokens=max_new_tokens,</span><br><span class="line">            temperature=<span class="number">0.3</span>,</span><br><span class="line">            top_p=<span class="number">0.9</span>,</span><br><span class="line">            repetition_penalty=<span class="number">1.1</span>,</span><br><span class="line">        )</span><br><span class="line"></span><br><span class="line">        response = <span class="variable language_">self</span>.tokenizer.decode(</span><br><span class="line">            outputs[<span class="number">0</span>][inputs[<span class="string">&#x27;input_ids&#x27;</span>].shape[<span class="number">1</span>]:],</span><br><span class="line">            skip_special_tokens=<span class="literal">True</span></span><br><span class="line">        )</span><br><span class="line">        <span class="keyword">return</span> response.strip(), retrieved_docs</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-7-API-服务封装"><a href="#3-7-API-服务封装" class="headerlink" title="3.7 API 服务封装"></a>3.7 API 服务封装</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> fastapi <span class="keyword">import</span> FastAPI, HTTPException</span><br><span class="line"><span class="keyword">from</span> pydantic <span class="keyword">import</span> BaseModel</span><br><span class="line"><span class="keyword">from</span> typing <span class="keyword">import</span> <span class="type">Optional</span></span><br><span class="line"><span class="keyword">import</span> uvicorn</span><br><span class="line"></span><br><span class="line">app = FastAPI(title=<span class="string">&quot;RAG API&quot;</span>, version=<span class="string">&quot;1.0&quot;</span>)</span><br><span class="line"></span><br><span class="line">vector_store = <span class="literal">None</span></span><br><span class="line">rag_system = <span class="literal">None</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">QueryRequest</span>(<span class="title class_ inherited__">BaseModel</span>):</span><br><span class="line">    query: <span class="built_in">str</span></span><br><span class="line">    top_k: <span class="type">Optional</span>[<span class="built_in">int</span>] = <span class="number">5</span></span><br><span class="line">    max_new_tokens: <span class="type">Optional</span>[<span class="built_in">int</span>] = <span class="number">512</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">QueryResponse</span>(<span class="title class_ inherited__">BaseModel</span>):</span><br><span class="line">    answer: <span class="built_in">str</span></span><br><span class="line">    sources: <span class="built_in">list</span>[<span class="built_in">dict</span>]</span><br><span class="line"></span><br><span class="line"><span class="meta">@app.post(<span class="params"><span class="string">&quot;/query&quot;</span>, response_model=QueryResponse</span>)</span></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">query</span>(<span class="params">request: QueryRequest</span>):</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        answer, sources = rag_system.generate(</span><br><span class="line">            query=request.query,</span><br><span class="line">            top_k=request.top_k,</span><br><span class="line">            max_new_tokens=request.max_new_tokens,</span><br><span class="line">        )</span><br><span class="line">        <span class="keyword">return</span> QueryResponse(</span><br><span class="line">            answer=answer,</span><br><span class="line">            sources=[</span><br><span class="line">                &#123;<span class="string">&quot;content&quot;</span>: s[<span class="string">&#x27;content&#x27;</span>][:<span class="number">200</span>], <span class="string">&quot;source&quot;</span>: s.get(<span class="string">&#x27;source&#x27;</span>, <span class="string">&#x27;&#x27;</span>), <span class="string">&quot;score&quot;</span>: s[<span class="string">&#x27;score&#x27;</span>]&#125;</span><br><span class="line">                <span class="keyword">for</span> s <span class="keyword">in</span> sources</span><br><span class="line">            ]</span><br><span class="line">        )</span><br><span class="line">    <span class="keyword">except</span> Exception <span class="keyword">as</span> e:</span><br><span class="line">        <span class="keyword">raise</span> HTTPException(status_code=<span class="number">500</span>, detail=<span class="built_in">str</span>(e))</span><br><span class="line"></span><br><span class="line"><span class="meta">@app.post(<span class="params"><span class="string">&quot;/ingest&quot;</span></span>)</span></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">ingest_documents</span>(<span class="params">folder_path: <span class="built_in">str</span></span>):</span><br><span class="line">    <span class="keyword">from</span> pdf_parser <span class="keyword">import</span> PDFParser</span><br><span class="line">    <span class="keyword">from</span> text_chunker <span class="keyword">import</span> TextChunker</span><br><span class="line">    parser = PDFParser()</span><br><span class="line">    chunks = parser.parse_batch(folder_path)</span><br><span class="line">    chunker = TextChunker()</span><br><span class="line">    chunked = chunker.chunk_documents(chunks)</span><br><span class="line">    vector_store.add_chunks(chunked)</span><br><span class="line">    <span class="keyword">return</span> &#123;<span class="string">&quot;status&quot;</span>: <span class="string">&quot;ok&quot;</span>, <span class="string">&quot;chunks&quot;</span>: <span class="built_in">len</span>(chunked)&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">@app.get(<span class="params"><span class="string">&quot;/health&quot;</span></span>)</span></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">health</span>():</span><br><span class="line">    <span class="keyword">return</span> &#123;<span class="string">&quot;status&quot;</span>: <span class="string">&quot;ok&quot;</span>&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">&quot;__main__&quot;</span>:</span><br><span class="line">    uvicorn.run(app, host=<span class="string">&quot;0.0.0.0&quot;</span>, port=<span class="number">8000</span>)</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="四、高级优化策略"><a href="#四、高级优化策略" class="headerlink" title="四、高级优化策略"></a>四、高级优化策略</h2><h3 id="4-1-Query-改写与扩展"><a href="#4-1-Query-改写与扩展" class="headerlink" title="4.1 Query 改写与扩展"></a>4.1 Query 改写与扩展</h3><p>用户提问往往不够精准，通过 Query 改写提升检索效果：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">query_rewrite</span>(<span class="params">self, query: <span class="built_in">str</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">str</span>]:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;生成多个查询改写版本&quot;&quot;&quot;</span></span><br><span class="line">    rewrite_prompt = <span class="string">f&quot;&quot;&quot;请对以下用户问题进行改写和扩展，生成 3-5 个不同的搜索查询。</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">要求：</span></span><br><span class="line"><span class="string">1. 保持原意</span></span><br><span class="line"><span class="string">2. 尝试不同的表达方式</span></span><br><span class="line"><span class="string">3. 可以拆分复杂问题</span></span><br><span class="line"><span class="string">4. 可以补充相关概念</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">原始问题：<span class="subst">&#123;query&#125;</span></span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">请以 JSON 数组格式返回，格式：[query1, query2, ...]，每个 query 不超过 50 字&quot;&quot;&quot;</span></span><br><span class="line">    <span class="comment"># 调用 LLM 生成改写后，返回多个查询</span></span><br><span class="line">    <span class="keyword">return</span> [query, <span class="string">&quot;改写版本1&quot;</span>, <span class="string">&quot;改写版本2&quot;</span>, <span class="string">&quot;扩展查询&quot;</span>]</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-重排序（Re-ranking）"><a href="#4-2-重排序（Re-ranking）" class="headerlink" title="4.2 重排序（Re-ranking）"></a>4.2 重排序（Re-ranking）</h3><p>初检向量检索后，使用更强的交叉编码器重排序，提升精度：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> sentence_transformers <span class="keyword">import</span> CrossEncoder</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">ReRanker</span>:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;文档重排序&quot;&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, model_name=<span class="string">&quot;BAAI/bge-reranker-large&quot;</span></span>):</span><br><span class="line">        <span class="variable language_">self</span>.cross_encoder = CrossEncoder(model_name)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">rerank</span>(<span class="params">self, query: <span class="built_in">str</span>, documents: <span class="built_in">list</span>[<span class="built_in">str</span>], top_k=<span class="number">5</span></span>) -&gt; <span class="built_in">list</span>[<span class="built_in">dict</span>]:</span><br><span class="line">        <span class="string">&quot;&quot;&quot;对文档列表重排序&quot;&quot;&quot;</span></span><br><span class="line">        pairs = [[query, doc] <span class="keyword">for</span> doc <span class="keyword">in</span> documents]</span><br><span class="line">        scores = <span class="variable language_">self</span>.cross_encoder.predict(pairs)</span><br><span class="line"></span><br><span class="line">        scored_docs = <span class="built_in">sorted</span>(</span><br><span class="line">            <span class="built_in">zip</span>(documents, scores),</span><br><span class="line">            key=<span class="keyword">lambda</span> x: x[<span class="number">1</span>],</span><br><span class="line">            reverse=<span class="literal">True</span></span><br><span class="line">        )[:top_k]</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> [</span><br><span class="line">            &#123;<span class="string">&quot;content&quot;</span>: doc, <span class="string">&quot;rerank_score&quot;</span>: <span class="built_in">float</span>(score)&#125;</span><br><span class="line">            <span class="keyword">for</span> doc, score <span class="keyword">in</span> scored_docs</span><br><span class="line">        ]</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-Self-RAG（自反思-RAG）"><a href="#4-3-Self-RAG（自反思-RAG）" class="headerlink" title="4.3 Self-RAG（自反思 RAG）"></a>4.3 Self-RAG（自反思 RAG）</h3><p>引入 LLM 自我判断检索是否必要、生成是否事实一致：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">SelfRAG</span>:</span><br><span class="line">    <span class="string">&quot;&quot;&quot;Self-RAG 实现框架&quot;&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">    ISREL_PROMPT = <span class="string">&quot;&quot;&quot;请判断以下问题是否需要从外部知识库检索信息来回答。</span></span><br><span class="line"><span class="string">问题：&#123;query&#125;</span></span><br><span class="line"><span class="string">请只回答&quot;需要&quot;或&quot;不需要&quot;。&quot;&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">    GROUNDNESS_PROMPT = <span class="string">&quot;&quot;&quot;请判断以下回答是否与参考文档中的信息一致。</span></span><br><span class="line"><span class="string">参考文档：&#123;context&#125;</span></span><br><span class="line"><span class="string">回答：&#123;response&#125;</span></span><br><span class="line"><span class="string">请回答&quot;一致&quot;或&quot;不一致&quot;，并简要说明理由。&quot;&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, llm</span>):</span><br><span class="line">        <span class="variable language_">self</span>.llm = llm</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">need_retrieval</span>(<span class="params">self, query: <span class="built_in">str</span></span>) -&gt; <span class="built_in">bool</span>:</span><br><span class="line">        <span class="string">&quot;&quot;&quot;判断是否需要检索&quot;&quot;&quot;</span></span><br><span class="line">        response = <span class="variable language_">self</span>.llm.generate(<span class="variable language_">self</span>.ISREL_PROMPT.<span class="built_in">format</span>(query=query))</span><br><span class="line">        <span class="keyword">return</span> <span class="string">&quot;需要&quot;</span> <span class="keyword">in</span> response</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">generate</span>(<span class="params">self, query: <span class="built_in">str</span>, retrieved_docs: <span class="built_in">list</span>[<span class="built_in">dict</span>]</span>) -&gt; <span class="built_in">str</span>:</span><br><span class="line">        <span class="string">&quot;&quot;&quot;带自反思的生成&quot;&quot;&quot;</span></span><br><span class="line">        context = <span class="string">&quot;\n\n&quot;</span>.join([doc[<span class="string">&#x27;content&#x27;</span>] <span class="keyword">for</span> doc <span class="keyword">in</span> retrieved_docs])</span><br><span class="line">        generation_prompt = <span class="string">f&quot;&quot;&quot;基于以下参考文档回答问题。</span></span><br><span class="line"><span class="string">参考文档：</span></span><br><span class="line"><span class="string"><span class="subst">&#123;context&#125;</span></span></span><br><span class="line"><span class="string">问题：<span class="subst">&#123;query&#125;</span></span></span><br><span class="line"><span class="string">回答：&quot;&quot;&quot;</span></span><br><span class="line">        response = <span class="variable language_">self</span>.llm.generate(generation_prompt)</span><br><span class="line"></span><br><span class="line">        <span class="comment"># 检验事实一致性</span></span><br><span class="line">        groundness = <span class="variable language_">self</span>.llm.generate(</span><br><span class="line">            <span class="variable language_">self</span>.GROUNDNESS_PROMPT.<span class="built_in">format</span>(context=context, response=response)</span><br><span class="line">        )</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> <span class="string">&quot;不一致&quot;</span> <span class="keyword">in</span> groundness:</span><br><span class="line">            response += <span class="string">&quot;\n\n注意：上述部分内容与文档信息存在不一致，请以上述参考文档为准。&quot;</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> response</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-4-常见-RAG-架构变体"><a href="#4-4-常见-RAG-架构变体" class="headerlink" title="4.4 常见 RAG 架构变体"></a>4.4 常见 RAG 架构变体</h3><table>
+<thead>
+<tr>
+<th>架构</th>
+<th>原理</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Naive RAG</strong></td>
+<td>直接检索 + 生成</td>
+<td>简单问答</td>
+</tr>
+<tr>
+<td><strong>Query-Decomposition</strong></td>
+<td>将问题分解为多个子问题</td>
+<td>复杂多跳问题</td>
+</tr>
+<tr>
+<td><strong>Tree of Thoughts</strong></td>
+<td>多路径推理</td>
+<td>需要推理的知识问答</td>
+</tr>
+<tr>
+<td><strong>Self-RAG</strong></td>
+<td>模型自反思检索必要性</td>
+<td>需要高准确率场景</td>
+</tr>
+<tr>
+<td><strong>RAG + Knowledge Graph</strong></td>
+<td>知识图谱补充结构化信息</td>
+<td>复杂关系推理</td>
+</tr>
+<tr>
+<td><strong>HyDE</strong></td>
+<td>用 LLM 生成假设答案再检索</td>
+<td>检索词与答案表述差异大时</td>
+</tr>
+<tr>
+<td><strong>Corrective RAG</strong></td>
+<td>检验检索结果质量，必要时重检</td>
+<td>噪声多的知识库</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="五、部署方案"><a href="#五、部署方案" class="headerlink" title="五、部署方案"></a>五、部署方案</h2><h3 id="5-1-Docker-一键部署（RAGFlow）"><a href="#5-1-Docker-一键部署（RAGFlow）" class="headerlink" title="5.1 Docker 一键部署（RAGFlow）"></a>5.1 Docker 一键部署（RAGFlow）</h3><p>RAGFlow 是中文友好的开源 RAG 平台，支持文档解析、嵌入、检索：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://github.com/infiniflow/ragflow.git</span><br><span class="line"><span class="built_in">cd</span> ragflow</span><br><span class="line"><span class="comment"># 配置 docker/.env 中的 API_KEY 和 Embedding 模型</span></span><br><span class="line">docker compose up -d</span><br><span class="line"><span class="comment"># 访问 http://localhost:9380</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-Qdrant-自建-RAG-服务部署"><a href="#5-2-Qdrant-自建-RAG-服务部署" class="headerlink" title="5.2 Qdrant + 自建 RAG 服务部署"></a>5.2 Qdrant + 自建 RAG 服务部署</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 启动 Qdrant 向量数据库</span></span><br><span class="line">docker run -d --name qdrant \</span><br><span class="line">  -p 6333:6333 \</span><br><span class="line">  -p 6334:6334 \</span><br><span class="line">  -v $(<span class="built_in">pwd</span>)/qdrant_storage:/qdrant/storage \</span><br><span class="line">  qdrant/qdrant</span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 启动 RAG API 服务</span></span><br><span class="line"><span class="comment"># (上面的 FastAPI 代码)</span></span><br><span class="line">uvicorn main:app --host 0.0.0.0 --port 8000 --reload</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-企业级部署架构"><a href="#5-3-企业级部署架构" class="headerlink" title="5.3 企业级部署架构"></a>5.3 企业级部署架构</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">用户请求 → Nginx（负载均衡）→ RAG API 集群（多实例）</span><br><span class="line">                                          │</span><br><span class="line">                    ┌─────────────────────┼─────────────────────┐</span><br><span class="line">                    ▼                     ▼                     ▼</span><br><span class="line">              ┌──────────┐         ┌──────────┐           ┌──────────┐</span><br><span class="line">              │ Qdrant-1 │ ←─────→ │ Qdrant-2 │ ←───────→ │ Qdrant-3 │</span><br><span class="line">              │ (向量存储) │         │ (向量存储) │           │ (向量存储) │</span><br><span class="line">              └──────────┘         └──────────┘           └──────────┘</span><br><span class="line">                    │                   │                     │</span><br><span class="line">                    └───────────────────┴─────────────────────┘</span><br><span class="line">                                      │</span><br><span class="line">                              MinIO / S3（文档存储）</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="六、效果评估"><a href="#六、效果评估" class="headerlink" title="六、效果评估"></a>六、效果评估</h2><h3 id="6-1-常用评估指标"><a href="#6-1-常用评估指标" class="headerlink" title="6.1 常用评估指标"></a>6.1 常用评估指标</h3><table>
+<thead>
+<tr>
+<th>指标</th>
+<th>说明</th>
+<th>评估方式</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Precision@K</strong></td>
+<td>Top-K 结果中相关文档的比例</td>
+<td>人工标注</td>
+</tr>
+<tr>
+<td><strong>Recall@K</strong></td>
+<td>所有相关文档中被召回的比例</td>
+<td>人工标注</td>
+</tr>
+<tr>
+<td><strong>MRR (Mean Reciprocal Rank)</strong></td>
+<td>第一个相关文档排名的倒数均值</td>
+<td>人工标注</td>
+</tr>
+<tr>
+<td><strong>NDCG</strong></td>
+<td>考虑排序位置的相关性得分</td>
+<td>人工标注</td>
+</tr>
+<tr>
+<td><strong>Answer Accuracy</strong></td>
+<td>生成答案的事实正确性</td>
+<td>人工评估</td>
+</tr>
+<tr>
+<td><strong>Answer Relevance</strong></td>
+<td>生成答案与问题的相关性</td>
+<td>LLM 评估</td>
+</tr>
+<tr>
+<td><strong>Faithfulness</strong></td>
+<td>生成答案与检索文档的一致性</td>
+<td>LLM 评估</td>
+</tr>
+</tbody></table>
+<h3 id="6-2-评估工具"><a href="#6-2-评估工具" class="headerlink" title="6.2 评估工具"></a>6.2 评估工具</h3><table>
+<thead>
+<tr>
+<th>工具</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>RAGAS</strong></td>
+<td>RAG 专用评估框架，支持 Faithfulness、Relevance 等指标</td>
+</tr>
+<tr>
+<td><strong>Trulens</strong></td>
+<td>支持追踪和评估 LangChain&#x2F;LlamaIndex 应用</td>
+</tr>
+<tr>
+<td><strong>DeepEval</strong></td>
+<td>基于 LLM 的单元测试式评估</td>
+</tr>
+<tr>
+<td><strong>OpenCompass</strong></td>
+<td>通用大模型评测，支持 RAG 场景</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="七、常见问题排查"><a href="#七、常见问题排查" class="headerlink" title="七、常见问题排查"></a>七、常见问题排查</h2><table>
+<thead>
+<tr>
+<th>问题</th>
+<th>原因</th>
+<th>解决方案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>检索结果不相关</td>
+<td>Embedding 模型不合适</td>
+<td>更换为领域适配的模型，如 BGE-large-zh</td>
+</tr>
+<tr>
+<td>召回率低</td>
+<td>分块过大&#x2F;过小</td>
+<td>调整 chunk_size 和 overlap</td>
+</tr>
+<tr>
+<td>模型幻觉</td>
+<td>Prompt 不够强调仅用文档</td>
+<td>强化 Prompt 约束，增加”不确定请说不知道”</td>
+</tr>
+<tr>
+<td>检索速度慢</td>
+<td>向量维度过高&#x2F;数据库大</td>
+<td>使用 HNSW 索引降低延迟</td>
+</tr>
+<tr>
+<td>上下文超长</td>
+<td>检索块过多</td>
+<td>设置 max_ctx_tokens 限制</td>
+</tr>
+<tr>
+<td>多跳问题效果差</td>
+<td>单次检索不够</td>
+<td>使用 Query-Decomposition 分解问题</td>
+</tr>
+<tr>
+<td>表格&#x2F;图片内容无法理解</td>
+<td>分块时破坏结构</td>
+<td>使用 Marker 将 PDF 转为 Markdown 保留结构</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="八、参考资源"><a href="#八、参考资源" class="headerlink" title="八、参考资源"></a>八、参考资源</h2><ul>
+<li>LangChain 文档：<a target="_blank" rel="noopener" href="https://python.langchain.com/">https://python.langchain.com</a></li>
+<li>LlamaIndex 文档：<a target="_blank" rel="noopener" href="https://docs.llamaindex.ai/">https://docs.llamaindex.ai</a></li>
+<li>RAGFlow：<a target="_blank" rel="noopener" href="https://github.com/infiniflow/ragflow">https://github.com/infiniflow/ragflow</a></li>
+<li>Qdrant：<a target="_blank" rel="noopener" href="https://github.com/qdrant/qdrant">https://github.com/qdrant/qdrant</a></li>
+<li>HuggingFace Embedding：<a target="_blank" rel="noopener" href="https://huggingface.co/models?library=sentence-transformers">https://huggingface.co/models?library=sentence-transformers</a></li>
+<li>RAGAS 评估框架：<a target="_blank" rel="noopener" href="https://github.com/explodinggradients/ragas">https://github.com/explodinggradients/ragas</a></li>
+</ul>
+<hr>
+<p><em>文档生成时间：2026-04-08</em><br><em>作者：J-tuzkibug</em></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io">PCLTXSYWZ</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io/2026/04/08/RAG%E6%9C%AC%E5%9C%B0%E7%A7%81%E6%9C%89%E7%9F%A5%E8%AF%86%E5%BA%93%E6%9E%84%E5%BB%BA%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/">https://pcltxs.github.io/2026/04/08/RAG%E6%9C%AC%E5%9C%B0%E7%A7%81%E6%9C%89%E7%9F%A5%E8%AF%86%E5%BA%93%E6%9E%84%E5%BB%BA%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://pcltxs.github.io" target="_blank">体系所运维知识库</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/04/08/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-04-08/" title="每日科技要闻-2026-04-08"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">每日科技要闻-2026-04-08</div></div><div class="info-2"><div class="info-item-1">每日科技要闻 | 2026年4月7日 数据来源：The Verge、Wired、TechCrunch、工业和信息化部、arXiv采集时间：2026-04-08 08:00   🤖 人工智能1. Anthropic 推出 Project Glasswing，联手苹果、谷歌应对 AI 安全风险Anthropic 宣布启动 Project Glasswing 项目，联合苹果、Google 等超过 45 家机构，共同使用新型 Claude Mythos Preview 模型测试 AI 网络安全能力。该项目旨在应对日益复杂的 AI 被黑客攻击风险，Anthropic 还与竞争对手展开合作，共同制定 AI 安全标准。 来源：https://www.wired.com/story/anthropic-mythos-preview-project-glasswing/ 2. Claude Code 泄漏事件后续：黑客在代码库中植入恶意软件此前泄漏的 Claude Code 工具被黑客利用，在代码中植入恶意软件并对外传播。安全研究人员警告称，已有多个变种出现，开发者需立即检查是否使用了非官方来源...</div></div></div></a><a class="pagination-related" href="/2026/04/07/%E5%9F%BA%E4%BA%8EIPMI%E7%9A%84%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%A1%AC%E4%BB%B6%E7%8A%B6%E6%80%81%E7%9B%91%E6%8E%A7%E4%B8%8E%E6%95%85%E9%9A%9C%E9%A2%84%E8%AD%A6%E5%AE%9E%E8%B7%B5/" title="基于IPMI的服务器硬件状态监控与故障预警实践"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">基于IPMI的服务器硬件状态监控与故障预警实践</div></div><div class="info-2"><div class="info-item-1">基于IPMI的服务器硬件状态监控与故障预警实践背景服务器硬件故障是导致业务中断的常见原因之一，而多数硬件故障在发生前往往伴随可监测的预警信号。IPMI（Intelligent Platform Management Interface）作为业界标准的硬件管理接口，能够在不依赖操作系统的情况下对服务器硬件状态进行实时监控。本文介绍如何利用IPMI构建轻量化的硬件监控体系，实现对服务器风扇、电源、温度、电压等关键部件的状态监控与故障预警。 IPMI 基础介绍IPMI是一套独立于操作系统的硬件管理架构，通过BMC（Baseboard Management Controller）芯片实现。BMC是一个嵌入在主板上的微控制器，即使服务器断电、操作系统崩溃，只要电源和网线连通，管理员依然可以远程访问服务器硬件状态。 IPMI的核心能力包括：  远程电源控制（开机、关机、重启） 传感器数据读取（温度、风扇转速、电压、电流） 日志记录与事件告警（SEL系统事件日志） 远程KVM-over-IP与虚拟媒体 固件更新（BIOS、BMC）  部署 IPMI 工具服务端安装在Linux环境中，常用工具为...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">PCLTXSYWZ</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">161</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">164</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">10</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/pcltxs"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">广泛收集运维相关文档资料,欢迎大家投稿分享,文档请发送至邮箱tuwj@pcl.ac.cn。网站建设相关问题和建议请联系邮箱tuwj@pcl.ac.cn。体系所办公区设备分布情况请访问http://device.opendns4.cn,工单系统请访问http://ticket.opendns4.cn,体系所公有云资源使用情况请访问http://mcloud.dns4test.com/</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#RAG%E6%9C%AC%E5%9C%B0%E7%A7%81%E6%9C%89%E7%9F%A5%E8%AF%86%E5%BA%93%E6%9E%84%E5%BB%BA%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97"><span class="toc-number">1.</span> <span class="toc-text">RAG本地私有知识库构建实战指南</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">一、概述</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E4%BB%80%E4%B9%88%E6%98%AF-RAG"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 什么是 RAG</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-RAG-%E6%9E%B6%E6%9E%84%E6%80%BB%E8%A7%88"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 RAG 架构总览</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%8A%80%E6%9C%AF%E9%80%89%E5%9E%8B"><span class="toc-number">1.2.</span> <span class="toc-text">二、技术选型</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E6%96%87%E6%A1%A3%E8%A7%A3%E6%9E%90%E5%B7%A5%E5%85%B7"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 文档解析工具</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%96%87%E6%9C%AC%E5%88%86%E5%9D%97%E7%AD%96%E7%95%A5"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 文本分块策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-Embedding-%E6%A8%A1%E5%9E%8B%E9%80%89%E6%8B%A9"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 Embedding 模型选择</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-%E5%90%91%E9%87%8F%E6%95%B0%E6%8D%AE%E5%BA%93%E9%80%89%E5%9E%8B"><span class="toc-number">1.2.4.</span> <span class="toc-text">2.4 向量数据库选型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-5-%E5%A4%A7%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E9%80%89%E6%8B%A9"><span class="toc-number">1.2.5.</span> <span class="toc-text">2.5 大语言模型选择</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-6-RAG-%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B"><span class="toc-number">1.2.6.</span> <span class="toc-text">2.6 RAG 框架选型</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%9E%84%E5%BB%BA%E6%B5%81%E7%A8%8B"><span class="toc-number">1.3.</span> <span class="toc-text">三、构建流程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E7%8E%AF%E5%A2%83%E5%87%86%E5%A4%87"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 环境准备</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%96%87%E6%A1%A3%E8%A7%A3%E6%9E%90"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 文档解析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E6%96%87%E6%9C%AC%E5%88%86%E5%9D%97"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 文本分块</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E5%90%91%E9%87%8F%E5%8C%96%E4%B8%8E%E5%AD%98%E5%82%A8"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 向量化与存储</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E6%B7%B7%E5%90%88%E6%A3%80%E7%B4%A2%EF%BC%88%E6%8E%A8%E8%8D%90%EF%BC%89"><span class="toc-number">1.3.5.</span> <span class="toc-text">3.5 混合检索（推荐）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-RAG-%E6%9F%A5%E8%AF%A2%E4%B8%8E%E7%94%9F%E6%88%90"><span class="toc-number">1.3.6.</span> <span class="toc-text">3.6 RAG 查询与生成</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-7-API-%E6%9C%8D%E5%8A%A1%E5%B0%81%E8%A3%85"><span class="toc-number">1.3.7.</span> <span class="toc-text">3.7 API 服务封装</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E9%AB%98%E7%BA%A7%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.</span> <span class="toc-text">四、高级优化策略</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-Query-%E6%94%B9%E5%86%99%E4%B8%8E%E6%89%A9%E5%B1%95"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 Query 改写与扩展</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E9%87%8D%E6%8E%92%E5%BA%8F%EF%BC%88Re-ranking%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 重排序（Re-ranking）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-Self-RAG%EF%BC%88%E8%87%AA%E5%8F%8D%E6%80%9D-RAG%EF%BC%89"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 Self-RAG（自反思 RAG）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-%E5%B8%B8%E8%A7%81-RAG-%E6%9E%B6%E6%9E%84%E5%8F%98%E4%BD%93"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 常见 RAG 架构变体</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88"><span class="toc-number">1.5.</span> <span class="toc-text">五、部署方案</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-Docker-%E4%B8%80%E9%94%AE%E9%83%A8%E7%BD%B2%EF%BC%88RAGFlow%EF%BC%89"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 Docker 一键部署（RAGFlow）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-Qdrant-%E8%87%AA%E5%BB%BA-RAG-%E6%9C%8D%E5%8A%A1%E9%83%A8%E7%BD%B2"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 Qdrant + 自建 RAG 服务部署</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E4%BC%81%E4%B8%9A%E7%BA%A7%E9%83%A8%E7%BD%B2%E6%9E%B6%E6%9E%84"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 企业级部署架构</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E6%95%88%E6%9E%9C%E8%AF%84%E4%BC%B0"><span class="toc-number">1.6.</span> <span class="toc-text">六、效果评估</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E5%B8%B8%E7%94%A8%E8%AF%84%E4%BC%B0%E6%8C%87%E6%A0%87"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 常用评估指标</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E8%AF%84%E4%BC%B0%E5%B7%A5%E5%85%B7"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 评估工具</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5"><span class="toc-number">1.7.</span> <span class="toc-text">七、常见问题排查</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E5%8F%82%E8%80%83%E8%B5%84%E6%BA%90"><span class="toc-number">1.8.</span> <span class="toc-text">八、参考资源</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/04/16/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-04-16/" title="每日科技要闻-2026-04-16">每日科技要闻-2026-04-16</a><time datetime="2026-04-16T00:00:00.000Z" title="发表于 2026-04-16 08:00:00">2026-04-16</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/04/15/%E8%BF%90%E7%BB%B4Runbook%E7%BC%96%E5%86%99%E4%B8%8E%E7%AE%A1%E7%90%86%E5%AE%9E%E8%B7%B5%E6%8C%87%E5%8D%97/" title="运维Runbook编写与管理实践指南">运维Runbook编写与管理实践指南</a><time datetime="2026-04-15T03:00:00.000Z" title="发表于 2026-04-15 11:00:00">2026-04-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/04/15/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-04-15/" title="每日科技要闻-2026-04-15">每日科技要闻-2026-04-15</a><time datetime="2026-04-15T00:00:00.000Z" title="发表于 2026-04-15 08:00:00">2026-04-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/04/14/Linux%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%BD%91%E5%8D%A1%E4%B8%A2%E5%8C%85%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/" title="Linux服务器网卡丢包故障排查指南">Linux服务器网卡丢包故障排查指南</a><time datetime="2026-04-14T03:00:00.000Z" title="发表于 2026-04-14 11:00:00">2026-04-14</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/04/14/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-04-14/" title="每日科技要闻-2026-04-14">每日科技要闻-2026-04-14</a><time datetime="2026-04-14T00:00:00.000Z" title="发表于 2026-04-14 08:00:00">2026-04-14</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By PCLTXSYWZ</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.4</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>

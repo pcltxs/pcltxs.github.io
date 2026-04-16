@@ -1,0 +1,268 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Linux服务器网卡丢包故障排查指南 | 体系所运维知识库</title><meta name="author" content="PCLTXSYWZ"><meta name="copyright" content="PCLTXSYWZ"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="前言网卡丢包是服务器运维中常见却棘手的问题，轻则导致业务延迟升高，重则造成服务不可用。本文从系统层到硬件层，梳理网卡丢包的常见原因及排查方法。 一、快速定位丢包方向发现业务异常时，先确认是否为网卡丢包。查看网卡统计信息： 12345# 查看网卡接口状态和统计ip -s link show eth0cat &#x2F;proc&#x2F;net&#x2F;dev# 重点关注 drop、fifo、frame、carrier 列是否">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux服务器网卡丢包故障排查指南">
+<meta property="og:url" content="https://pcltxs.github.io/2026/04/14/Linux%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%BD%91%E5%8D%A1%E4%B8%A2%E5%8C%85%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/index.html">
+<meta property="og:site_name" content="体系所运维知识库">
+<meta property="og:description" content="前言网卡丢包是服务器运维中常见却棘手的问题，轻则导致业务延迟升高，重则造成服务不可用。本文从系统层到硬件层，梳理网卡丢包的常见原因及排查方法。 一、快速定位丢包方向发现业务异常时，先确认是否为网卡丢包。查看网卡统计信息： 12345# 查看网卡接口状态和统计ip -s link show eth0cat &#x2F;proc&#x2F;net&#x2F;dev# 重点关注 drop、fifo、frame、carrier 列是否">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://pcltxs.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-04-14T03:00:00.000Z">
+<meta property="article:modified_time" content="2026-04-16T01:03:31.028Z">
+<meta property="article:author" content="PCLTXSYWZ">
+<meta property="article:tag" content="Linux">
+<meta property="article:tag" content="ethtool">
+<meta property="article:tag" content="丢包">
+<meta property="article:tag" content="网卡">
+<meta property="article:tag" content="网络故障">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pcltxs.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Linux服务器网卡丢包故障排查指南",
+  "url": "https://pcltxs.github.io/2026/04/14/Linux%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%BD%91%E5%8D%A1%E4%B8%A2%E5%8C%85%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/",
+  "image": "https://pcltxs.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-04-14T03:00:00.000Z",
+  "dateModified": "2026-04-16T01:03:31.028Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "PCLTXSYWZ",
+      "url": "https://pcltxs.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://pcltxs.github.io/2026/04/14/Linux%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%BD%91%E5%8D%A1%E4%B8%A2%E5%8C%85%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Linux服务器网卡丢包故障排查指南',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.1"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">体系所运维知识库</span></a><a class="nav-page-title" href="/"><span class="site-name">Linux服务器网卡丢包故障排查指南</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div></div></nav><div id="post-info"><h1 class="post-title">Linux服务器网卡丢包故障排查指南</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-04-14T03:00:00.000Z" title="发表于 2026-04-14 11:00:00">2026-04-14</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-04-16T01:03:31.028Z" title="更新于 2026-04-16 09:03:31">2026-04-16</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E6%95%85%E9%9A%9C%E5%A4%84%E7%90%86%E4%B8%8E%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5/">故障处理与问题排查</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>网卡丢包是服务器运维中常见却棘手的问题，轻则导致业务延迟升高，重则造成服务不可用。本文从系统层到硬件层，梳理网卡丢包的常见原因及排查方法。</p>
+<h2 id="一、快速定位丢包方向"><a href="#一、快速定位丢包方向" class="headerlink" title="一、快速定位丢包方向"></a>一、快速定位丢包方向</h2><p>发现业务异常时，先确认是否为网卡丢包。查看网卡统计信息：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看网卡接口状态和统计</span></span><br><span class="line">ip -s <span class="built_in">link</span> show eth0</span><br><span class="line"><span class="built_in">cat</span> /proc/net/dev</span><br><span class="line"></span><br><span class="line"><span class="comment"># 重点关注 drop、fifo、frame、carrier 列是否有非零值</span></span><br></pre></td></tr></table></figure>
+
+<p>若 <code>drops</code> 列持续增长，说明网卡正在丢包。进一步查看详细计数：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看网卡详细错误计数</span></span><br><span class="line">ethtool -S eth0</span><br></pre></td></tr></table></figure>
+
+<h2 id="二、查看网卡协商状态与工作模式"><a href="#二、查看网卡协商状态与工作模式" class="headerlink" title="二、查看网卡协商状态与工作模式"></a>二、查看网卡协商状态与工作模式</h2><p>速率不匹配、双工模式错误是常见丢包原因：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看网卡协商的速率和双工模式</span></span><br><span class="line">ethtool eth0</span><br></pre></td></tr></table></figure>
+
+<p>常见异常情况：</p>
+<ul>
+<li>速率显示 10Mbps 而预期是 1Gbps</li>
+<li>双工模式显示 half 而非 full</li>
+<li>协商结果显示 “Unknown!”</li>
+</ul>
+<p>发现协商异常时，尝试强制指定速率：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 强制千兆全双工</span></span><br><span class="line">ethtool -s eth0 speed 1000 duplex full autoneg off</span><br><span class="line"></span><br><span class="line"><span class="comment"># 恢复自动协商</span></span><br><span class="line">ethtool -s eth0 autoneg on</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、检查网卡驱动和固件"><a href="#三、检查网卡驱动和固件" class="headerlink" title="三、检查网卡驱动和固件"></a>三、检查网卡驱动和固件</h2><p>过时或有bug的驱动会导致异常丢包：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看网卡驱动信息</span></span><br><span class="line">ethtool -i eth0</span><br></pre></td></tr></table></figure>
+
+<p>关注 driver、version、firmware-version 版本号，与厂商最新版本对比。更新驱动：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 确认驱动源码</span></span><br><span class="line"><span class="built_in">uname</span> -r</span><br><span class="line"><span class="comment"># 下载对应版本驱动源码编译安装</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="四、检查硬件和连接"><a href="#四、检查硬件和连接" class="headerlink" title="四、检查硬件和连接"></a>四、检查硬件和连接</h2><p>物理层问题不易从系统层面发现：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 检查网卡端口状态灯（设备面板）</span></span><br><span class="line"><span class="comment"># 正常：绿色闪烁；异常：橙色或灭灯</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 更换网线测试，排除网线质量问题</span></span><br><span class="line"><span class="comment"># 交叉测试：更换交换机端口，排除端口故障</span></span><br></pre></td></tr></table></figure>
+
+<p>使用光模块时，确认模块型号与网卡兼容：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看光模块信息（部分网卡支持）</span></span><br><span class="line">ethtool -m eth0</span><br></pre></td></tr></table></figure>
+
+<h2 id="五、系统网络缓冲区检查"><a href="#五、系统网络缓冲区检查" class="headerlink" title="五、系统网络缓冲区检查"></a>五、系统网络缓冲区检查</h2><p>内存不足导致 skb 无法分配，会表现为丢包：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看网络内存统计</span></span><br><span class="line"><span class="built_in">cat</span> /proc/net/sockstat</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看 ring buffer 大小</span></span><br><span class="line">ethtool -g eth0</span><br></pre></td></tr></table></figure>
+
+<p>Ring buffer 偏小会导致高速网卡丢包：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 增大 ring buffer（需网卡支持）</span></span><br><span class="line">ethtool -G eth0 rx 4096 tx 4096</span><br></pre></td></tr></table></figure>
+
+<h2 id="六、中断与-CPU-亲和性"><a href="#六、中断与-CPU-亲和性" class="headerlink" title="六、中断与 CPU 亲和性"></a>六、中断与 CPU 亲和性</h2><p>中断分配不均会导致部分 CPU 繁忙，网卡驱动无法及时处理数据包：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看网卡中断号</span></span><br><span class="line">grep eth0 /proc/interrupts</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看每个 CPU 核处理的中断数</span></span><br><span class="line">watch -n1 <span class="string">&#x27;cat /proc/softirqs | grep NET&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<p>将网卡中断绑定到空闲 CPU：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 获取网卡中断号</span></span><br><span class="line">IRQ=$(grep eth0 /proc/interrupts | awk <span class="string">&#x27;&#123;print $1&#125;&#x27;</span> | <span class="built_in">tr</span> -d <span class="string">&#x27;:&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 绑定到 CPU 0</span></span><br><span class="line"><span class="built_in">echo</span> 1 &gt; /proc/irq/<span class="variable">$IRQ</span>/smp_affinity</span><br></pre></td></tr></table></figure>
+
+<h2 id="七、NIC-Offload-功能的影响"><a href="#七、NIC-Offload-功能的影响" class="headerlink" title="七、NIC Offload 功能的影响"></a>七、NIC Offload 功能的影响</h2><p>部分 offload 功能在特定场景下会引起丢包：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 关闭 GRO/GSO/GCO 测试</span></span><br><span class="line">ethtool -K eth0 gro off gso off</span><br><span class="line"></span><br><span class="line"><span class="comment"># 关闭 TSO</span></span><br><span class="line">ethtool -K eth0 tso off</span><br><span class="line"></span><br><span class="line"><span class="comment"># 观察是否改善，逐步开启各项测试</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="八、网络队列与流量控制"><a href="#八、网络队列与流量控制" class="headerlink" title="八、网络队列与流量控制"></a>八、网络队列与流量控制</h2><p>交换机端开启流量控制时，服务器端未匹配会导致丢包：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看流量控制状态</span></span><br><span class="line">ethtool -a eth0</span><br><span class="line"></span><br><span class="line"><span class="comment"># 关闭或开启 pause 帧</span></span><br><span class="line">ethtool -A eth0 rx off tx off</span><br></pre></td></tr></table></figure>
+
+<p>检查多队列配置：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 确认队列数量</span></span><br><span class="line">ethtool -l eth0</span><br><span class="line"></span><br><span class="line"><span class="comment"># 设置队列数（需网卡支持）</span></span><br><span class="line">ethtool -L eth0 combined 8</span><br></pre></td></tr></table></figure>
+
+<h2 id="九、综合排查思路总结"><a href="#九、综合排查思路总结" class="headerlink" title="九、综合排查思路总结"></a>九、综合排查思路总结</h2><table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>检查项</th>
+<th>工具&#x2F;命令</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>确认丢包存在</td>
+<td><code>ip -s link show</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>查看网卡状态</td>
+<td><code>ethtool eth0</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>检查驱动版本</td>
+<td><code>ethtool -i eth0</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>检查物理连接</td>
+<td>面板灯&#x2F;换网线</td>
+</tr>
+<tr>
+<td>5</td>
+<td>检查缓冲区</td>
+<td><code>ethtool -g eth0</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td>检查中断分布</td>
+<td><code>/proc/interrupts</code></td>
+</tr>
+<tr>
+<td>7</td>
+<td>测试 offload</td>
+<td><code>ethtool -K</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td>检查流量控制</td>
+<td><code>ethtool -a eth0</code></td>
+</tr>
+</tbody></table>
+<h2 id="结语"><a href="#结语" class="headerlink" title="结语"></a>结语</h2><p>网卡丢包排查需由表及里，从系统统计到驱动、从驱动到硬件逐层定位。建议在故障恢复后建立监控基线，将 <code>ethtool -S</code> 的关键计数器纳入采集范围，便于提前发现隐患。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io">PCLTXSYWZ</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io/2026/04/14/Linux%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%BD%91%E5%8D%A1%E4%B8%A2%E5%8C%85%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/">https://pcltxs.github.io/2026/04/14/Linux%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%BD%91%E5%8D%A1%E4%B8%A2%E5%8C%85%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://pcltxs.github.io" target="_blank">体系所运维知识库</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E7%BD%91%E5%8D%A1/">网卡</a><a class="post-meta__tags" href="/tags/Linux/">Linux</a><a class="post-meta__tags" href="/tags/%E7%BD%91%E7%BB%9C%E6%95%85%E9%9A%9C/">网络故障</a><a class="post-meta__tags" href="/tags/ethtool/">ethtool</a><a class="post-meta__tags" href="/tags/%E4%B8%A2%E5%8C%85/">丢包</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/04/15/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-04-15/" title="每日科技要闻-2026-04-15"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">每日科技要闻-2026-04-15</div></div><div class="info-2"><div class="info-item-1">每日科技要闻 | 2026年4月14日人工智能1. 智能体人工智能革命：2026年4月重塑科技的7项突破以对话为核心的”Chat”范式已告终结，AI竞争正转向”能办事”的智能体时代。2026年4月，智能体AI领域迎来突破性进展，多个厂商推出新一代智能体产品，标志AI从被动工具向主动执行者的根本性转变。来源：https://www.switas.com/zh-CN/articles/the-agentic-ai-revolution-7-breakthroughs-reshaping-tech-in-april-2026 2. 2026年最热门的技术突破：AI、智能设备和全球创新来自小米、OpenAI和Waymo等主要公司的众多公告显示，技术正以前所未有的速度演变。AI驱动的工具正在改变日常生活，从先进的人工智能整合到日常设备，延伸到太空和自主交通领域的大胆冒险。来源：https://coaio.com/zh/news/2026/04/2026s-hottest-tech-breakthroughs-ai-smart-devices-and-global-2lsc/ 3. 2026...</div></div></div></a><a class="pagination-related" href="/2026/04/14/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-04-14/" title="每日科技要闻-2026-04-14"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">每日科技要闻-2026-04-14</div></div><div class="info-2"><div class="info-item-1">每日科技要闻（2026年4月13日）AI 与大模型1. Anthropic 发布 Claude Mythos 模型，性能超越 GPT-5.4 与 Gemini 3.1 ProAnthropic 于 2026年4月8日 发布其最新模型 Claude Mythos，在复杂编程任务、多步逻辑推理及模拟人类高级职业考试中表现均明显压过 GPT-5.4 与 Gemini 3.1 Pro。业界大佬评价其为”非常强大，会让人感到恐惧”的模型。Anthropic 同期发布 Project Glasswing，旨在解决 AI 模型比修复漏洞更快地利用漏洞的多供应商安全问题。来源：虎嗅APP | https://www.huxiu.com/article/2038981.html 2. Meta 推出 Muse Spark 模型，全面重构 AI 生成能力Meta 公布其 Muse Spark 模型，由前 Scale AI CEO Alexandr Wang 领导的 SuperIntelligence Labs 进行全面重构。该模型在图像生成和理解方面实现重大突破，进一步加剧 AI 生成领域的竞争。来...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/03/26/Linux-%E5%83%B5%E5%B0%B8%E8%BF%9B%E7%A8%8B-Zombie-Process-%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98/" title="Linux 僵尸进程 Zombie Process 故障排查实战"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-26</div><div class="info-item-2">Linux 僵尸进程 Zombie Process 故障排查实战</div></div><div class="info-2"><div class="info-item-1">Linux 僵尸进程 (Zombie Process) 故障排查实战一、什么是僵尸进程1.1 定义僵尸进程（Zombie Process）是指已经完成执行但仍在进程表中保留条目的进程。这类进程的状态为 Z（Zombie），它们已经释放了所有资源（内存、文件描述符等），但进程描述符仍然存在于内核进程表中。 1.2 产生原因僵尸进程产生的根本原因是父进程没有正确读取子进程的退出状态： 12345子进程退出 → 内核保留进程描述符 → 父进程调用 wait()/waitpid() → 释放描述符                                            ↓                                    如果父进程不调用                                            ↓                                      子进程成为僵尸  1.3 僵尸进程 vs 孤儿进程   类型 状态 资源占用 危害    僵尸进程 已退出，状态为 Z 仅占用进程表条目 进程表耗尽会导致无...</div></div></div></a><a class="pagination-related" href="/2026/03/06/Linux%20%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA%E6%8C%87%E5%8D%97/" title="Linux 服务器安全加固指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-06</div><div class="info-item-2">Linux 服务器安全加固指南</div></div><div class="info-2"><div class="info-item-1">Linux 服务器安全加固指南一、前言服务器安全是运维工作的重中之重。本文档提供一套完整的 Linux 服务器安全加固方案，涵盖系统配置、网络防护、访问控制、审计监控等多个维度，适用于生产环境的 CentOS&#x2F;Ubuntu 服务器。 二、系统更新与补丁管理2.1 更新系统包123456789# Ubuntu/Debianapt-get update &amp;&amp; apt-get upgrade -y# CentOS/RHELyum update -y# 启用自动安全更新apt-get install -y unattended-upgradesdpkg-reconfigure -plow unattended-upgrades  2.2 配置自动更新12345# /etc/apt/apt.conf.d/20auto-upgradesAPT::Periodic::Update-Package-Lists &quot;1&quot;;APT::Periodic::Unattended-Upgrade &quot;1&quot;;APT::Periodic::Down...</div></div></div></a><a class="pagination-related" href="/2026/03/25/Linux-%E6%96%87%E4%BB%B6%E5%8F%A5%E6%9F%84%20File-Descriptor-%E8%80%97%E5%B0%BD%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98/" title="Linux-文件句柄 File-Descriptor-耗尽故障排查实战"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-25</div><div class="info-item-2">Linux-文件句柄 File-Descriptor-耗尽故障排查实战</div></div><div class="info-2"><div class="info-item-1">Linux 文件句柄 (File Descriptor) 耗尽故障排查实战一、故障现象1.1 典型症状1234567891011# 应用日志报错ERROR: Too many open filesERROR: Cannot create new socket: Too many open filesERROR: Failed to open log file: EMFILE# 系统命令报错$ lsls: cannot open directory &#x27;.&#x27;: Too many open files$ cat /var/log/messagescat: /var/log/messages: Too many open files  1.2 影响范围 应用无法创建新连接（HTTP、数据库、Redis 等） 日志无法写入，导致日志丢失 无法打开新文件进行读写 严重时可导致服务完全不可用  二、故障诊断2.1 检查系统级文件句柄限制1234567891011# 查看系统整体限制$ cat /proc/sys/fs/file-max655360$ cat /proc/sy...</div></div></div></a><a class="pagination-related" href="/2026/04/10/%E7%94%9F%E4%BA%A7%E7%8E%AF%E5%A2%83%E5%9C%A8%E7%BA%BF%E5%86%85%E6%A0%B8%E5%8D%87%E7%BA%A7%E4%B8%8E%E5%9B%9E%E6%BB%9A%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/" title="生产环境在线内核升级与回滚实战指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-04-10</div><div class="info-item-2">生产环境在线内核升级与回滚实战指南</div></div><div class="info-2"><div class="info-item-1">背景生产环境频繁面临内核漏洞修复与功能迭代需求，传统停机升级对业务连续性造成冲击。本文聚焦 Linux 内核热升级技术，重点讲解 Ksplice 在线热补丁与滚动升级两种方案的适用场景、操作流程与回滚策略，适用于 CentOS&#x2F;RHEL 7+ 及 Ubuntu 18.04+ 环境。 方案一：Ksplice 在线热补丁（推荐紧急修复）Ksplice 允许在不重启系统的情况下动态替换运行中内核的函数，实现零停机修复。 环境检查与依赖123456789# 确认内核版本和架构uname -r# 检查是否已有 ksplicerpm -qa | grep kspplice   # CentOSdpkg -l | grep ksplice    # Ubuntu# 确认内核符号表可用（生产环境务必提前开启）cat /boot/config-$(uname -r) | grep -i debug# CONFIG_DEBUG_INFO=y 必须开启，否则无法生成热补丁  安装 Uptrack（Oracle Ksplice 社区版）1234567891011# CentOS/RHELsud...</div></div></div></a><a class="pagination-related" href="/2026/03/25/Linux%20%E5%86%85%E5%AD%98%E9%A1%B5%E9%94%99%E8%AF%AF%20Page-Fault%20%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98/" title="Linux 内存页错误 Page-Fault 故障排查实战"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-25</div><div class="info-item-2">Linux 内存页错误 Page-Fault 故障排查实战</div></div><div class="info-2"><div class="info-item-1">Linux 内存页错误 (Page Fault) 故障排查实战一、问题背景内存页错误（Page Fault）是 Linux 系统中常见的内存访问异常，当进程访问的虚拟内存页不在物理内存中时触发。虽然大多数 Page Fault 是正常的（软缺页），但频繁的硬缺页会导致系统性能严重下降，甚至引发 OOM Killer 或应用崩溃。 本文通过实际案例，详细介绍 Page Fault 的排查思路、诊断工具和解决方案。 二、Page Fault 基础概念2.1 Page Fault 类型   类型 英文 说明 性能影响    软缺页 Minor Page Fault 页已在内存中，只需更新页表 轻微   硬缺页 Major Page Fault 页不在内存中，需从磁盘加载 严重   无效缺页 Invalid Page Fault 访问非法地址，导致段错误 崩溃   2.2 常见触发场景 应用程序首次访问新分配的内存 内存交换（Swap）频繁 共享库加载 内存映射文件访问 内存泄漏导致频繁换页  三、故障现象识别3.1 系统层面症状12# 查看系统整体缺页统计vmstat 1 5  输出示...</div></div></div></a><a class="pagination-related" href="/2026/03/02/DPDK%20%E5%AE%89%E8%A3%85%E4%B8%8E%E7%BD%91%E5%8D%A1%E6%8E%A5%E7%AE%A1/" title="DPDK 安装与网卡接管"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-02</div><div class="info-item-2">DPDK 安装与网卡接管</div></div><div class="info-2"><div class="info-item-1">概述DPDK（Data Plane Development Kit）是 Intel 开源的高性能数据包处理框架，通过用户态驱动绕过内核协议栈，实现网卡零拷贝和轮询模式，大幅提升网络吞吐性能。 本文记录 DPDK 的安装步骤以及网卡接管配置流程。  一、环境准备1.1 系统要求 Linux 内核 3.7+ 支持的网络设备（Intel 网卡为主） 关闭 IOMMU 或配置 VFIO  1.2 关闭内核网络服务123456# 停止 NetworkManagersudo systemctl stop NetworkManagersudo systemctl disable NetworkManager# 卸载网卡驱动（以 igb_uio 为例）sudo modprobe -r igb   二、安装 DPDK2.1 方式一：包管理器安装（推荐）12345# Ubuntu/Debiansudo apt-get install dpdk dpdk-dev# CentOS/RHELsudo yum install dpdk dpdk-devel  2.2 方式二：源码编译123456789101...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">PCLTXSYWZ</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">161</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">164</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">10</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/pcltxs"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">广泛收集运维相关文档资料,欢迎大家投稿分享,文档请发送至邮箱tuwj@pcl.ac.cn。网站建设相关问题和建议请联系邮箱tuwj@pcl.ac.cn。体系所办公区设备分布情况请访问http://device.opendns4.cn,工单系统请访问http://ticket.opendns4.cn,体系所公有云资源使用情况请访问http://mcloud.dns4test.com/</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E5%BF%AB%E9%80%9F%E5%AE%9A%E4%BD%8D%E4%B8%A2%E5%8C%85%E6%96%B9%E5%90%91"><span class="toc-number">2.</span> <span class="toc-text">一、快速定位丢包方向</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%9F%A5%E7%9C%8B%E7%BD%91%E5%8D%A1%E5%8D%8F%E5%95%86%E7%8A%B6%E6%80%81%E4%B8%8E%E5%B7%A5%E4%BD%9C%E6%A8%A1%E5%BC%8F"><span class="toc-number">3.</span> <span class="toc-text">二、查看网卡协商状态与工作模式</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%A3%80%E6%9F%A5%E7%BD%91%E5%8D%A1%E9%A9%B1%E5%8A%A8%E5%92%8C%E5%9B%BA%E4%BB%B6"><span class="toc-number">4.</span> <span class="toc-text">三、检查网卡驱动和固件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E6%A3%80%E6%9F%A5%E7%A1%AC%E4%BB%B6%E5%92%8C%E8%BF%9E%E6%8E%A5"><span class="toc-number">5.</span> <span class="toc-text">四、检查硬件和连接</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E7%B3%BB%E7%BB%9F%E7%BD%91%E7%BB%9C%E7%BC%93%E5%86%B2%E5%8C%BA%E6%A3%80%E6%9F%A5"><span class="toc-number">6.</span> <span class="toc-text">五、系统网络缓冲区检查</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E4%B8%AD%E6%96%AD%E4%B8%8E-CPU-%E4%BA%B2%E5%92%8C%E6%80%A7"><span class="toc-number">7.</span> <span class="toc-text">六、中断与 CPU 亲和性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81NIC-Offload-%E5%8A%9F%E8%83%BD%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="toc-number">8.</span> <span class="toc-text">七、NIC Offload 功能的影响</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E7%BD%91%E7%BB%9C%E9%98%9F%E5%88%97%E4%B8%8E%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6"><span class="toc-number">9.</span> <span class="toc-text">八、网络队列与流量控制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9D%E3%80%81%E7%BB%BC%E5%90%88%E6%8E%92%E6%9F%A5%E6%80%9D%E8%B7%AF%E6%80%BB%E7%BB%93"><span class="toc-number">10.</span> <span class="toc-text">九、综合排查思路总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BB%93%E8%AF%AD"><span class="toc-number">11.</span> <span class="toc-text">结语</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/04/16/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-04-16/" title="每日科技要闻-2026-04-16">每日科技要闻-2026-04-16</a><time datetime="2026-04-16T00:00:00.000Z" title="发表于 2026-04-16 08:00:00">2026-04-16</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/04/15/%E8%BF%90%E7%BB%B4Runbook%E7%BC%96%E5%86%99%E4%B8%8E%E7%AE%A1%E7%90%86%E5%AE%9E%E8%B7%B5%E6%8C%87%E5%8D%97/" title="运维Runbook编写与管理实践指南">运维Runbook编写与管理实践指南</a><time datetime="2026-04-15T03:00:00.000Z" title="发表于 2026-04-15 11:00:00">2026-04-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/04/15/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-04-15/" title="每日科技要闻-2026-04-15">每日科技要闻-2026-04-15</a><time datetime="2026-04-15T00:00:00.000Z" title="发表于 2026-04-15 08:00:00">2026-04-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/04/14/Linux%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%BD%91%E5%8D%A1%E4%B8%A2%E5%8C%85%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E6%8C%87%E5%8D%97/" title="Linux服务器网卡丢包故障排查指南">Linux服务器网卡丢包故障排查指南</a><time datetime="2026-04-14T03:00:00.000Z" title="发表于 2026-04-14 11:00:00">2026-04-14</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/04/14/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-04-14/" title="每日科技要闻-2026-04-14">每日科技要闻-2026-04-14</a><time datetime="2026-04-14T00:00:00.000Z" title="发表于 2026-04-14 08:00:00">2026-04-14</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By PCLTXSYWZ</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.4</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>
