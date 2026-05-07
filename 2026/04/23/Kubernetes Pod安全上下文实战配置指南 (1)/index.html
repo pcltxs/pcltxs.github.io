@@ -1,0 +1,246 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Kubernetes Pod安全上下文实战配置指南 | 体系所运维知识库</title><meta name="author" content="PCLTXSYWZ"><meta name="copyright" content="PCLTXSYWZ"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="前言在生产环境中运行 Kubernetes 时，Pod 的安全配置是保障集群稳定性和隔离性的关键环节。Kubernetes 提供了 Security Context（安全上下文） 用于配置 Pod 和容器的特权、访问控制、资源限制等安全相关参数。本文从实战出发，介绍常见的安全上下文配置及其适用场景。 一、什么是 Security ContextSecurity Context 是 Pod 或容器级">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes Pod安全上下文实战配置指南">
+<meta property="og:url" content="https://pcltxs.github.io/2026/04/23/Kubernetes%20Pod%E5%AE%89%E5%85%A8%E4%B8%8A%E4%B8%8B%E6%96%87%E5%AE%9E%E6%88%98%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97%20(1)/index.html">
+<meta property="og:site_name" content="体系所运维知识库">
+<meta property="og:description" content="前言在生产环境中运行 Kubernetes 时，Pod 的安全配置是保障集群稳定性和隔离性的关键环节。Kubernetes 提供了 Security Context（安全上下文） 用于配置 Pod 和容器的特权、访问控制、资源限制等安全相关参数。本文从实战出发，介绍常见的安全上下文配置及其适用场景。 一、什么是 Security ContextSecurity Context 是 Pod 或容器级">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://pcltxs.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-04-23T03:00:00.000Z">
+<meta property="article:modified_time" content="2026-05-07T01:23:48.456Z">
+<meta property="article:author" content="PCLTXSYWZ">
+<meta property="article:tag" content="Kubernetes">
+<meta property="article:tag" content="Pod安全">
+<meta property="article:tag" content="安全上下文">
+<meta property="article:tag" content="容器安全">
+<meta property="article:tag" content="运维实践">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pcltxs.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Kubernetes Pod安全上下文实战配置指南",
+  "url": "https://pcltxs.github.io/2026/04/23/Kubernetes%20Pod%E5%AE%89%E5%85%A8%E4%B8%8A%E4%B8%8B%E6%96%87%E5%AE%9E%E6%88%98%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97%20(1)/",
+  "image": "https://pcltxs.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-04-23T03:00:00.000Z",
+  "dateModified": "2026-05-07T01:23:48.456Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "PCLTXSYWZ",
+      "url": "https://pcltxs.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://pcltxs.github.io/2026/04/23/Kubernetes%20Pod%E5%AE%89%E5%85%A8%E4%B8%8A%E4%B8%8B%E6%96%87%E5%AE%9E%E6%88%98%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97%20(1)/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Kubernetes Pod安全上下文实战配置指南',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.1"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">体系所运维知识库</span></a><a class="nav-page-title" href="/"><span class="site-name">Kubernetes Pod安全上下文实战配置指南</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div></div></nav><div id="post-info"><h1 class="post-title">Kubernetes Pod安全上下文实战配置指南</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-04-23T03:00:00.000Z" title="发表于 2026-04-23 11:00:00">2026-04-23</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-05-07T01:23:48.456Z" title="更新于 2026-05-07 09:23:48">2026-05-07</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%BD%AF%E4%BB%B6%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E7%BB%B4%E7%AE%A1%E7%90%86/">软件部署与运维管理</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>在生产环境中运行 Kubernetes 时，Pod 的安全配置是保障集群稳定性和隔离性的关键环节。Kubernetes 提供了 <strong>Security Context（安全上下文）</strong> 用于配置 Pod 和容器的特权、访问控制、资源限制等安全相关参数。本文从实战出发，介绍常见的安全上下文配置及其适用场景。</p>
+<h2 id="一、什么是-Security-Context"><a href="#一、什么是-Security-Context" class="headerlink" title="一、什么是 Security Context"></a>一、什么是 Security Context</h2><p>Security Context 是 Pod 或容器级别的安全配置字段，支持以下功能：</p>
+<ul>
+<li>运行用户&#x2F;组配置</li>
+<li>特权模式与 capabilities 管理</li>
+<li>只读根文件系统</li>
+<li>Seccomp 和 AppArmor 配置</li>
+<li>允许的挂载类型</li>
+</ul>
+<h2 id="二、实战配置示例"><a href="#二、实战配置示例" class="headerlink" title="二、实战配置示例"></a>二、实战配置示例</h2><h3 id="2-1-基础安全上下文"><a href="#2-1-基础安全上下文" class="headerlink" title="2.1 基础安全上下文"></a>2.1 基础安全上下文</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Pod</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">secure-app</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">securityContext:</span></span><br><span class="line">    <span class="attr">runAsNonRoot:</span> <span class="literal">true</span>          <span class="comment"># 禁止以 root 运行</span></span><br><span class="line">    <span class="attr">runAsUser:</span> <span class="number">1000</span>             <span class="comment"># 指定运行用户</span></span><br><span class="line">    <span class="attr">runAsGroup:</span> <span class="number">1000</span>            <span class="comment"># 指定主组</span></span><br><span class="line">    <span class="attr">fsGroup:</span> <span class="number">1000</span>               <span class="comment"># 容器内进程可访问的组</span></span><br><span class="line">  <span class="attr">containers:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">app</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">nginx:1.25</span></span><br><span class="line">    <span class="attr">securityContext:</span></span><br><span class="line">      <span class="attr">allowPrivilegeEscalation:</span> <span class="literal">false</span>  <span class="comment"># 禁止特权升级</span></span><br><span class="line">      <span class="attr">readOnlyRootFilesystem:</span> <span class="literal">true</span>     <span class="comment"># 根文件系统只读</span></span><br><span class="line">      <span class="attr">capabilities:</span></span><br><span class="line">        <span class="attr">drop:</span> [<span class="string">&quot;ALL&quot;</span>]                   <span class="comment"># 移除所有 capabilities</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-限制容器权限——禁止特权运行"><a href="#2-2-限制容器权限——禁止特权运行" class="headerlink" title="2.2 限制容器权限——禁止特权运行"></a>2.2 限制容器权限——禁止特权运行</h3><p>生产环境中最基本的安全要求是禁止容器以特权运行：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">securityContext:</span></span><br><span class="line">  <span class="attr">privileged:</span> <span class="literal">false</span></span><br><span class="line">  <span class="attr">allowPrivilegeEscalation:</span> <span class="literal">false</span></span><br><span class="line">  <span class="attr">readOnlyRootFilesystem:</span> <span class="literal">true</span></span><br><span class="line">  <span class="attr">capabilities:</span></span><br><span class="line">    <span class="attr">drop:</span> [<span class="string">&quot;ALL&quot;</span>]</span><br></pre></td></tr></table></figure>
+
+<p><strong>说明</strong>：</p>
+<ul>
+<li><code>privileged: true</code> 会让容器拥有宿主机的所有权限，极度危险</li>
+<li><code>allowPrivilegeEscalation</code> 防止容器内进程获取更多权限</li>
+<li><code>capabilities.drop: ALL</code> 是最小权限原则的推荐实践</li>
+</ul>
+<h3 id="2-3-Seccomp-配置"><a href="#2-3-Seccomp-配置" class="headerlink" title="2.3 Seccomp 配置"></a>2.3 Seccomp 配置</h3><p>Seccomp（Secure Computing Mode）限制容器可调用的系统调用：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">securityContext:</span></span><br><span class="line">    <span class="attr">seccompProfile:</span></span><br><span class="line">      <span class="attr">type:</span> <span class="string">RuntimeDefault</span>   <span class="comment"># 使用容器运行时的默认 seccomp 配置</span></span><br></pre></td></tr></table></figure>
+
+<p>对于更严格的场景，可以使用自定义 Seccomp 配置文件：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">seccompProfile:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">Localhost</span></span><br><span class="line">  <span class="attr">localhostProfile:</span> <span class="string">profiles/restrictive.json</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-4-AppArmor-配置"><a href="#2-4-AppArmor-配置" class="headerlink" title="2.4 AppArmor 配置"></a>2.4 AppArmor 配置</h3><p>AppArmor 是 Linux 强制访问控制（MAC）的一种实现：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">annotations:</span></span><br><span class="line">    <span class="attr">container.apparmor.security.beta.kubernetes.io/app:</span> <span class="string">&quot;localhost/restrictive&quot;</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">containers:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">app</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">nginx:1.25</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="三、NetworkPolicy-配合网络安全"><a href="#三、NetworkPolicy-配合网络安全" class="headerlink" title="三、NetworkPolicy 配合网络安全"></a>三、NetworkPolicy 配合网络安全</h2><p>除了安全上下文，还应通过 NetworkPolicy 控制 Pod 的网络访问：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">networking.k8s.io/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">NetworkPolicy</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">app-network-policy</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">podSelector:</span></span><br><span class="line">    <span class="attr">matchLabels:</span></span><br><span class="line">      <span class="attr">app:</span> <span class="string">secure-app</span></span><br><span class="line">  <span class="attr">policyTypes:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">Ingress</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">Egress</span></span><br><span class="line">  <span class="attr">ingress:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">from:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">podSelector:</span></span><br><span class="line">        <span class="attr">matchLabels:</span></span><br><span class="line">          <span class="attr">role:</span> <span class="string">frontend</span></span><br><span class="line">    <span class="attr">ports:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">protocol:</span> <span class="string">TCP</span></span><br><span class="line">      <span class="attr">port:</span> <span class="number">80</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="四、自动化检查工具"><a href="#四、自动化检查工具" class="headerlink" title="四、自动化检查工具"></a>四、自动化检查工具</h2><p>推荐使用 <strong>Kube-bench</strong> 定期检查集群安全配置：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl apply -f https://raw.githubusercontent.com/aquasecurity/kube-bench/main/job.yaml</span><br></pre></td></tr></table></figure>
+
+<p>同时可使用 <strong>Kyverno</strong> 或 <strong>OPA Gatekeeper</strong> 在集群层面强制安全策略：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">kyverno.io/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">ClusterPolicy</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">require-drop-all-capabilities</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">validationFailureAction:</span> <span class="string">Enforce</span></span><br><span class="line">  <span class="attr">rules:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">drop-all-capabilities</span></span><br><span class="line">    <span class="attr">match:</span></span><br><span class="line">      <span class="attr">resources:</span></span><br><span class="line">        <span class="attr">kinds:</span> [<span class="string">Pod</span>]</span><br><span class="line">    <span class="attr">validate:</span></span><br><span class="line">      <span class="attr">message:</span> <span class="string">&quot;Containers must drop ALL capabilities&quot;</span></span><br><span class="line">      <span class="attr">pattern:</span></span><br><span class="line">        <span class="attr">spec:</span></span><br><span class="line">          <span class="attr">containers:</span></span><br><span class="line">          <span class="bullet">-</span> <span class="attr">securityContext:</span></span><br><span class="line">              <span class="attr">capabilities:</span></span><br><span class="line">                <span class="attr">drop:</span> [<span class="string">&quot;ALL&quot;</span>]</span><br></pre></td></tr></table></figure>
+
+<h2 id="五、运维检查清单"><a href="#五、运维检查清单" class="headerlink" title="五、运维检查清单"></a>五、运维检查清单</h2><table>
+<thead>
+<tr>
+<th>检查项</th>
+<th>推荐值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>runAsNonRoot</td>
+<td>true</td>
+<td>防止以 root 运行</td>
+</tr>
+<tr>
+<td>privileged</td>
+<td>false</td>
+<td>禁止特权容器</td>
+</tr>
+<tr>
+<td>allowPrivilegeEscalation</td>
+<td>false</td>
+<td>禁止权限升级</td>
+</tr>
+<tr>
+<td>readOnlyRootFilesystem</td>
+<td>true</td>
+<td>只读根文件系统</td>
+</tr>
+<tr>
+<td>capabilities.drop</td>
+<td>ALL</td>
+<td>移除所有额外权限</td>
+</tr>
+<tr>
+<td>seccompProfile.type</td>
+<td>RuntimeDefault</td>
+<td>使用默认系统调用限制</td>
+</tr>
+</tbody></table>
+<h2 id="结语"><a href="#结语" class="headerlink" title="结语"></a>结语</h2><p>安全上下文是 Kubernetes 纵深防御体系的重要一环。生产环境中应遵循<strong>最小权限原则</strong>，在 Pod 和容器级别精细化配置安全参数，并配合 NetworkPolicy、RBAC、审计日志等手段构建完整的安全防护体系。建议通过 OPA Gatekeeper 或 Kyverno 将安全策略固化到集群层面，实现自动化的合规检查。</p>
+<hr>
+<p><em>本文档由技术助手自动生成，如有问题请联系运维团队。</em></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io">PCLTXSYWZ</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://pcltxs.github.io/2026/04/23/Kubernetes%20Pod%E5%AE%89%E5%85%A8%E4%B8%8A%E4%B8%8B%E6%96%87%E5%AE%9E%E6%88%98%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97%20(1)/">https://pcltxs.github.io/2026/04/23/Kubernetes%20Pod%E5%AE%89%E5%85%A8%E4%B8%8A%E4%B8%8B%E6%96%87%E5%AE%9E%E6%88%98%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97%20(1)/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://pcltxs.github.io" target="_blank">体系所运维知识库</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E8%BF%90%E7%BB%B4%E5%AE%9E%E8%B7%B5/">运维实践</a><a class="post-meta__tags" href="/tags/Kubernetes/">Kubernetes</a><a class="post-meta__tags" href="/tags/Pod%E5%AE%89%E5%85%A8/">Pod安全</a><a class="post-meta__tags" href="/tags/%E5%AE%89%E5%85%A8%E4%B8%8A%E4%B8%8B%E6%96%87/">安全上下文</a><a class="post-meta__tags" href="/tags/%E5%AE%B9%E5%99%A8%E5%AE%89%E5%85%A8/">容器安全</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/04/24/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-04-24/" title="每日科技要闻-2026-04-24"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">每日科技要闻-2026-04-24</div></div><div class="info-2"><div class="info-item-1">每日科技要闻日期：2026年4月23日  1. Sony AI 发布”Ace”机器人：具身智能实现超人类实时竞技体育对抗索尼AI今日公布Ace机器人项目，标志着强化学习（RL）从虚拟仿真向复杂物理环境的完美迁移。机器人”Ace”在乒乓球竞技中击败中级人类选手，实现了从”虚拟智能”向”物理智能”深度跨越的关键突破，预示2026年下半年将是人形机器人与专业竞技机器人爆发的元年。 来源：https://juejin.cn/post/7631938951263584307  2. 埃默里大学利用AI发现等离子体中新的物理定律埃默里大学研究团队宣布，其开发的AI系统，在分析等离子体运动时，识别出了隐藏在混沌系统中的新物理规律。AI不再仅是辅助计算工具，而是成为基础科学规律的”发现者”，这意味着AI正在从”数据科学家”演变为”物理学家”。 来源：https://juejin.cn/post/7631938951263584307  3. 微软宣布180亿美元澳大利亚AI基础设施投资微软宣布在澳大利亚进行史上最大的180亿美元（250亿澳元）AI与网络安全基础设施投资，强化南半球AI算力布局，...</div></div></div></a><a class="pagination-related" href="/2026/04/23/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-04-23/" title="每日科技要闻-2026-04-23"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">每日科技要闻-2026-04-23</div></div><div class="info-2"><div class="info-item-1">每日科技要闻 | 2026年4月22日 本报聚合当日全球人工智能、互联网、科学研究、技术突破等领域重要资讯，每日电邮投递。   🤖 人工智能1. OpenAI CEO 奥尔特曼炮轰 Anthropic：称其 Mythos 模型”制造恐慌式营销”OpenAI 首席执行官萨姆·奥尔特曼在一档播客节目中公开批评 Anthropic 推出的网络安全模型 Mythos，称其夸大产品能力、利用恐慌情绪营销。Anthropic 本月发布了 Mythos，称因担心被网络犯罪分子滥用而仅向少数企业客户开放内测。来源：IT之家 | https://k.sina.com.cn/article_7857201856_1d45362c001904l4fq.html  2. 苹果宣布换帅：约翰·特努斯将于 9 月 1 日接任 CEO苹果公司 4 月 20 日宣布，现任 CEO 蒂姆·库克将于 2026 年 9 月 1 日转任公司董事会执行主席，负责硬件工程的高级副总裁约翰·特努斯将接任首席执行官。硅谷舆论普遍认为特努斯面临的最大挑战是带领苹果跟上 AI 发展潮流。来源：IT之家 &#x2F; 钛媒体 | ...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/05/02/Kubernetes%20Pod%20%E6%97%A5%E5%BF%97%E9%87%87%E9%9B%86%E4%B8%8E%E9%9B%86%E4%B8%AD%E5%AD%98%E5%82%A8%E6%96%B9%E6%A1%88%E5%AE%9E%E8%B7%B5/" title="Kubernetes Pod 日志采集与集中存储方案实践"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-05-02</div><div class="info-item-2">Kubernetes Pod 日志采集与集中存储方案实践</div></div><div class="info-2"><div class="info-item-1">背景在 Kubernetes 集群环境中，Pod 日志分散存储在各个节点上，传统方式需要登录到对应节点查看，效率低下且难以进行全局搜索和分析。本文介绍一种基于 Fluentd + Elasticsearch 的日志集中采集方案，实现日志的统一存储、检索和可视化展示。 方案架构1Pod(stdout/stderr) → kubelet → 节点日志文件 → Fluentd DaemonSet → Elasticsearch → Kibana/Grafana  核心组件说明 Fluentd DaemonSet：部署在每个节点上，以 DaemonSet 方式运行，负责采集节点级日志 Elasticsearch：集中存储日志，提供全文检索能力 Kibana&#x2F;Grafana：可视化展示和查询界面  部署步骤1. 部署 Elasticsearch 集群推荐使用 operator 模式管理，以下为基础部署示例： 123456789101112apiVersion: elasticsearch.k8s.elastic.co/v1kind: Elasticsearchmetadata: ...</div></div></div></a><a class="pagination-related" href="/2026/03/22/Helm-Kubernetes%20%E5%BA%94%E7%94%A8%E5%8C%85%E7%AE%A1%E7%90%86%E9%83%A8%E7%BD%B2%E4%B8%8E%E8%BF%90%E7%BB%B4%E5%AE%9E%E6%88%98/" title="Helm Kubernetes 应用包管理部署与运维实战"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-22</div><div class="info-item-2">Helm Kubernetes 应用包管理部署与运维实战</div></div><div class="info-2"><div class="info-item-1">Helm Kubernetes 应用包管理部署与运维实战一、背景与目标Helm 是 Kubernetes 生态系统中最重要的包管理工具，被誉为”Kubernetes 的 apt&#x2F;yum”。它通过 Chart 的形式封装 Kubernetes 应用，简化了应用的部署、升级和管理流程。 本文档将介绍：  Helm 核心概念与架构 Helm 3 安装与配置 Chart 开发与定制 应用部署与升级实战 Helm 运维最佳实践 企业级 Helm 仓库搭建  二、Helm 核心概念2.1 核心术语   术语 描述    Chart Helm 应用包，包含 Kubernetes 资源模板和配置   Release Chart 在集群中运行的实例   Repository Chart 仓库，用于存储和分享 Chart   Values 用户自定义配置，覆盖 Chart 默认值   Hook 在特定生命周期阶段执行的临时资源   2.2 Helm 3 vs Helm 2   特性 Helm 2 Helm 3    服务端组件 Tiller 无（纯客户端）   存储方式 ConfigMap...</div></div></div></a><a class="pagination-related" href="/2026/04/19/Elasticsearch%20%E5%86%B7%E7%83%AD%E5%88%86%E5%B1%82%E6%9E%B6%E6%9E%84%E5%AE%9E%E6%88%98%E6%8C%87%E5%8D%97/" title="Elasticsearch 冷热分层架构实战指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-04-19</div><div class="info-item-2">Elasticsearch 冷热分层架构实战指南</div></div><div class="info-2"><div class="info-item-1">Elasticsearch 冷热分层架构实战指南在大规模日志与指标场景下，Elasticsearch 集群的存储成本与查询性能往往成为运维的主要挑战。冷热分层架构（Hot-Warm-Cold Architecture）通过将不同生命周期的数据分配到不同规格的节点上，可在保证查询性能的同时显著降低硬件成本。本文从架构设计出发，介绍 Elasticsearch 官方 ILM（Index Lifecycle Management）的配置方法与实际运维经验。 一、冷热分层架构设计原理Elasticsearch 节点按角色可分为三类： 热节点（Hot）：配置高性能 SSD，承载最新写入的索引，接收全部写入流量和部分实时查询。数据在此层停留时间最短，通常为 1~3 天。 暖节点（Warm）：使用普通 SSD 或大容量 HDD，仅承载只读索引，承接历史数据分析查询。数据在此层停留时间适中，通常为 4~14 天。 冷节点（Cold）：使用大容量 SATA 磁盘或对象存储，承载极少访问的历史归档索引，以降低存储成本为主要目标。数据在此层可保留数月甚至数年。 合理的分层策略可使存储成本降低 50%~...</div></div></div></a><a class="pagination-related" href="/2026/03/24/Kubernetes-Pod-CrashLoopBackOff%20%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E5%AE%9E%E6%88%98/" title="Kubernetes-Pod-CrashLoopBackOff 故障排查实战"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-24</div><div class="info-item-2">Kubernetes-Pod-CrashLoopBackOff 故障排查实战</div></div><div class="info-2"><div class="info-item-1">Kubernetes Pod CrashLoopBackOff 故障排查实战一、故障现象在 Kubernetes 集群中，Pod 频繁重启是最常见的故障之一。当 Pod 进入 CrashLoopBackOff 状态时，表示容器启动后很快退出，Kubernetes 不断尝试重启但始终失败。 典型表现1234$ kubectl get pods -n &lt;namespace&gt;NAME                          READY   STATUS             RESTARTS   AGEmy-app-6d8f9c7b5-x2k4m        0/1     CrashLoopBackOff   15         45mmy-app-6d8f9c7b5-j7n3p        0/1     CrashLoopBackOff   12         45m  状态码含义   状态 含义    CrashLoopBackOff 容器反复崩溃，Kubernetes 采用指数退避策略重启   Error 容器退出码非 0   OOMKille...</div></div></div></a><a class="pagination-related" href="/2026/03/06/Kubernetes%20%E9%9B%86%E7%BE%A4%E9%83%A8%E7%BD%B2%E4%B8%8E%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97/" title="Kubernetes 集群部署与配置指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-06</div><div class="info-item-2">Kubernetes 集群部署与配置指南</div></div><div class="info-2"><div class="info-item-1">Kubernetes 集群部署与配置指南一、前言Kubernetes（简称 K8s）是目前最主流的容器编排平台，提供自动化部署、扩展和管理容器化应用的能力。本文档介绍如何使用 kubeadm 在生产环境中部署一个高可用的 Kubernetes 集群。 二、环境准备2.1 硬件要求   节点类型 数量 CPU 内存 磁盘    Master 3 4 核 8GB 50GB   Worker ≥2 4 核 8GB 50GB   2.2 系统要求 操作系统：Ubuntu 22.04 LTS &#x2F; CentOS 7.9+ 内核版本：≥ 4.15 容器运行时：containerd 1.6+ 或 Docker 20.10+ 网络插件：Calico &#x2F; Flannel &#x2F; Cilium  2.3 网络规划12345Master 节点：192.168.1.10-12Worker 节点：192.168.1.20-21Pod 网段：10.244.0.0/16Service 网段：10.96.0.0/12VIP（负载均衡）：192.168.1.100  三、前置配置3.1 关...</div></div></div></a><a class="pagination-related" href="/2026/04/30/%E5%BC%80%E6%94%BE%E5%8F%AF%E8%A7%82%E6%B5%8B%E6%80%A7%E6%A1%86%E6%9E%B6OpenTelemetry%E5%85%A5%E9%97%A8%E4%B8%8E%E5%AE%9E%E8%B7%B5%E6%8C%87%E5%8D%97/" title="开放可观测性框架OpenTelemetry入门与实践指南"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-04-30</div><div class="info-item-2">开放可观测性框架OpenTelemetry入门与实践指南</div></div><div class="info-2"><div class="info-item-1">开放可观测性框架OpenTelemetry入门与实践指南在分布式系统和微服务架构日益复杂的今天，传统的单一监控手段已难以满足运维团队的全链路追踪需求。OpenTelemetry（以下简称 OTel）作为 CNCF 的旗舰项目，提供了一套与厂商无关的观测数据采集与传输标准。本文将从概念、架构、部署配置和最佳实践四个维度，帮助运维工程师快速掌握 OTel 的核心用法。 一、为什么需要 OpenTelemetry在 OTel 出现之前，团队通常需要在 APM 工具（Skywalking、Jaeger、Zipkin）和业务代码之间做深度耦合：每换一次后端监控平台，就要修改一次埋点代码。OTel 的核心价值在于解耦：一次埋点，多种后端输出。 OTel 统一了三大观测信号：  Traces（链路追踪）：记录请求在分布式系统中的完整调用路径。 Metrics（指标）：聚合后的数值型数据，如 CPU 使用率、请求延迟分位数。 Logs（日志）：结构化的文本事件记录。  这三种信号通过统一的 Context 机制关联，使运维人员可以从一条告警追溯到具体是哪一次请求、哪个服务实例出了故障。 二、核心...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">PCLTXSYWZ</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">195</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">198</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">10</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/pcltxs"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">广泛收集运维相关文档资料,欢迎大家投稿分享,文档请发送至邮箱tuwj@pcl.ac.cn。网站建设相关问题和建议请联系邮箱tuwj@pcl.ac.cn。体系所办公区设备分布情况请访问http://device.opendns4.cn,工单系统请访问http://ticket.opendns4.cn,体系所公有云资源使用情况请访问http://mcloud.dns4test.com/</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E4%BB%80%E4%B9%88%E6%98%AF-Security-Context"><span class="toc-number">2.</span> <span class="toc-text">一、什么是 Security Context</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E5%AE%9E%E6%88%98%E9%85%8D%E7%BD%AE%E7%A4%BA%E4%BE%8B"><span class="toc-number">3.</span> <span class="toc-text">二、实战配置示例</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E5%9F%BA%E7%A1%80%E5%AE%89%E5%85%A8%E4%B8%8A%E4%B8%8B%E6%96%87"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 基础安全上下文</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E9%99%90%E5%88%B6%E5%AE%B9%E5%99%A8%E6%9D%83%E9%99%90%E2%80%94%E2%80%94%E7%A6%81%E6%AD%A2%E7%89%B9%E6%9D%83%E8%BF%90%E8%A1%8C"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 限制容器权限——禁止特权运行</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-Seccomp-%E9%85%8D%E7%BD%AE"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 Seccomp 配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-AppArmor-%E9%85%8D%E7%BD%AE"><span class="toc-number">3.4.</span> <span class="toc-text">2.4 AppArmor 配置</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81NetworkPolicy-%E9%85%8D%E5%90%88%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8"><span class="toc-number">4.</span> <span class="toc-text">三、NetworkPolicy 配合网络安全</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%87%AA%E5%8A%A8%E5%8C%96%E6%A3%80%E6%9F%A5%E5%B7%A5%E5%85%B7"><span class="toc-number">5.</span> <span class="toc-text">四、自动化检查工具</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E8%BF%90%E7%BB%B4%E6%A3%80%E6%9F%A5%E6%B8%85%E5%8D%95"><span class="toc-number">6.</span> <span class="toc-text">五、运维检查清单</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BB%93%E8%AF%AD"><span class="toc-number">7.</span> <span class="toc-text">结语</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/07/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-05-07/" title="每日科技要闻-2026-05-07">每日科技要闻-2026-05-07</a><time datetime="2026-05-07T00:00:00.000Z" title="发表于 2026-05-07 08:00:00">2026-05-07</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/06/Linux%E7%BD%91%E7%BB%9C%E7%BB%91%E5%AE%9A%E6%A8%A1%E5%BC%8F%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%95%85%E9%9A%9C%E5%88%87%E6%8D%A2%E8%AF%A6%E8%A7%A3/" title="Linux网络绑定模式配置与故障切换详解">Linux网络绑定模式配置与故障切换详解</a><time datetime="2026-05-06T03:00:00.000Z" title="发表于 2026-05-06 11:00:00">2026-05-06</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/05/%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%9B%BA%E4%BB%B6%E5%8D%87%E7%BA%A7%E7%AE%A1%E7%90%86%E5%AE%9E%E8%B7%B5%E6%8C%87%E5%8D%97/" title="服务器固件升级管理实践指南">服务器固件升级管理实践指南</a><time datetime="2026-05-05T03:00:00.000Z" title="发表于 2026-05-05 11:00:00">2026-05-05</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/05/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-05-05/" title="每日科技要闻-2026-05-05">每日科技要闻-2026-05-05</a><time datetime="2026-05-05T00:00:00.000Z" title="发表于 2026-05-05 08:00:00">2026-05-05</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/05/04/%E6%AF%8F%E6%97%A5%E7%A7%91%E6%8A%80%E8%A6%81%E9%97%BB-2026-05-04/" title="每日科技要闻-2026-05-04">每日科技要闻-2026-05-04</a><time datetime="2026-05-04T00:00:00.000Z" title="发表于 2026-05-04 08:00:00">2026-05-04</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By PCLTXSYWZ</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.1</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.4</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章..." type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.4"></script></div></div></body></html>
